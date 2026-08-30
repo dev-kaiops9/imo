@@ -101,10 +101,22 @@ const PdfBuilder = {
     const format = photo.mimeType && photo.mimeType.includes("png") ? "PNG" : "JPEG";
 
     try {
+      // Pertahankan rasio asli gambar (contain), lalu center di dalam sel.
+      // Foto hasil scan dokumen (mis. Serah Terima Dinasan) biasanya
+      // portrait/rasio sempit — kalau dipaksa stretch ke ukuran sel jadi
+      // gepeng. Dengan "contain", sisa ruang otomatis jadi spasi putih
+      // di kiri-kanan (atau atas-bawah), bukan gambar terdistorsi.
+      const props = doc.getImageProperties(photo.dataUrl);
+      const ratio = Math.min(maxW / props.width, maxH / props.height);
+      const drawW = props.width * ratio;
+      const drawH = props.height * ratio;
+      const drawX = col.x + pad + (maxW - drawW) / 2;
+      const drawY = bodyTop + pad + (maxH - drawH) / 2;
+
       // Kompresi "NONE" = kualitas gambar dipertahankan penuh (tidak
       // dikompres ulang oleh jsPDF), supaya saat PDF di-zoom teks di
       // dalam foto tetap tajam, bukan buram.
-      doc.addImage(photo.dataUrl, format, col.x + pad, bodyTop + pad, maxW, maxH, undefined, "NONE");
+      doc.addImage(photo.dataUrl, format, drawX, drawY, drawW, drawH, undefined, "NONE");
     } catch (e) {
       // Jika gagal (mis. format tak didukung), tampilkan placeholder teks.
       doc.setFontSize(8);
