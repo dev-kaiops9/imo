@@ -138,6 +138,30 @@ function showResult(success, text) {
 }
 
 // ---------------------------------------------------------------------
+// Switch tab menu utama: "Isi Serah Terima" <-> "Cek PDF Tersimpan"
+// ---------------------------------------------------------------------
+function wireMainMenu() {
+  const tabForm = document.getElementById("tabIsiForm");
+  const tabCekPdf = document.getElementById("tabCekPdf");
+  const stepperNav = document.getElementById("stepperNav");
+  const mainFormArea = document.getElementById("mainFormArea");
+  const cekPdfArea = document.getElementById("cekPdfArea");
+
+  function activate(mode) {
+    const isForm = mode === "form";
+    tabForm.classList.toggle("is-active", isForm);
+    tabCekPdf.classList.toggle("is-active", !isForm);
+    stepperNav.classList.toggle("hidden", !isForm);
+    mainFormArea.classList.toggle("hidden", !isForm);
+    cekPdfArea.classList.toggle("hidden", isForm);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  tabForm.addEventListener("click", () => activate("form"));
+  tabCekPdf.addEventListener("click", () => activate("cekpdf"));
+}
+
+// ---------------------------------------------------------------------
 // Reset untuk entri baru
 // ---------------------------------------------------------------------
 function wireReset() {
@@ -170,8 +194,10 @@ function startLiveClock() {
 document.addEventListener("DOMContentLoaded", () => {
   Form.init();
   UploadField.init();
+  CekPdf.init();
   wireStepNavigation();
   wirePreviewAndSave();
   wireReset();
+  wireMainMenu();
   startLiveClock();
 });

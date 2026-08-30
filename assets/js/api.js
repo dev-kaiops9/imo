@@ -45,4 +45,15 @@ const Api = {
     const json = await this._post({ action: "simpanData", payload });
     return json.data;
   },
+
+  /**
+   * Ambil daftar riwayat PDF serah terima berdasarkan NIPP, sudah terurut
+   * dari backend (tanggal termuda dulu, lalu Dinas Pagi -> Siang -> Malam).
+   * @param {string} nipp
+   * @returns {Promise<{found: boolean, list: Array<{tanggal, dinas, jenisSerahTerima, fileUrl}>}>}
+   */
+  async cekPdfTersimpan(nipp) {
+    const json = await this._post({ action: "cekPdfTersimpan", nipp });
+    return json.data;
+  },
 };

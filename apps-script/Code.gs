@@ -54,6 +54,8 @@ function doPost(e) {
       response = { ok: true, data: cekNipp(body.nipp) };
     } else if (action === "simpanData") {
       response = { ok: true, data: simpanData(body.payload) };
+    } else if (action === "cekPdfTersimpan") {
+      response = { ok: true, data: cekPdfTersimpan(body.nipp) };
     } else {
       response = { ok: false, message: "Action tidak dikenali: " + action };
     }
@@ -87,6 +89,67 @@ function cekNipp(nipp) {
     }
   }
   return { found: false };
+}
+
+// -------------------------------------------------------------------------
+// Fitur 1b: Cek PDF Tersimpan (daftar riwayat serah terima per NIPP)
+// -------------------------------------------------------------------------
+
+/** Urutan pengurutan dinas dalam satu tanggal yang sama: Pagi -> Siang -> Malam. */
+const URUTAN_DINAS = { "Pagi": 0, "Siang": 1, "Malam": 2 };
+
+function cekPdfTersimpan(nipp) {
+  const sheet = getOrCreateSheet_(SHEET_SERAH_TERIMA, [
+    "Timestamp", "NIPP", "Nama", "Jabatan", "Dinas", "JenisSerahTerima",
+    "Stasiun", "Tanggal", "TabelDigunakan", "FileURL_PDF",
+  ]);
+  const rows = sheet.getDataRange().getValues();
+  const nippTarget = String(nipp).trim();
+
+  const hasil = [];
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (String(row[SERAH_COLS.NIPP]).trim() !== nippTarget) continue;
+
+    hasil.push({
+      tanggal: formatTanggal_(row[SERAH_COLS.TANGGAL]),
+      tanggalRaw: row[SERAH_COLS.TANGGAL],
+      dinas: row[SERAH_COLS.DINAS],
+      jenisSerahTerima: row[SERAH_COLS.JENIS],
+      fileUrl: row[SERAH_COLS.PDF],
+    });
+  }
+
+  // Urutkan: tanggal termuda (terbaru) dulu, lalu dalam tanggal yang sama
+  // dimulai dari Dinas Pagi -> Siang -> Malam.
+  hasil.sort((a, b) => {
+    const ta = new Date(a.tanggalRaw).getTime();
+    const tb = new Date(b.tanggalRaw).getTime();
+    if (tb !== ta) return tb - ta; // descending (terbaru dulu)
+    const ua = URUTAN_DINAS.hasOwnProperty(a.dinas) ? URUTAN_DINAS[a.dinas] : 99;
+    const ub = URUTAN_DINAS.hasOwnProperty(b.dinas) ? URUTAN_DINAS[b.dinas] : 99;
+    return ua - ub;
+  });
+
+  // Buang field internal sebelum dikirim ke frontend.
+  const list = hasil.map((h) => ({
+    tanggal: h.tanggal,
+    dinas: h.dinas,
+    jenisSerahTerima: h.jenisSerahTerima,
+    fileUrl: h.fileUrl,
+  }));
+
+  return { found: list.length > 0, list: list };
+}
+
+/** Format Date/serial sheet -> string "dd-mm-yyyy" untuk ditampilkan. */
+function formatTanggal_(value) {
+  const d = (value instanceof Date) ? value : new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}-${mm}-${yyyy}`;
 }
 
 // -------------------------------------------------------------------------
@@ -187,8 +250,32 @@ function getOrCreateSubfolder_(parent, name) {
 }
 
 function simpanBase64KeDrive_(folder, fileName, base64, mimeType) {
-  const bytes = Utilities.base64Decode(base64);
-  const blob = Utilities.newBlob(bytes, mimeType, fileName);
+  if (!base64 || typeof base64 !== "string") {
+    throw new Error("Data PDF (base64) kosong atau tidak valid — gagal membuat file.");
+  }
+
+  let bytes;
+  try {
+    bytes = Utilities.base64Decode(base64);
+  } catch (err) {
+    throw new Error("Gagal decode base64 PDF: " + err.message);
+  }
+
+  // Info ukuran file untuk debugging lewat Executions log di Apps Script,
+  // kalau suatu saat masih ada kendala menyimpan file besar.
+  Logger.log("simpanBase64KeDrive_: " + fileName + " — " + bytes.length + " bytes (~" +
+    Math.round(bytes.length / 1024 / 1024 * 10) / 10 + " MB)");
+
+  let blob;
+  try {
+    blob = Utilities.newBlob(bytes, mimeType, fileName);
+  } catch (err) {
+    throw new Error(
+      "Gagal membuat file (" + Math.round(bytes.length / 1024 / 1024 * 10) / 10 +
+      " MB) — kemungkinan file terlalu besar untuk diproses. Detail: " + err.message
+    );
+  }
+
   return folder.createFile(blob);
 }
 
