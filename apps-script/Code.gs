@@ -22,7 +22,7 @@
  * =========================================================================
  */
 
-const SPREADSHEET_ID = "GANTI_DENGAN_SPREADSHEET_ID_ANDA";
+const SPREADSHEET_ID = "1hXqmE_NiVhm2P4dN7wRg0bMKRFj2wAhgwsYr9RVTirM";
 const SHEET_PEGAWAI = "Pegawai";
 const SHEET_SERAH_TERIMA = "SerahTerima";
 const DRIVE_ROOT_FOLDER_DEFAULT = "IMO_2026";

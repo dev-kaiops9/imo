@@ -10,7 +10,7 @@
 const CONFIG = {
   // URL Web App hasil deploy Google Apps Script (lihat apps-script/Code.gs).
   // Contoh: "https://script.google.com/macros/s/XXXXXXXX/exec"
-  APPS_SCRIPT_URL: "GANTI_DENGAN_URL_APPS_SCRIPT_ANDA",
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyPd0fyxJpy8vWpzj9GBg1-1nENo9Nqq-SfjH3rpm55c1Iy23HiduSNzwYJSt-ikwY4/exec",
 
   // Nama folder utama di Google Drive tempat semua PDF/foto disimpan.
   // Struktur akhir: {DRIVE_ROOT_FOLDER}/{Stasiun}/{Jabatan}/{NIPP}/
