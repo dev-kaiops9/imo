@@ -653,13 +653,13 @@ input[type="date"]:focus {
   word-break: break-word;
 }
 .pv-table thead tr { height: 36px; }
-.pv-table tbody tr { height: 260px; } /* tinggi eksplisit (bukan %) supaya foto di dalamnya pasti tampil di semua browser */
+.pv-table tbody tr { height: 300px; } /* tinggi eksplisit (bukan %) supaya foto di dalamnya pasti tampil di semua browser */
 .pv-table thead th {
   background: var(--bg);
   font-weight: 700;
   font-size: 12px;
 }
-.pv-table__photo-cell { padding: 4px; height: 260px; }
+.pv-table__photo-cell { padding: 4px; height: 300px; }
 .pv-table__photo-cell img {
   display: block;
   width: 100%;

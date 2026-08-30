@@ -22,11 +22,13 @@ const PdfBuilder = {
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const marginX = 12;
-    const marginY = 15;
-    const tableTop = marginY;
     const tableW = pageW - marginX * 2;
     const rowHeaderH = 12;
-    const rowBodyH = pageH - marginY * 2 - rowHeaderH;
+    const rowBodyH = 100; // tinggi baris tetap & wajar — sebelumnya dipaksa mengisi
+                          // seluruh sisa halaman, jadi foto & teks terlihat "ditarik"
+                          // memanjang ke atas/bawah. Tabel sekarang diposisikan
+                          // di tengah halaman secara vertikal.
+    const tableTop = (pageH - (rowHeaderH + rowBodyH)) / 2;
 
     // ---- Struktur kolom (sumber tunggal: CONFIG, sama dengan preview) ----
     const columns = CONFIG.getTableColumns(data.mapping.tabel);
@@ -99,7 +101,10 @@ const PdfBuilder = {
     const format = photo.mimeType && photo.mimeType.includes("png") ? "PNG" : "JPEG";
 
     try {
-      doc.addImage(photo.dataUrl, format, col.x + pad, bodyTop + pad, maxW, maxH, undefined, "MEDIUM");
+      // Kompresi "NONE" = kualitas gambar dipertahankan penuh (tidak
+      // dikompres ulang oleh jsPDF), supaya saat PDF di-zoom teks di
+      // dalam foto tetap tajam, bukan buram.
+      doc.addImage(photo.dataUrl, format, col.x + pad, bodyTop + pad, maxW, maxH, undefined, "NONE");
     } catch (e) {
       // Jika gagal (mis. format tak didukung), tampilkan placeholder teks.
       doc.setFontSize(8);
