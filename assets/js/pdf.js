@@ -13,9 +13,9 @@ const PdfBuilder = {
   /**
    * @param {object} data hasil Form.collect()
    * @param {object} photos { fotoSerahTerima: {dataUrl,...}, fotoDokumentasi: {...} }
-   * @returns {Promise<{blob: Blob, base64: string, fileName: string}>}
+   * @returns {{blob: Blob, base64: string, fileName: string}}
    */
-  async build(data, photos) {
+  build(data, photos) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
 
@@ -74,13 +74,13 @@ const PdfBuilder = {
       }
     });
 
-    // ---- Tempatkan foto sesuai mapping (crop "cover" — isi penuh kotak) ----
+    // ---- Tempatkan foto sesuai mapping ----
     const targetKey = CONFIG.getTargetPhotoKey(data.jenisSerahTerima);
     const targetCol = columns.find((c) => c.key === targetKey);
     const dokCol = columns.find((c) => c.key === "dok");
 
-    await this._placeImageInCell(doc, photos.fotoSerahTerima, targetCol, bodyTop, rowBodyH);
-    await this._placeImageInCell(doc, photos.fotoDokumentasi, dokCol, bodyTop, rowBodyH);
+    this._placeImageInCell(doc, photos.fotoSerahTerima, targetCol, bodyTop, rowBodyH);
+    this._placeImageInCell(doc, photos.fotoDokumentasi, dokCol, bodyTop, rowBodyH);
 
     const fileName = CONFIG.buildPdfFileName(data.tanggal, data.dinas);
     const blob = doc.output("blob");
@@ -89,65 +89,22 @@ const PdfBuilder = {
     return { blob, base64, fileName };
   },
 
-  /**
-   * Menaruh foto ke dalam sel tabel dengan prinsip "cover": foto di-crop
-   * (bukan diregangkan) supaya area kotak foto terisi penuh tanpa sisa
-   * ruang kosong, sama seperti object-fit:cover pada preview di layar.
-   */
-  async _placeImageInCell(doc, photo, col, bodyTop, rowBodyH) {
+  _placeImageInCell(doc, photo, col, bodyTop, rowBodyH) {
     if (!photo || !col) return;
-    const pad = 3;
+    const pad = 4;
     const maxW = col.width - pad * 2;
     const maxH = rowBodyH - pad * 2;
 
+    // jsPDF butuh format gambar eksplisit; deteksi dari mime type.
+    const format = photo.mimeType && photo.mimeType.includes("png") ? "PNG" : "JPEG";
+
     try {
-      const cropped = await this._cropToCover(photo.dataUrl, maxW, maxH);
-      doc.addImage(cropped, "JPEG", col.x + pad, bodyTop + pad, maxW, maxH, undefined, "MEDIUM");
+      doc.addImage(photo.dataUrl, format, col.x + pad, bodyTop + pad, maxW, maxH, undefined, "MEDIUM");
     } catch (e) {
+      // Jika gagal (mis. format tak didukung), tampilkan placeholder teks.
       doc.setFontSize(8);
       doc.text("(gambar tidak dapat ditampilkan)", col.x + pad, bodyTop + pad + 6);
     }
-  },
-
-  /**
-   * Crop gambar (dataURL) supaya rasio-nya sama dengan targetW/targetH
-   * (mm) lalu render ke canvas dengan resolusi cetak yang layak.
-   * Ini adalah versi "object-fit: cover": bagian tengah gambar
-   * dipertahankan, sisi yang berlebih dipotong — bukan diregangkan.
-   */
-  _cropToCover(dataUrl, targetWmm, targetHmm) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        const targetRatio = targetWmm / targetHmm;
-        const srcRatio = img.naturalWidth / img.naturalHeight;
-
-        let sx, sy, sw, sh;
-        if (srcRatio > targetRatio) {
-          // Gambar sumber lebih lebar dari target -> potong kiri & kanan.
-          sh = img.naturalHeight;
-          sw = sh * targetRatio;
-          sy = 0;
-          sx = (img.naturalWidth - sw) / 2;
-        } else {
-          // Gambar sumber lebih tinggi dari target -> potong atas & bawah.
-          sw = img.naturalWidth;
-          sh = sw / targetRatio;
-          sx = 0;
-          sy = (img.naturalHeight - sh) / 2;
-        }
-
-        const pxPerMm = 6; // resolusi cukup tajam untuk cetak A4
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.max(1, Math.round(targetWmm * pxPerMm));
-        canvas.height = Math.max(1, Math.round(targetHmm * pxPerMm));
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", 0.92));
-      };
-      img.onerror = reject;
-      img.src = dataUrl;
-    });
   },
 
   _formatTanggalPanjang(isoDate) {
