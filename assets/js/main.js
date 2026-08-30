@@ -99,7 +99,7 @@ function wirePreviewAndSave() {
 
     try {
       Busy.show("MEMBUAT PDF…");
-      const pdf = PdfBuilder.build(data, photos);
+      const pdf = await PdfBuilder.build(data, photos);
 
       Busy.show("MENYIMPAN DATA…");
       await Api.simpanData({

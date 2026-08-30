@@ -131,6 +131,7 @@ const PdfBuilder = {
           scanCanvas.width = sw;
           scanCanvas.height = sh;
           const sctx = scanCanvas.getContext("2d");
+          if (!sctx) throw new Error("Canvas 2D context tidak tersedia (scan)");
           sctx.drawImage(img, 0, 0, sw, sh);
           const { data } = sctx.getImageData(0, 0, sw, sh);
 
@@ -180,27 +181,50 @@ const PdfBuilder = {
           // ke gambar resolusi PENUH supaya hasil crop tetap tajam.
           const fx = img.width / sw;
           const fy = img.height / sh;
-          const cropX = Math.round(minX * fx);
-          const cropY = Math.round(minY * fy);
-          const cropW = Math.round((maxX - minX) * fx);
-          const cropH = Math.round((maxY - minY) * fy);
+          let cropX = Math.round(minX * fx);
+          let cropY = Math.round(minY * fy);
+          let cropW = Math.round((maxX - minX) * fx);
+          let cropH = Math.round((maxY - minY) * fy);
+
+          // Batasi resolusi output — foto kamera HP modern bisa 12–48MP,
+          // dan sebagian browser (terutama Safari/iOS) MENOLAK atau GAGAL
+          // membuat canvas beresolusi sangat besar (limit ukuran/area
+          // canvas). 3000px di sisi terpanjang masih jauh lebih tajam
+          // dari yang dibutuhkan untuk dicetak di satu sel tabel PDF,
+          // tapi aman dari limit tsb.
+          const OUTPUT_MAX_DIM = 3000;
+          const outScale = Math.min(1, OUTPUT_MAX_DIM / Math.max(cropW, cropH));
+          const outW = Math.max(1, Math.round(cropW * outScale));
+          const outH = Math.max(1, Math.round(cropH * outScale));
 
           const outCanvas = document.createElement("canvas");
-          outCanvas.width = cropW;
-          outCanvas.height = cropH;
+          outCanvas.width = outW;
+          outCanvas.height = outH;
           const octx = outCanvas.getContext("2d");
+          if (!octx) throw new Error("Canvas 2D context tidak tersedia (output)");
           // Isi putih dulu — jaga-jaga kalau sumbernya PNG transparan,
           // supaya area transparan tidak berubah jadi hitam saat
           // dikonversi ke JPEG (JPEG tidak mendukung alpha).
           octx.fillStyle = "#FFFFFF";
-          octx.fillRect(0, 0, cropW, cropH);
-          octx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, cropW, cropH);
+          octx.fillRect(0, 0, outW, outH);
+          octx.drawImage(img, cropX, cropY, cropW, cropH, 0, 0, outW, outH);
 
           const outType = mimeType && mimeType.includes("png") ? "image/png" : "image/jpeg";
-          resolve(outCanvas.toDataURL(outType, 0.95));
+          const outUrl = outCanvas.toDataURL(outType, 0.95);
+
+          // Beberapa browser mengembalikan "data:," kosong (bukan error,
+          // bukan reject) kalau canvas gagal di-encode — tangani sebagai
+          // kegagalan juga, jangan sampai foto kosong lolos ke PDF.
+          if (!outUrl || outUrl === "data:," || outUrl.length < 50) {
+            resolve(dataUrl);
+            return;
+          }
+
+          resolve(outUrl);
         } catch (e) {
-          // Gagal crop (mis. gambar bermasalah) → tetap pakai foto asli,
-          // jangan sampai proses pembuatan PDF gagal total karenanya.
+          // Gagal crop (mis. gambar bermasalah / canvas ditolak browser)
+          // → tetap pakai foto asli, jangan sampai proses pembuatan PDF
+          // gagal total karenanya.
           resolve(dataUrl);
         }
       };
