@@ -641,7 +641,6 @@ input[type="date"]:focus {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  aspect-ratio: 273 / 90; /* proporsi lebar:tinggi tabel pada halaman A4 landscape */
 }
 .pv-table th,
 .pv-table td {
@@ -653,13 +652,14 @@ input[type="date"]:focus {
   color: var(--navy-950);
   word-break: break-word;
 }
+.pv-table thead tr { height: 36px; }
+.pv-table tbody tr { height: 260px; } /* tinggi eksplisit (bukan %) supaya foto di dalamnya pasti tampil di semua browser */
 .pv-table thead th {
   background: var(--bg);
   font-weight: 700;
   font-size: 12px;
 }
-.pv-table tbody td { height: 1px; } /* memaksa td mengikuti tinggi baris/table */
-.pv-table__photo-cell { padding: 3px; }
+.pv-table__photo-cell { padding: 4px; height: 260px; }
 .pv-table__photo-cell img {
   display: block;
   width: 100%;

@@ -17,8 +17,12 @@
  *   Sheet "Pegawai"     : NIPP | Nama | Jabatan | Stasiun
  *   Sheet "SerahTerima" : Timestamp | NIPP | Nama | Jabatan | Dinas |
  *                         JenisSerahTerima | Stasiun | Tanggal |
- *                         TabelDigunakan | FileURL_FotoSerahTerima |
- *                         FileURL_FotoDokumentasi | FileURL_PDF
+ *                         TabelDigunakan | FileURL_PDF
+ *
+ * Catatan: foto "Serah Terima" & "Dokumentasi Kegiatan" TIDAK disimpan
+ * sebagai file terpisah di Google Drive — foto-foto itu sudah tertempel
+ * langsung di dalam PDF yang dibuat di sisi frontend, jadi yang disimpan
+ * ke Drive hanya satu file: PDF-nya saja.
  * =========================================================================
  */
 
@@ -33,8 +37,7 @@ const PEGAWAI_COLS = { NIPP: 0, NAMA: 1, JABATAN: 2, STASIUN: 3 };
 /** Kolom sheet SerahTerima (indeks 0-based). */
 const SERAH_COLS = {
   TIMESTAMP: 0, NIPP: 1, NAMA: 2, JABATAN: 3, DINAS: 4,
-  JENIS: 5, STASIUN: 6, TANGGAL: 7, TABEL: 8,
-  FOTO_SERAH: 9, FOTO_DOK: 10, PDF: 11,
+  JENIS: 5, STASIUN: 6, TANGGAL: 7, TABEL: 8, PDF: 9,
 };
 
 // -------------------------------------------------------------------------
@@ -102,21 +105,9 @@ function simpanData(payload) {
     rootFolderName, payload.stasiun, payload.jabatan, payload.nipp,
   ]);
 
-  // 3. Simpan 2 foto ke Drive.
-  const fotoSerahTerimaFile = simpanBase64KeDrive_(
-    targetFolder,
-    `${payload.pdfFileName.replace(".pdf", "")} - ${payload.fotoSerahTerima.kolom}.jpg`,
-    payload.fotoSerahTerima.base64,
-    payload.fotoSerahTerima.mimeType
-  );
-  const fotoDokumentasiFile = simpanBase64KeDrive_(
-    targetFolder,
-    `${payload.pdfFileName.replace(".pdf", "")} - ${payload.fotoDokumentasi.kolom}.jpg`,
-    payload.fotoDokumentasi.base64,
-    payload.fotoDokumentasi.mimeType
-  );
-
-  // 4. Simpan PDF ke Drive.
+  // 3. Simpan PDF ke Drive.
+  // Foto "Serah Terima" & "Dokumentasi Kegiatan" TIDAK disimpan sebagai
+  // file terpisah — sudah tertempel di dalam PDF ini.
   const pdfFile = simpanBase64KeDrive_(
     targetFolder,
     payload.pdfFileName,
@@ -124,11 +115,10 @@ function simpanData(payload) {
     "application/pdf"
   );
 
-  // 5. Catat baris baru ke sheet SerahTerima.
+  // 4. Catat baris baru ke sheet SerahTerima.
   const sheet = getOrCreateSheet_(SHEET_SERAH_TERIMA, [
     "Timestamp", "NIPP", "Nama", "Jabatan", "Dinas", "JenisSerahTerima",
-    "Stasiun", "Tanggal", "TabelDigunakan",
-    "FileURL_FotoSerahTerima", "FileURL_FotoDokumentasi", "FileURL_PDF",
+    "Stasiun", "Tanggal", "TabelDigunakan", "FileURL_PDF",
   ]);
 
   sheet.appendRow([
@@ -141,8 +131,6 @@ function simpanData(payload) {
     payload.stasiun,
     payload.tanggal,
     payload.tabel,
-    fotoSerahTerimaFile.getUrl(),
-    fotoDokumentasiFile.getUrl(),
     pdfFile.getUrl(),
   ]);
 
@@ -213,8 +201,7 @@ function setupSpreadsheet() {
   getOrCreateSheet_(SHEET_PEGAWAI, ["NIPP", "Nama", "Jabatan", "Stasiun"]);
   getOrCreateSheet_(SHEET_SERAH_TERIMA, [
     "Timestamp", "NIPP", "Nama", "Jabatan", "Dinas", "JenisSerahTerima",
-    "Stasiun", "Tanggal", "TabelDigunakan",
-    "FileURL_FotoSerahTerima", "FileURL_FotoDokumentasi", "FileURL_PDF",
+    "Stasiun", "Tanggal", "TabelDigunakan", "FileURL_PDF",
   ]);
   Logger.log("Setup selesai.");
 }

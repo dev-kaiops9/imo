@@ -115,16 +115,9 @@ function wirePreviewAndSave() {
         driveRootFolder: CONFIG.DRIVE_ROOT_FOLDER,
         pdfFileName: pdf.fileName,
         pdfBase64: pdf.base64,
-        fotoSerahTerima: {
-          base64: photos.fotoSerahTerima.base64,
-          mimeType: photos.fotoSerahTerima.mimeType,
-          kolom: data.mapping.kolomFotoSerahTerima,
-        },
-        fotoDokumentasi: {
-          base64: photos.fotoDokumentasi.base64,
-          mimeType: photos.fotoDokumentasi.mimeType,
-          kolom: data.mapping.kolomFotoDokumentasi,
-        },
+        // Catatan: file foto serah terima & dokumentasi TIDAK dikirim ke
+        // backend lagi — sudah tertempel di dalam PDF, jadi tidak perlu
+        // disimpan sebagai file terpisah di Google Drive.
       });
 
       Busy.hide();
