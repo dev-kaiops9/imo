@@ -33,15 +33,22 @@
 
 <div class="shell">
 
-  <!-- ==================== TAB MENU UTAMA ==================== -->
-  <nav class="mainmenu" aria-label="Menu utama">
-    <button type="button" class="mainmenu__item is-active" id="tabIsiForm" data-mainmenu="form">Isi Serah Terima</button>
-    <button type="button" class="mainmenu__item" id="tabCekPdf" data-mainmenu="cekpdf">Cek PDF Tersimpan</button>
+  <!-- ==================== SIDEBAR: MENU UTAMA ==================== -->
+  <nav class="sidebar" aria-label="Menu utama">
+    <div class="sidebar__eyebrow">Menu</div>
+    <button type="button" class="sidebar__item is-active" id="tabIsiForm" data-mainmenu="form">
+      <span class="sidebar__item-icon">📝</span> Isi Serah Terima
+    </button>
+    <button type="button" class="sidebar__item" id="tabCekPdf" data-mainmenu="cekpdf">
+      <span class="sidebar__item-icon">📄</span> Cek PDF Tersimpan
+    </button>
   </nav>
 
-  <!-- ==================== STEPPER ==================== -->
+  <!-- ==================== KONTEN KANAN ==================== -->
+  <div class="content">
+
+  <!-- ==================== STEPPER (HORIZONTAL) ==================== -->
   <nav class="stepper" id="stepperNav" aria-label="Tahapan pengisian">
-    <div class="stepper__eyebrow">Alur Pengisian</div>
     <div class="step is-active" data-step="1">
       <div class="step__num">1</div>
       <div class="step__label">Data Pegawai</div>
@@ -232,6 +239,8 @@
       </div>
     </section>
   </main>
+
+  </div>
 </div>
 
 <!-- ==================== PREVIEW OVERLAY ==================== -->

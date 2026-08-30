@@ -242,45 +242,79 @@ button {
   }
 }
 
-/* Tab menu utama: "Isi Serah Terima" <-> "Cek PDF Tersimpan" */
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
 
-.mainmenu {
-  grid-column: 1 / -1;
-  display: inline-flex;
+/* Sidebar menu utama: "Isi Serah Terima" <-> "Cek PDF Tersimpan" */
+
+.sidebar {
+  position: sticky;
+  top: 92px;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  padding: 5px;
+  border-radius: var(--radius-lg);
+  padding: 16px;
   box-shadow: var(--shadow-sm);
-  width: fit-content;
 }
 
-.mainmenu__item {
+@media (max-width: 860px) {
+  .sidebar {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .sidebar::-webkit-scrollbar { display: none; }
+}
+
+.sidebar__eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-300);
+  padding: 6px 12px 10px;
+}
+
+@media (max-width: 860px) { .sidebar__eyebrow { display: none; } }
+
+.sidebar__item {
   appearance: none;
   border: none;
   background: transparent;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-family: var(--font-display);
   font-size: 13.5px;
   font-weight: 600;
   color: var(--ink-600);
-  padding: 10px 20px;
+  padding: 12px 14px;
   cursor: pointer;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   transition: background 0.18s var(--ease), color 0.18s var(--ease);
+  white-space: nowrap;
 }
 
-.mainmenu__item:hover { color: var(--emerald-900); }
+.sidebar__item-icon { font-size: 15px; line-height: 1; }
 
-.mainmenu__item.is-active {
+.sidebar__item:hover { background: var(--mint-50); color: var(--emerald-900); }
+
+.sidebar__item.is-active {
   color: #fff;
   background: linear-gradient(135deg, var(--mint-500), var(--mint-600));
   box-shadow: 0 4px 14px rgba(23, 201, 137, 0.3);
 }
 
 /* Panel "Cek PDF Tersimpan" */
-
-#cekPdfArea { grid-column: 1 / -1; }
 
 .field-row--search {
   align-items: end;
@@ -375,81 +409,57 @@ button {
   .cekpdf-row { flex-direction: column; align-items: flex-start; }
 }
 
-/* Stepper — kartu putih dengan indikator pil mint */
+/* Stepper — bar horizontal di atas konten, kartu putih indikator pil mint */
 
 .stepper {
-  position: sticky;
-  top: 92px;
+  display: flex;
+  align-items: center;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  padding: 22px 16px;
+  padding: 14px 18px;
   color: var(--ink-900);
   box-shadow: var(--shadow-sm);
 }
 
 @media (max-width: 860px) {
   .stepper {
-    position: static;
-    display: flex;
     overflow-x: auto;
-    gap: 4px;
-    padding: 12px;
     -webkit-overflow-scrolling: touch;
+    padding: 12px;
   }
   .stepper::-webkit-scrollbar { display: none; }
 }
 
-.stepper__eyebrow {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-300);
-  margin-bottom: 14px;
-  padding-left: 8px;
-}
-
-@media (max-width: 860px) { .stepper__eyebrow { display: none; } }
-
 .step {
   position: relative;
   display: flex;
-  gap: 12px;
-  padding: 11px 10px;
-  border-radius: var(--radius-md);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-pill);
   color: var(--ink-600);
+  flex: 1;
   transition: background 0.2s var(--ease), color 0.2s var(--ease);
 }
 
 @media (max-width: 860px) {
   .step {
-    flex-direction: column;
-    align-items: center;
-    min-width: 84px;
-    text-align: center;
-    gap: 6px;
+    flex: none;
+    min-width: 150px;
   }
 }
 
 .step:not(:last-child)::after {
   content: "";
   position: absolute;
-  left: 22px;
-  top: 40px;
-  width: 2px;
-  height: calc(100% - 8px);
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 2px;
   background: var(--border);
-}
-
-@media (max-width: 860px) {
-  .step:not(:last-child)::after {
-    left: auto;
-    right: -6px;
-    top: 16px;
-    width: 12px;
-    height: 2px;
-  }
+  z-index: 0;
 }
 
 .step__num {
@@ -471,9 +481,13 @@ button {
 }
 
 .step__label {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
-  padding-top: 4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .step__label { display: none; }
 }
 
 .step.is-active {
