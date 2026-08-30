@@ -166,6 +166,7 @@ const Form = {
       jabatan: document.getElementById("jabatan1").value,
       stasiun: document.getElementById("stasiun").value.trim(),
       dinas: document.getElementById("dinas").value,
+      kegiatan: CONFIG.buildKegiatan(document.getElementById("dinas").value),
       tanggal: document.getElementById("tanggal").value,
       jenisSerahTerima: jenis,
       employeeFound: this.employeeFound,

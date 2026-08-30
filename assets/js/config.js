@@ -10,7 +10,7 @@
 const CONFIG = {
   // URL Web App hasil deploy Google Apps Script (lihat apps-script/Code.gs).
   // Contoh: "https://script.google.com/macros/s/XXXXXXXX/exec"
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyPd0fyxJpy8vWpzj9GBg1-1nENo9Nqq-SfjH3rpm55c1Iy23HiduSNzwYJSt-ikwY4/exec",
+  APPS_SCRIPT_URL: "GANTI_DENGAN_URL_APPS_SCRIPT_ANDA",
 
   // Nama folder utama di Google Drive tempat semua PDF/foto disimpan.
   // Struktur akhir: {DRIVE_ROOT_FOLDER}/{Stasiun}/{Jabatan}/{NIPP}/
@@ -50,6 +50,44 @@ const CONFIG = {
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yy = String(d.getFullYear()).slice(-2);
     return `${dd}-${mm}-${yy} (${dinas}).pdf`;
+  },
+
+  // Isi kolom "Kegiatan" otomatis mengikuti dropdown Dinas
+  // (Pagi -> "Dinas Pagi", Siang -> "Dinas Siang", Malam -> "Dinas Malam").
+  buildKegiatan(dinas) {
+    return dinas ? `Dinas ${dinas}` : "";
+  },
+
+  // Struktur kolom tabel — dipakai bersama oleh preview.js (tampilan di
+  // layar) dan pdf.js (hasil akhir), supaya keduanya SELALU identik.
+  // "w" = proporsi lebar kolom (total per tabel harus berjumlah 1).
+  getTableColumns(tabel) {
+    if (tabel === "tabel_dinas_tutup") {
+      return [
+        { key: "hari", label: "Hari, Tanggal", w: 0.14 },
+        { key: "kegiatan", label: "Kegiatan", w: 0.10 },
+        { key: "awal", label: "Awal Dinas", w: 0.22 },
+        { key: "akhir", label: "Akhir Dinas", w: 0.22 },
+        { key: "dok", label: "Dokumentasi Kegiatan", w: 0.32 },
+      ];
+    }
+    return [
+      { key: "hari", label: "Hari, Tanggal", w: 0.16 },
+      { key: "kegiatan", label: "Kegiatan", w: 0.12 },
+      { key: "gabung", label: "Serah Terima Dinasan", w: 0.36 },
+      { key: "dok", label: "Dokumentasi Kegiatan", w: 0.36 },
+    ];
+  },
+
+  // Nama kolom foto (target) untuk setiap jenis serah terima —
+  // dipakai untuk tahu foto "serah terima" harus masuk ke cell mana.
+  getTargetPhotoKey(jenisSerahTerima) {
+    const map = {
+      "Awal Dinas": "awal",
+      "Akhir Dinas": "akhir",
+      "Serah Terima Dinasan": "gabung",
+    };
+    return map[jenisSerahTerima];
   },
 };
 

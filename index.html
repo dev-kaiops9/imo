@@ -198,30 +198,13 @@
 <div class="overlay" id="previewOverlay" aria-hidden="true">
   <div class="doc">
     <div class="doc__head">
-      <span class="panel__eyebrow">Periksa sebelum disimpan</span>
+      <span class="panel__eyebrow">Periksa sebelum disimpan — tampilan ini sama persis dengan hasil PDF</span>
       <h2>Preview Dokumen Serah Terima</h2>
     </div>
     <div class="doc__body">
-      <dl class="doc__grid">
-        <div class="doc__item"><dt>NIPP</dt><dd id="pv-nipp">—</dd></div>
-        <div class="doc__item"><dt>Nama</dt><dd id="pv-nama">—</dd></div>
-        <div class="doc__item"><dt>Jabatan</dt><dd id="pv-jabatan">—</dd></div>
-        <div class="doc__item"><dt>Stasiun</dt><dd id="pv-stasiun">—</dd></div>
-        <div class="doc__item"><dt>Dinas</dt><dd id="pv-dinas">—</dd></div>
-        <div class="doc__item"><dt>Tanggal</dt><dd id="pv-tanggal">—</dd></div>
-        <div class="doc__item"><dt>Jenis Serah Terima</dt><dd id="pv-jenis">—</dd></div>
-        <div class="doc__item"><dt>Tabel Digunakan</dt><dd id="pv-tabel">—</dd></div>
-      </dl>
-      <div class="doc__photos">
-        <div>
-          <div class="doc__photo-label" id="pv-labelFoto1">Foto Serah Terima</div>
-          <div class="doc__photo-frame"><img id="pv-fotoSerahTerima" alt="Foto serah terima" /></div>
-        </div>
-        <div>
-          <div class="doc__photo-label">Foto Dokumentasi Kegiatan</div>
-          <div class="doc__photo-frame"><img id="pv-fotoDokumentasi" alt="Foto dokumentasi kegiatan" /></div>
-        </div>
-      </div>
+      <!-- Diisi dinamis oleh preview.js: tabel ini PERSIS sama dengan
+           struktur & isi tabel pada PDF final (lihat CONFIG.getTableColumns). -->
+      <div class="doc__table-wrap" id="pvTableWrap"></div>
     </div>
     <div class="doc__foot">
       <button type="button" class="btn btn--ghost" id="btnEditPreview">← Kembali / Edit</button>
