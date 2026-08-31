@@ -12,7 +12,12 @@
 <style>
   body { font-family: 'Plus Jakarta Sans', sans-serif; }
   .dropzone.drag { border-color: #5B58CA; background: #f1f0fb; }
-  .page-thumb img { width: 100%; border-radius: 10px; border: 1px solid #e2e8f0; }
+  .option-card.active { border-color: #5B58CA; background: #f1f0fb; box-shadow: 0 0 0 2px rgba(91,88,202,0.25); }
+  #statusPill.processing { background: #fef3c7; color: #92400e; }
+  #statusPill.done { background: #d1fae5; color: #065f46; }
+  #statusPill.error { background: #fee2e2; color: #991b1b; }
+  #previewCanvas { max-width: 100%; border-radius: 12px; border: 1px solid #e2e8f0; display: none; }
+  #previewCanvas.show { display: block; }
 </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
@@ -24,7 +29,7 @@
     </div>
     <div class="leading-tight">
       <div class="font-bold text-sm">PDF to A4</div>
-      <div class="text-[11px] text-indigo-100/80">Ubah PDF serah terima jadi gambar JPG</div>
+      <div class="text-[11px] text-indigo-100/80">Gabung 2 halaman PDF jadi satu lembar A4</div>
     </div>
   </div>
   <a href="../index.html" class="inline-flex items-center gap-2 text-xs font-semibold text-indigo-100 hover:text-white transition">
@@ -35,164 +40,85 @@
 
 <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
 
+  <!-- ============ UPLOAD ============ -->
   <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
     <h2 class="text-lg font-bold text-slate-800">Upload PDF</h2>
-    <p class="text-sm text-slate-500 -mt-2">Setiap halaman PDF akan dirender menjadi gambar JPG berukuran A4.</p>
+    <p class="text-sm text-slate-500 -mt-2">Kedua halaman PDF akan dipangkas dari spasi kosong, ditumpuk atas–bawah, lalu disusun ke satu lembar A4.</p>
 
     <div id="drop" class="dropzone border-2 border-dashed border-slate-300 rounded-2xl py-10 text-center cursor-pointer transition" tabindex="0">
       <div class="text-3xl text-slate-400 mb-2"><i class="fa-solid fa-file-pdf"></i></div>
       <div class="text-sm font-medium text-slate-600">Tarik &amp; lepas file PDF di sini, atau klik untuk pilih</div>
-      <div class="text-xs text-slate-400 mt-1" id="fileName">Belum ada file dipilih</div>
+      <div class="text-xs text-slate-400 mt-1" id="fileName">Hanya PDF dengan tepat 2 halaman</div>
     </div>
-    <input type="file" id="pdfInput" accept="application/pdf" class="hidden" />
-
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Kualitas</label>
-        <select id="dpiSelect" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
-          <option value="1.5">Standar</option>
-          <option value="2" selected>Tinggi</option>
-          <option value="3">Sangat Tinggi</option>
-        </select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Format</label>
-        <select id="formatSelect" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
-          <option value="jpeg">JPG</option>
-          <option value="png">PNG</option>
-        </select>
-      </div>
-    </div>
-
-    <button type="button" id="convertBtn" disabled class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition">
-      <i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i> Convert ke Gambar
-    </button>
+    <input type="file" id="fileInput" accept="application/pdf" class="hidden" />
   </section>
 
+  <!-- ============ DPI OPTIONS ============ -->
+  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-800">Resolusi Keluaran</h2>
+      <span id="dpiBadge" class="text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">300 DPI</span>
+    </div>
+    <div id="dpiOptions" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <button type="button" class="option-card border border-slate-200 rounded-2xl p-3 flex items-center gap-3 text-left hover:border-indigo-300 transition" data-dpi="150">
+        <span class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">S</span>
+        <span>
+          <span class="block text-sm font-bold text-slate-800">Standar</span>
+          <span class="block text-xs text-slate-400">150 DPI · proses cepat</span>
+        </span>
+      </button>
+      <button type="button" class="option-card active border border-slate-200 rounded-2xl p-3 flex items-center gap-3 text-left hover:border-indigo-300 transition" data-dpi="300">
+        <span class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">T</span>
+        <span>
+          <span class="block text-sm font-bold text-slate-800">Tinggi</span>
+          <span class="block text-xs text-slate-400">300 DPI · teks tetap tajam</span>
+        </span>
+      </button>
+      <button type="button" class="option-card border border-slate-200 rounded-2xl p-3 flex items-center gap-3 text-left hover:border-indigo-300 transition" data-dpi="450">
+        <span class="w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">ST</span>
+        <span>
+          <span class="block text-sm font-bold text-slate-800">Sangat Tinggi</span>
+          <span class="block text-xs text-slate-400">450 DPI · detail maksimal</span>
+        </span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ STATUS ============ -->
   <section id="statusSection" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4" style="display:none">
     <div class="flex items-center justify-between">
       <h2 class="text-lg font-bold text-slate-800">Status</h2>
-      <span id="statusText" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">Memproses…</span>
+      <span id="statusPill" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+        <span id="statusLabel">Menunggu berkas</span>
+      </span>
     </div>
-    <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-      <div id="progressFill" class="h-full bg-[#5B58CA] transition-all duration-300" style="width:0%"></div>
-    </div>
+    <div id="statusMsg" class="text-sm text-slate-500"></div>
   </section>
 
-  <section id="resultSection" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4" style="display:none">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-bold text-slate-800">Hasil</h2>
-      <button type="button" id="downloadAllBtn" class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl text-xs shadow-md shadow-emerald-200 transition">
-        <i class="fa-solid fa-download"></i> Unduh Semua (ZIP)
-      </button>
+  <!-- ============ HASIL ============ -->
+  <section id="resultSection" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+    <h2 class="text-lg font-bold text-slate-800">Pratinjau &amp; Hasil</h2>
+
+    <div class="rounded-2xl bg-slate-50 border border-slate-200 p-4 flex items-center justify-center min-h-[160px]">
+      <span class="text-sm text-slate-400" id="previewEmpty">Pratinjau akan muncul di sini.</span>
+      <canvas id="previewCanvas"></canvas>
     </div>
-    <div id="pagesGrid" class="grid grid-cols-2 sm:grid-cols-3 gap-4"></div>
+
+    <div id="metaTable" class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm"></div>
+
+    <button type="button" id="downloadBtn" disabled class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition">
+      <i class="fa-solid fa-download mr-1.5"></i> Unduh JPG
+    </button>
   </section>
+
+  <p class="text-xs text-slate-400 px-1">Semua proses berjalan di browser Anda — file PDF tidak diunggah ke server mana pun. Orientasi (potret/lanskap) ditentukan otomatis dari proporsi hasil gabungan.</p>
 
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-  const drop = document.getElementById('drop');
-  const pdfInput = document.getElementById('pdfInput');
-  const fileNameEl = document.getElementById('fileName');
-  const convertBtn = document.getElementById('convertBtn');
-  const dpiSelect = document.getElementById('dpiSelect');
-  const formatSelect = document.getElementById('formatSelect');
-  const statusSection = document.getElementById('statusSection');
-  const statusText = document.getElementById('statusText');
-  const progressFill = document.getElementById('progressFill');
-  const resultSection = document.getElementById('resultSection');
-  const pagesGrid = document.getElementById('pagesGrid');
-  const downloadAllBtn = document.getElementById('downloadAllBtn');
-
-  let selectedFile = null;
-  let generatedPages = []; // { name, blob }
-
-  drop.addEventListener('click', () => pdfInput.click());
-  ['dragenter', 'dragover'].forEach(evt => drop.addEventListener(evt, e => { e.preventDefault(); drop.classList.add('drag'); }));
-  ['dragleave', 'drop'].forEach(evt => drop.addEventListener(evt, e => { e.preventDefault(); drop.classList.remove('drag'); }));
-  drop.addEventListener('drop', e => handleFile(e.dataTransfer.files[0]));
-  pdfInput.addEventListener('change', e => handleFile(e.target.files[0]));
-
-  function handleFile(file) {
-    if (!file || file.type !== 'application/pdf') return;
-    selectedFile = file;
-    fileNameEl.textContent = file.name;
-    convertBtn.disabled = false;
-    resultSection.style.display = 'none';
-  }
-
-  convertBtn.addEventListener('click', async () => {
-    if (!selectedFile) return;
-    convertBtn.disabled = true;
-    statusSection.style.display = 'block';
-    resultSection.style.display = 'none';
-    pagesGrid.innerHTML = '';
-    generatedPages = [];
-
-    try {
-      const scale = parseFloat(dpiSelect.value);
-      const format = formatSelect.value;
-      const mime = format === 'jpeg' ? 'image/jpeg' : 'image/png';
-      const arrayBuffer = await selectedFile.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-      const baseName = selectedFile.name.replace(/\.pdf$/i, '');
-
-      for (let i = 1; i <= pdf.numPages; i++) {
-        statusText.textContent = `Halaman ${i} dari ${pdf.numPages}…`;
-        progressFill.style.width = `${Math.round(((i - 1) / pdf.numPages) * 100)}%`;
-
-        const page = await pdf.getPage(i);
-        const viewport = page.getViewport({ scale });
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        if (format === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
-        await page.render({ canvasContext: ctx, viewport }).promise;
-
-        const blob = await new Promise(res => canvas.toBlob(res, mime, 0.92));
-        const ext = format === 'jpeg' ? 'jpg' : 'png';
-        const name = `${baseName}-hal${String(i).padStart(2, '0')}.${ext}`;
-        generatedPages.push({ name, blob });
-
-        const url = URL.createObjectURL(blob);
-        const card = document.createElement('div');
-        card.className = 'page-thumb';
-        card.innerHTML = `
-          <img src="${url}" alt="${name}" />
-          <div class="text-[11px] text-slate-500 mt-1 truncate">${name}</div>
-          <a href="${url}" download="${name}" class="text-[11px] font-semibold text-indigo-600 hover:underline">Unduh</a>
-        `;
-        pagesGrid.appendChild(card);
-      }
-
-      progressFill.style.width = '100%';
-      statusText.textContent = 'Selesai';
-      resultSection.style.display = 'block';
-    } catch (err) {
-      statusText.textContent = 'Gagal memproses PDF: ' + err.message;
-    } finally {
-      convertBtn.disabled = false;
-    }
-  });
-
-  downloadAllBtn.addEventListener('click', async () => {
-    if (generatedPages.length === 0) return;
-    const zip = new JSZip();
-    generatedPages.forEach(p => zip.file(p.name, p.blob));
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(zipBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = (selectedFile ? selectedFile.name.replace(/\.pdf$/i, '') : 'hasil') + '.zip';
-    a.click();
-    URL.revokeObjectURL(url);
-  });
+  document.getElementById('drop').addEventListener('click', () => document.getElementById('fileInput').click());
 </script>
+<script src="assets/js/app.js"></script>
 </body>
 </html>
