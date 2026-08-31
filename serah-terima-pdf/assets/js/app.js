@@ -351,7 +351,24 @@ function log(msg, kind){
   logEl.appendChild(row);
   logEl.scrollTop = logEl.scrollHeight;
 }
-function yieldUI(){ return new Promise(r => setTimeout(r, 0)); }
+// yieldUI() memberi jeda ke browser di tengah proses berat agar UI tidak freeze total.
+// Dulu pakai setTimeout(fn, 0), tapi browser (Chrome/Firefox/Safari) sengaja memperlambat
+// setTimeout saat tab tidak aktif/di background untuk hemat baterai — bisa bikin proses
+// "kelihatan macet" begitu user pindah tab. MessageChannel jauh lebih tidak kena
+// throttling ini (teknik yang sama dipakai library seperti scheduler React), jadi
+// urutan/kecepatan proses tetap sama, cuma cara "menjeda"-nya yang lebih tahan banting.
+const _yieldChannel = new MessageChannel();
+const _yieldQueue = [];
+_yieldChannel.port1.onmessage = () => {
+  const resolve = _yieldQueue.shift();
+  if(resolve) resolve();
+};
+function yieldUI(){
+  return new Promise(resolve => {
+    _yieldQueue.push(resolve);
+    _yieldChannel.port2.postMessage(null);
+  });
+}
 
 // Melepas buffer piksel kanvas besar (c1/c2/crop/stack) begitu tidak dipakai lagi,
 // supaya browser bisa garbage-collect lebih cepat dan RAM tidak menumpuk di PC spek rendah.
