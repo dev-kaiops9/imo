@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serah Terima PDF</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="page">
+
+  <div class="topbar">
+    <div class="logo">PH</div>
+    <div>
+      <div class="brand-name">PDF Hub</div>
+      <div class="brand-tag">Built by 69451</div>
+    </div>
+  </div>
+
+  <a class="back-link" href="../index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+    Kembali ke Beranda
+  </a>
+
+  <div class="heading">
+    <h1>Serah Terima PDF</h1>
+    <p>Unggah file ZIP berisi PDF "Serah Terima ...". Pastikan semua file di dalam ZIP berasal dari satu dinasan yang sama (contoh: dinas PPKA atau dinas PLR). Sistem akan otomatis menggabungkannya menjadi satu PDF terurut. </p>
+  </div>
+
+  <div class="section-title">
+    <h2>Resolusi Keluaran</h2>
+    <span class="badge" id="dpiBadge">300 DPI</span>
+  </div>
+  <div class="option-row" id="dpiOptions">
+    <div class="option-card" data-dpi="150">
+      <div class="option-icon">S</div>
+      <div><div class="option-title">Standar</div><div class="option-sub">150 DPI · proses cepat</div></div>
+    </div>
+    <div class="option-card active" data-dpi="300">
+      <div class="option-icon">T</div>
+      <div><div class="option-title">Tinggi</div><div class="option-sub">300 DPI · teks tetap tajam</div></div>
+    </div>
+    <div class="option-card" data-dpi="450">
+      <div class="option-icon">ST</div>
+      <div><div class="option-title">Sangat Tinggi</div><div class="option-sub">450 DPI · detail maksimal</div></div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>Data Cover</h2>
+    <span class="badge">Untuk mengisi halaman sampul</span>
+  </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <div class="form-body">
+      <div class="form-row">
+        <label class="form-label" for="jenisDinasan">Jenis Dinasan</label>
+        <select class="form-select" id="jenisDinasan">
+          <option value="" disabled selected>Pilih jenis dinasan</option>
+          <option value="PPKA">PPKA</option>
+          <option value="PLR">PLR</option>
+          <option value="PRS">PRS</option>
+          <option value="PJL">PJL</option>
+        </select>
+      </div>
+
+      <div class="form-row">
+        <label class="form-label" for="namaStasiun">Masukkan Nama Stasiun (gunakan huruf kapital/huruf besar)</label>
+        <input class="form-input" type="text" id="namaStasiun" placeholder="CONTOH: JEMBER">
+      </div>
+
+      <div class="form-row">
+        <label class="form-label">Pilih Bulan - Tahun</label>
+        <div class="form-row-split">
+          <select class="form-select" id="bulanSelect">
+            <option value="" disabled selected>Bulan</option>
+          </select>
+          <select class="form-select" id="tahunSelect">
+            <option value="" disabled selected>Tahun</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>Daftar Hadir / Daftar Dinasan</h2>
+    <span class="badge">Opsional · jadi halaman ke-2</span>
+  </div>
+  <div class="panel" style="margin-bottom:16px;">
+    <label class="drop" id="attendanceDrop">
+      <input type="file" id="attendanceInput" accept="image/*">
+      <div class="drop-icon">↑</div>
+      <p class="drop-title">Tarik foto Daftar Hadir / Daftar Dinasan ke sini, atau klik untuk pilih</p>
+    </label>
+    <div class="photo-list" id="attendanceList"></div>
+    <p class="attendance-note">⚠️ Pastikan Daftar Hadir Orientasi Halaman Landscape. Foto yang diunggah dalam posisi potret akan otomatis dirotasi menjadi landscape.</p>
+  </div>
+
+  <div class="section-title">
+    <h2>Unggah Berkas ZIP</h2>
+    <span class="badge">Bisa lebih dari 1 ZIP</span>
+  </div>
+
+  <div class="panel">
+    <label class="drop" id="drop">
+      <input type="file" id="zipInput" accept=".zip" multiple>
+      <div class="drop-icon">↑</div>
+      <p class="drop-title">Tarik beberapa file ZIP ke sini, atau klik untuk pilih</p>
+      <p class="drop-sub">Setiap ZIP berisi PDF bernama "Serah Terima ... DD-MM-YYYY(ID)"</p>
+    </label>
+
+    <div class="zip-list" id="zipList"></div>
+
+    <div class="actions">
+      <button class="ghost" id="resetBtn" style="display:none;">Reset</button>
+      <button class="primary" id="processBtn" disabled>Mulai Proses</button>
+    </div>
+  </div>
+
+  <div class="panel progress-panel" id="progressPanel" style="margin-top:16px;">
+    <div class="progress-head">
+      <span class="status-pill" id="statusPill"><span class="led"></span><span id="statusLabel">Menunggu</span></span>
+      <span class="status-msg" id="statusMsg" style="font-size:12.5px; color:var(--ink-faint);"></span>
+    </div>
+    <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div class="log" id="log"></div>
+    <div class="summary" id="summary" style="display:none;"></div>
+    <div class="actions" id="downloadRow" style="display:none;">
+      <button class="primary" id="downloadBtn">Unduh PDF Gabungan</button>
+    </div>
+  </div>
+
+  <p class="footnote">Semua proses berjalan di browser Anda — file ZIP dan PDF tidak diunggah ke server mana pun. Nama file harus diawali "Serah Terima" dan mengandung tanggal DD-MM-YYYY serta ID dalam kurung, misal "Serah Terima PPKA 01-08-2026(367891).pdf" — bagian tengah bebas apa saja.</p>
+
+</div>
+
+<script src="assets/js/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF → A4 — Gabung 2 Halaman Jadi Satu Lembar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="page">
+
+  <div class="topbar">
+    <div class="logo">PA</div>
+    <div>
+      <div class="brand-name">PDF → A4</div>
+      <div class="brand-tag">Built by 69451</div>
+    </div>
+  </div>
+
+  <a class="back-link" href="../index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+    Kembali ke Beranda
+  </a>
+
+  <div class="heading">
+    <h1>Gabung PDF ke Satu Lembar A4</h1>
+    <p>Susun 2 halaman PDF bertumpuk atas–bawah ke satu lembar A4, siap diunduh sebagai JPG.</p>
+  </div>
+
+  <div class="section-title">
+    <h2>Resolusi Keluaran</h2>
+    <span class="badge" id="dpiBadge">300 DPI</span>
+  </div>
+  <div class="option-row" id="dpiOptions">
+    <div class="option-card" data-dpi="150">
+      <div class="option-icon">S</div>
+      <div>
+        <div class="option-title">Standar</div>
+        <div class="option-sub">150 DPI · proses cepat</div>
+      </div>
+    </div>
+    <div class="option-card active" data-dpi="300">
+      <div class="option-icon">T</div>
+      <div>
+        <div class="option-title">Tinggi</div>
+        <div class="option-sub">300 DPI · teks tetap tajam</div>
+      </div>
+    </div>
+    <div class="option-card" data-dpi="450">
+      <div class="option-icon">ST</div>
+      <div>
+        <div class="option-title">Sangat Tinggi</div>
+        <div class="option-sub">450 DPI · detail maksimal</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">
+    <h2>Unggah Berkas</h2>
+    <span class="badge">PDF · 2 halaman</span>
+  </div>
+
+  <div class="panel">
+    <label class="drop" id="drop">
+      <input type="file" id="fileInput" accept="application/pdf">
+      <div class="drop-icon">↑</div>
+      <p class="drop-title">Tarik file ke sini, atau klik untuk pilih</p>
+      <p class="drop-sub">Hanya PDF dengan tepat 2 halaman</p>
+      <span class="filename" id="filename"></span>
+    </label>
+
+    <div class="status-row">
+      <span class="status-pill" id="statusPill"><span class="led"></span><span id="statusLabel">Menunggu berkas</span></span>
+      <span class="status-msg" id="statusMsg"></span>
+    </div>
+
+    <div class="preview-area" id="previewArea">
+      <span class="empty" id="previewEmpty">Pratinjau akan muncul di sini.</span>
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="meta-table" id="metaTable"></div>
+
+    <div class="actions">
+      <button class="primary" id="downloadBtn" disabled>Unduh JPG</button>
+    </div>
+  </div>
+
+  <p class="footnote">Semua proses berjalan di browser Anda — file PDF tidak diunggah ke server mana pun. Kedua halaman dipangkas dari spasi kosong, ditumpuk bertumpuk atas–bawah, lalu disusun mengisi satu lembar A4 tanpa memotong konten. Orientasi (potret/lanskap) ditentukan otomatis dari proporsi hasil gabungan.</p>
+
+</div>
+
+<script src="assets/js/app.js"></script>
+
+</body>
+</html>

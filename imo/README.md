@@ -61,12 +61,11 @@ Buka `assets/js/config.js`, isi:
 APPS_SCRIPT_URL: "https://script.google.com/macros/s/XXXXXXXX/exec",
 ```
 
-## 4. Deploy Frontend ke GitHub Pages
+## 4. Deploy Frontend
 
-1. Push seluruh isi folder ini ke repository GitHub.
-2. Buka **Settings → Pages** pada repo tersebut.
-3. Pilih branch `main` (atau branch yang dipakai) dan folder `/ (root)`.
-4. Simpan — situs akan tersedia di `https://<username>.github.io/<nama-repo>/`.
+Folder ini sekarang bagian dari repo **converterpdftojpg** (PDF Hub), ditempatkan di subfolder `/imo/` di root repo tersebut (dideploy via Cloudflare Pages, lihat `wrangler.jsonc` di root repo). Situs akan tersedia di `https://<domain-pdfhub>/imo/`, dan link menu "IMO" di beranda PDF Hub (`index.html`) sudah diarahkan ke `imo/index.html`.
+
+Jika suatu saat ingin dideploy terpisah lagi via GitHub Pages sebagai repo sendiri, cukup push seluruh isi folder `imo/` ini ke root repo GitHub lain, lalu aktifkan **Settings → Pages** dengan folder `/ (root)`.
 
 ## Logika Inti (Jenis Serah Terima → Tabel & Kolom)
 

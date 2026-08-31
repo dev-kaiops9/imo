@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Serah Terima Dinas</title>
+<meta name="description" content="Aplikasi pencatatan serah terima dinas stasiun — form, foto, PDF, tersimpan otomatis ke Google Sheet & Drive." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+<link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <div class="topbar__mark">ST</div>
+    <div>
+      <div class="topbar__title">Serah Terima Dinas</div>
+      <div class="topbar__subtitle">Sistem Pencatatan Dinas Stasiun</div>
+    </div>
+  </div>
+  <a href="../index.html" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:inherit;text-decoration:none;opacity:0.75;margin-right:12px;">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
+    PDF Hub
+  </a>
+  <div class="topbar__clock" id="liveClock">—</div>
+</header>
+
+<div class="shell">
+
+  <!-- ==================== SIDEBAR: MENU UTAMA ==================== -->
+  <nav class="sidebar" aria-label="Menu utama">
+    <div class="sidebar__eyebrow">Menu</div>
+    <button type="button" class="sidebar__item is-active" id="tabIsiForm" data-mainmenu="form">
+      <span class="sidebar__item-icon">📝</span> Isi Serah Terima
+    </button>
+    <button type="button" class="sidebar__item" id="tabCekPdf" data-mainmenu="cekpdf">
+      <span class="sidebar__item-icon">📄</span> Cek PDF Tersimpan
+    </button>
+  </nav>
+
+  <!-- ==================== KONTEN KANAN ==================== -->
+  <div class="content">
+
+  <!-- ==================== STEPPER (HORIZONTAL) ==================== -->
+  <nav class="stepper" id="stepperNav" aria-label="Tahapan pengisian">
+    <div class="step is-active" data-step="1">
+      <div class="step__num">1</div>
+      <div class="step__label">Data Pegawai</div>
+    </div>
+    <div class="step" data-step="2">
+      <div class="step__num">2</div>
+      <div class="step__label">Data Dinas</div>
+    </div>
+    <div class="step" data-step="3">
+      <div class="step__num">3</div>
+      <div class="step__label">Unggah Foto</div>
+    </div>
+    <div class="step" data-step="4">
+      <div class="step__num">4</div>
+      <div class="step__label">Preview &amp; Simpan</div>
+    </div>
+  </nav>
+
+  <!-- ==================== MAIN FORM ==================== -->
+  <main id="mainFormArea">
+
+    <!-- ---------- STEP 1: DATA PEGAWAI ---------- -->
+    <section class="panel step-panel" data-panel="1">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Langkah 1 dari 4</span>
+          <h2 class="panel__title">Data Pegawai</h2>
+        </div>
+      </div>
+      <p class="panel__hint">Ketik NIPP untuk mencari data pegawai secara otomatis.</p>
+
+      <div class="field">
+        <label class="field__label" for="nipp">NIPP <span class="req">*</span></label>
+        <div class="field__control">
+          <input type="text" inputmode="numeric" id="nipp" class="input is-mono" placeholder="Contoh: 69444" autocomplete="off" />
+        </div>
+        <div class="field__error" id="err-nipp">NIPP wajib diisi.</div>
+        <div class="nipp-status" id="nippStatus"><span class="flap">•</span><span id="nippStatusText">Mencari…</span></div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="nama">Nama <span class="req">*</span></label>
+        <input type="text" id="nama" class="input" placeholder="Nama lengkap" />
+        <div class="field__error" id="err-nama">Nama wajib diisi.</div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field__label" for="jabatan1">Jabatan <span class="req">*</span></label>
+          <select id="jabatan1" class="select">
+            <option value="">Pilih jabatan</option>
+          </select>
+          <div class="field__error" id="err-jabatan1">Jabatan wajib dipilih.</div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="stasiun">Stasiun <span class="req">*</span></label>
+          <input type="text" id="stasiun" class="input" placeholder="Contoh: Glenmore" />
+          <div class="field__error" id="err-stasiun">Stasiun wajib diisi.</div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <span></span>
+        <button type="button" class="btn btn--primary" data-next="2">Lanjut →</button>
+      </div>
+    </section>
+
+    <!-- ---------- STEP 2: DATA DINAS ---------- -->
+    <section class="panel step-panel hidden" data-panel="2">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Langkah 2 dari 4</span>
+          <h2 class="panel__title">Data Dinas</h2>
+        </div>
+      </div>
+      <p class="panel__hint">Tentukan jadwal dan jenis serah terima yang dilakukan.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field__label" for="dinas">Dinas <span class="req">*</span></label>
+          <select id="dinas" class="select">
+            <option value="">Pilih dinas</option>
+          </select>
+          <div class="field__error" id="err-dinas">Dinas wajib dipilih.</div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="tanggal">Tanggal <span class="req">*</span></label>
+          <input type="date" id="tanggal" class="input" />
+          <div class="field__error" id="err-tanggal">Tanggal wajib diisi.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field__label" for="jenisSerahTerima">Jenis Serah Terima <span class="req">*</span></label>
+        <select id="jenisSerahTerima" class="select">
+          <option value="">Pilih jenis serah terima</option>
+        </select>
+        <div class="field__error" id="err-jenisSerahTerima">Jenis serah terima wajib dipilih.</div>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn btn--ghost" data-back="1">← Kembali</button>
+        <button type="button" class="btn btn--primary" data-next="3">Lanjut →</button>
+      </div>
+    </section>
+
+    <!-- ---------- STEP 3: UPLOAD FOTO ---------- -->
+    <section class="panel step-panel hidden" data-panel="3">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Langkah 3 dari 4</span>
+          <h2 class="panel__title">Unggah Foto</h2>
+        </div>
+      </div>
+      <p class="panel__hint">Unggah bukti serah terima dan dokumentasi kegiatan.</p>
+
+      <div class="field">
+        <label class="field__label" id="labelFotoSerahTerima">Foto Serah Terima <span class="req">*</span></label>
+        <div class="dropzone" id="dzSerahTerima" tabindex="0" role="button" aria-describedby="dzSerahTerimaHint">
+          <div class="dropzone__icon">↑</div>
+          <div class="dropzone__text">Tarik &amp; lepas foto di sini, atau klik untuk pilih</div>
+          <div class="dropzone__hint" id="dzSerahTerimaHint">JPG / PNG, maks. 8MB</div>
+        </div>
+        <input type="file" id="fileSerahTerima" accept="image/*" class="hidden" />
+        <div class="thumb-row" id="thumbSerahTerima"></div>
+        <div class="field__error" id="err-fotoSerahTerima">Foto serah terima wajib diunggah.</div>
+      </div>
+
+      <div class="field">
+        <label class="field__label">Foto Dokumentasi Kegiatan <span class="req">*</span></label>
+        <div class="dropzone" id="dzDokumentasi" tabindex="0" role="button">
+          <div class="dropzone__icon">↑</div>
+          <div class="dropzone__text">Tarik &amp; lepas foto di sini, atau klik untuk pilih</div>
+          <div class="dropzone__hint">JPG / PNG, maks. 8MB</div>
+        </div>
+        <input type="file" id="fileDokumentasi" accept="image/*" class="hidden" />
+        <div class="thumb-row" id="thumbDokumentasi"></div>
+        <div class="field__error" id="err-fotoDokumentasi">Foto dokumentasi wajib diunggah.</div>
+      </div>
+
+      <div class="btn-row">
+        <button type="button" class="btn btn--ghost" data-back="2">← Kembali</button>
+        <button type="button" class="btn btn--primary" id="btnGoPreview">Lihat Preview →</button>
+      </div>
+    </section>
+
+    <!-- ---------- STEP 4: RINGKASAN (ditampilkan setelah simpan) ---------- -->
+    <section class="panel step-panel hidden" data-panel="4">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Langkah 4 dari 4</span>
+          <h2 class="panel__title" id="resultTitle">Tersimpan</h2>
+        </div>
+      </div>
+      <p class="panel__hint" id="resultText">Data serah terima berhasil disimpan.</p>
+      <div class="btn-row">
+        <span></span>
+        <button type="button" class="btn btn--primary" id="btnReset">+ Buat Serah Terima Baru</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== CEK PDF TERSIMPAN ==================== -->
+  <main class="hidden" id="cekPdfArea">
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Riwayat Serah Terima</span>
+          <h2 class="panel__title">Cek PDF Tersimpan</h2>
+        </div>
+      </div>
+      <p class="panel__hint">Masukkan NIPP untuk melihat seluruh PDF serah terima yang sudah tersimpan.</p>
+
+      <div class="field-row field-row--search">
+        <div class="field">
+          <label class="field__label" for="cekNippInput">NIPP <span class="req">*</span></label>
+          <input type="text" inputmode="numeric" id="cekNippInput" class="input is-mono" placeholder="Contoh: 69444" autocomplete="off" />
+        </div>
+        <button type="button" class="btn btn--primary" id="btnCariPdf">Cari</button>
+      </div>
+
+      <div id="cekPdfStatus" class="cekpdf-status hidden"></div>
+
+      <div id="cekPdfResultWrap" class="cekpdf-result hidden">
+        <div class="cekpdf-result__caption" id="cekPdfCaption"></div>
+        <div class="cekpdf-list" id="cekPdfList"></div>
+      </div>
+    </section>
+  </main>
+
+  </div>
+</div>
+
+<!-- ==================== PREVIEW OVERLAY ==================== -->
+<div class="overlay" id="previewOverlay" aria-hidden="true">
+  <div class="doc">
+    <div class="doc__head">
+      <span class="panel__eyebrow">Periksa sebelum disimpan — tampilan ini sama persis dengan hasil PDF</span>
+      <h2>Preview Dokumen Serah Terima</h2>
+    </div>
+    <div class="doc__body">
+      <!-- Diisi dinamis oleh preview.js: tabel ini PERSIS sama dengan
+           struktur & isi tabel pada PDF final (lihat CONFIG.getTableColumns). -->
+      <div class="doc__table-wrap" id="pvTableWrap"></div>
+    </div>
+    <div class="doc__foot">
+      <button type="button" class="btn btn--ghost" id="btnEditPreview">← Kembali / Edit</button>
+      <button type="button" class="btn btn--primary" id="btnSavePreview">✓ Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== BUSY OVERLAY ==================== -->
+<div class="busy-overlay" id="busyOverlay">
+  <div class="spinner"></div>
+  <div class="busy-overlay__text" id="busyText">MEMPROSES…</div>
+</div>
+
+<!-- ==================== TOASTS ==================== -->
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- ==================== LIBRARIES ==================== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- ==================== APP SCRIPTS ==================== -->
+<script src="assets/js/config.js"></script>
+<script src="assets/js/api.js"></script>
+<script src="assets/js/upload.js"></script>
+<script src="assets/js/form.js"></script>
+<script src="assets/js/pdf.js"></script>
+<script src="assets/js/preview.js"></script>
+<script src="assets/js/cekpdf.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
