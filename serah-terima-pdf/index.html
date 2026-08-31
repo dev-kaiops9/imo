@@ -13,10 +13,31 @@
   body { font-family: 'Plus Jakarta Sans', sans-serif; }
   .dropzone.drag { border-color: #5B58CA; background: #f1f0fb; }
   .option-card.active { border-color: #5B58CA; background: #f1f0fb; box-shadow: 0 0 0 2px rgba(91,88,202,0.25); }
+  .option-card.active .option-icon { background: #5B58CA; color: #fff; }
   .zip-chip button, .photo-chip .remove { cursor: pointer; }
   #statusPill.processing { background: #fef3c7; color: #92400e; }
   #statusPill.done { background: #d1fae5; color: #065f46; }
   #statusPill.error { background: #fee2e2; color: #991b1b; }
+  #progressPanel.show { display: block; }
+  .zip-chip { display:inline-flex; align-items:center; gap:8px; background:#f1f0fb; color:#3d3a8f; font-size:12.5px; font-weight:600; padding:6px 10px 6px 12px; border-radius:9999px; }
+  .zip-chip button { border:none; background:rgba(91,88,202,0.14); color:#5B58CA; width:18px; height:18px; border-radius:50%; font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; }
+  .photo-chip { position:relative; width:88px; }
+  .photo-thumb { width:88px; height:88px; object-fit:cover; border-radius:12px; border:1px solid #e2e8f0; display:block; background:#f8fafc; }
+  .photo-chip .remove { position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:9999px; background:#ef4444; color:#fff; border:none; font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff; }
+  .photo-chip .fname { font-size:10px; color:#64748b; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; }
+  .log-row { display:flex; gap:8px; align-items:flex-start; }
+  .log-row .dot { width:6px; height:6px; border-radius:9999px; background:#94a3b8; margin-top:5px; flex-shrink:0; }
+  .log-row.warn .dot { background:#d97706; }
+  .log-row.err .dot { background:#dc2626; }
+  .log-row.ok .dot { background:#16a34a; }
+  .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
+  .summary-box { background:#f8fafc; border-radius:12px; padding:12px 14px; }
+  .summary-box .num { font-size:19px; font-weight:800; color:#1e293b; }
+  .summary-box .lbl { font-size:10.5px; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.02em; margin-top:2px; }
+  .skip-list summary { cursor:pointer; font-weight:700; color:#475569; margin-bottom:8px; }
+  .skip-item { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid #e2e8f0; color:#475569; font-size:12.5px; }
+  .skip-item:last-child { border-bottom:none; }
+  .skip-item .reason { color:#dc2626; font-weight:600; white-space:nowrap; }
 </style>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800">
@@ -39,120 +60,144 @@
 
 <main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
 
-  <!-- ============ COVER DATA ============ -->
-  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-    <h2 class="text-lg font-bold text-slate-800">Data Sampul</h2>
-    <p class="text-sm text-slate-500 -mt-2">Data ini akan ditampilkan di halaman sampul PDF hasil gabungan.</p>
+  <div>
+    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Serah Terima PDF</h1>
+    <p class="text-sm text-slate-500 mt-1 leading-relaxed">Unggah file ZIP berisi PDF "Serah Terima ...". Pastikan semua file di dalam ZIP berasal dari satu dinasan yang sama (contoh: dinas PPKA atau dinas PLR). Sistem akan otomatis menggabungkannya menjadi satu PDF terurut.</p>
+  </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <!-- ============ RESOLUSI KELUARAN ============ -->
+  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-800">Resolusi Keluaran</h2>
+      <span id="dpiBadge" class="text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">300 DPI</span>
+    </div>
+    <div id="dpiOptions" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <button type="button" class="option-card border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:border-indigo-300 transition" data-dpi="150">
+        <span class="option-icon w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">S</span>
+        <span>
+          <span class="block text-sm font-bold text-slate-800">Standar</span>
+          <span class="block text-xs text-slate-400">150 DPI · proses cepat</span>
+        </span>
+      </button>
+      <button type="button" class="option-card active border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:border-indigo-300 transition" data-dpi="300">
+        <span class="option-icon w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">T</span>
+        <span>
+          <span class="block text-sm font-bold text-slate-800">Tinggi</span>
+          <span class="block text-xs text-slate-400">300 DPI · teks tetap tajam</span>
+        </span>
+      </button>
+      <button type="button" class="option-card border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:border-indigo-300 transition" data-dpi="450">
+        <span class="option-icon w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">ST</span>
+        <span>
+          <span class="block text-sm font-bold text-slate-800">Sangat Tinggi</span>
+          <span class="block text-xs text-slate-400">450 DPI · detail maksimal</span>
+        </span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ============ DATA COVER ============ -->
+  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-lg font-bold text-slate-800">Data Cover</h2>
+      <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Untuk mengisi halaman sampul</span>
+    </div>
+
+    <div class="space-y-4">
       <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Dinasan</label>
+        <label class="block text-xs font-semibold text-slate-600 mb-1" for="jenisDinasan">Jenis Dinasan</label>
         <select id="jenisDinasan" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
-          <option value="">Pilih jenis dinasan</option>
+          <option value="" disabled selected>Pilih jenis dinasan</option>
           <option value="PPKA">PPKA</option>
           <option value="PLR">PLR</option>
           <option value="PRS">PRS</option>
           <option value="PJL">PJL</option>
         </select>
       </div>
+
       <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Stasiun</label>
-        <input type="text" id="namaStasiun" placeholder="Contoh: GAMBIR" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition uppercase" />
+        <label class="block text-xs font-semibold text-slate-600 mb-1" for="namaStasiun">Masukkan Nama Stasiun (gunakan huruf kapital/huruf besar)</label>
+        <input type="text" id="namaStasiun" placeholder="CONTOH: JEMBER" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
       </div>
+
       <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Bulan</label>
-        <select id="bulanSelect" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"></select>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Tahun</label>
-        <select id="tahunSelect" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition"></select>
+        <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Bulan - Tahun</label>
+        <div class="grid grid-cols-2 gap-3">
+          <select id="bulanSelect" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
+            <option value="" disabled selected>Bulan</option>
+          </select>
+          <select id="tahunSelect" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
+            <option value="" disabled selected>Tahun</option>
+          </select>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ============ DPI OPTIONS ============ -->
-  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-bold text-slate-800">Kualitas Output</h2>
-      <span id="dpiBadge" class="text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">300 DPI</span>
+  <!-- ============ DAFTAR HADIR / DAFTAR DINASAN ============ -->
+  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between p-6 pb-4">
+      <h2 class="text-lg font-bold text-slate-800">Daftar Hadir / Daftar Dinasan</h2>
+      <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Opsional · jadi halaman ke-2</span>
     </div>
-    <div id="dpiOptions" class="grid grid-cols-3 gap-3">
-      <button type="button" class="option-card border border-slate-200 rounded-2xl py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 transition" data-dpi="150">150 DPI</button>
-      <button type="button" class="option-card active border border-slate-200 rounded-2xl py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 transition" data-dpi="300">300 DPI</button>
-      <button type="button" class="option-card border border-slate-200 rounded-2xl py-3 text-sm font-semibold text-slate-700 hover:border-indigo-300 transition" data-dpi="600">600 DPI</button>
-    </div>
-  </section>
 
-  <!-- ============ ZIP UPLOAD ============ -->
-  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-    <h2 class="text-lg font-bold text-slate-800">Upload ZIP Rolink</h2>
-    <p class="text-sm text-slate-500 -mt-2">Unggah satu atau beberapa file ZIP hasil download dari Rolink (PPKA/PLR/PRS/PJL).</p>
-
-    <div id="drop" class="dropzone border-2 border-dashed border-slate-300 rounded-2xl py-10 text-center cursor-pointer transition" tabindex="0">
-      <div class="text-3xl text-slate-400 mb-2"><i class="fa-solid fa-file-zipper"></i></div>
-      <div class="text-sm font-medium text-slate-600">Tarik &amp; lepas file ZIP di sini, atau klik untuk pilih</div>
-      <div class="text-xs text-slate-400 mt-1">Bisa lebih dari satu file .zip</div>
-    </div>
-    <input type="file" id="zipInput" accept=".zip" multiple class="hidden" />
-
-    <div id="zipList" class="flex flex-wrap gap-2"></div>
-
-    <div class="flex items-center gap-3 pt-2">
-      <button type="button" id="processBtn" disabled class="flex-1 py-3 bg-[#5B58CA] hover:bg-[#4a47b5] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition">
-        <i class="fa-solid fa-gears mr-1.5"></i> Proses Jadi PDF
-      </button>
-      <button type="button" id="resetBtn" style="display:none" class="px-5 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold rounded-2xl text-sm transition">
-        Reset
-      </button>
-    </div>
-  </section>
-
-  <!-- ============ DAFTAR HADIR (OPSIONAL) ============ -->
-  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-    <h2 class="text-lg font-bold text-slate-800">Foto Daftar Hadir <span class="text-slate-400 font-normal text-sm">(opsional)</span></h2>
-    <p class="text-sm text-slate-500 -mt-2">Jika diunggah, foto ini jadi halaman kedua PDF (otomatis landscape).</p>
-
-    <div id="attendanceDrop" class="dropzone border-2 border-dashed border-slate-300 rounded-2xl py-8 text-center cursor-pointer transition" tabindex="0">
+    <label id="attendanceDrop" class="dropzone block px-6 py-8 text-center cursor-pointer transition border-y border-slate-200" tabindex="0">
+      <input type="file" id="attendanceInput" accept="image/*" class="hidden">
       <div class="text-2xl text-slate-400 mb-2"><i class="fa-solid fa-image"></i></div>
-      <div class="text-sm font-medium text-slate-600">Tarik &amp; lepas foto di sini, atau klik untuk pilih</div>
+      <p class="text-sm font-medium text-slate-600">Tarik foto Daftar Hadir / Daftar Dinasan ke sini, atau klik untuk pilih</p>
+    </label>
+
+    <div id="attendanceList" class="flex flex-wrap gap-3 px-6 py-4 empty:hidden"></div>
+
+    <p class="text-xs text-amber-700 bg-amber-50 px-6 py-3">⚠️ Pastikan Daftar Hadir Orientasi Halaman Landscape. Foto yang diunggah dalam posisi potret akan otomatis dirotasi menjadi landscape.</p>
+  </section>
+
+  <!-- ============ UNGGAH BERKAS ZIP ============ -->
+  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+    <div class="flex items-center justify-between p-6 pb-4">
+      <h2 class="text-lg font-bold text-slate-800">Unggah Berkas ZIP</h2>
+      <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Bisa lebih dari 1 ZIP</span>
     </div>
-    <input type="file" id="attendanceInput" accept="image/*" class="hidden" />
-    <div id="attendanceList" class="flex flex-wrap gap-2"></div>
+
+    <label id="drop" class="dropzone block px-6 py-10 text-center cursor-pointer transition border-y border-slate-200" tabindex="0">
+      <input type="file" id="zipInput" accept=".zip" multiple class="hidden">
+      <div class="text-3xl text-slate-400 mb-2"><i class="fa-solid fa-file-zipper"></i></div>
+      <p class="text-sm font-medium text-slate-600">Tarik beberapa file ZIP ke sini, atau klik untuk pilih</p>
+      <p class="text-xs text-slate-400 mt-1">Setiap ZIP berisi PDF bernama "Serah Terima ... DD-MM-YYYY(ID)"</p>
+    </label>
+
+    <div id="zipList" class="flex flex-wrap gap-2 px-6 py-4 empty:hidden"></div>
+
+    <div class="flex items-center justify-end gap-3 p-6 pt-2">
+      <button type="button" id="resetBtn" style="display:none" class="px-5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 font-semibold rounded-2xl text-sm transition">Reset</button>
+      <button type="button" id="processBtn" disabled class="px-6 py-2.5 bg-[#5B58CA] hover:bg-[#4a47b5] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition">Mulai Proses</button>
+    </div>
   </section>
 
   <!-- ============ PROGRESS ============ -->
   <section id="progressPanel" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4" style="display:none">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-bold text-slate-800">Status Proses</h2>
-      <span id="statusPill" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+    <div class="flex items-center justify-between flex-wrap gap-2">
+      <span id="statusPill" class="text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-600">
         <span id="statusLabel">Menunggu</span>
       </span>
+      <span id="statusMsg" class="text-xs text-slate-400"></span>
     </div>
-    <div id="statusMsg" class="text-sm text-slate-500"></div>
-    <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+    <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
       <div id="progressFill" class="h-full bg-[#5B58CA] transition-all duration-300" style="width:0%"></div>
     </div>
-    <div id="log" class="text-xs font-mono text-slate-500 space-y-1 max-h-40 overflow-y-auto"></div>
+    <div id="log" class="max-h-52 overflow-y-auto text-xs text-slate-500 space-y-1.5"></div>
 
-    <div id="summary" class="text-sm text-slate-700" style="display:none"></div>
-    <div id="downloadRow" style="display:none">
-      <a id="downloadBtn" download class="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl text-sm shadow-md shadow-emerald-200 transition">
-        <i class="fa-solid fa-download"></i> Unduh PDF
-      </a>
+    <div id="summary" style="display:none"></div>
+    <div id="downloadRow" class="flex justify-end" style="display:none">
+      <button type="button" id="downloadBtn" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl text-sm shadow-md shadow-emerald-200 transition">
+        <i class="fa-solid fa-download"></i> Unduh PDF Gabungan
+      </button>
     </div>
   </section>
 
-</main>
+  <p class="text-xs text-slate-400 px-1 leading-relaxed">Semua proses berjalan di browser Anda — file ZIP dan PDF tidak diunggah ke server mana pun. Nama file harus diawali "Serah Terima" dan mengandung tanggal DD-MM-YYYY serta ID dalam kurung, misal "Serah Terima PPKA 01-08-2026(367891).pdf" — bagian tengah bebas apa saja.</p>
 
-<style>
-  #progressPanel.show { display: block; }
-  .zip-chip { display:inline-flex; align-items:center; gap:6px; background:#f1f0fb; color:#3d3a8f; font-size:12px; font-weight:600; padding:6px 10px; border-radius:9999px; }
-  .zip-chip button { background:none; border:none; color:#5B58CA; font-weight:800; }
-  .photo-chip { position:relative; width:88px; }
-  .photo-thumb { width:88px; height:88px; object-fit:cover; border-radius:12px; border:1px solid #e2e8f0; }
-  .photo-chip .remove { position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:9999px; background:#ef4444; color:#fff; border:none; font-size:11px; }
-  .photo-chip .fname { font-size:10px; color:#64748b; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-</style>
+</main>
 
 <!-- LIBRARIES -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
