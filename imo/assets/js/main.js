@@ -100,6 +100,7 @@ function wireMainMenuTabs() {
 
 function startClock() {
   const el = document.getElementById("liveClock");
+  if (!el) return; // Header (dan jam) dihilangkan saat menu dimuat di dalam shell dashboard.
   const tick = () => {
     el.textContent = new Date().toLocaleString("id-ID", {
       weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit",

@@ -34,10 +34,10 @@
     }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen flex items-center justify-center p-2 sm:p-6 text-slate-800">
+<body class="bg-slate-100 min-h-screen md:h-screen md:overflow-hidden p-1.5 sm:p-3 text-slate-800">
 
   <!-- Main Container -->
-  <div class="w-full max-w-7xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[780px] border border-slate-200">
+  <div class="w-full md:h-full mx-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-200">
     
     <!-- ================= SIDEBAR NAV (KIRI) ================= -->
     <aside class="w-full md:w-64 bg-[#5B58CA] text-white p-6 flex flex-col justify-between shrink-0">
@@ -82,13 +82,13 @@
     </aside>
 
     <!-- ================= MAIN CONTENT (TENGAH) ================= -->
-    <main class="flex-1 bg-slate-50/50 p-6 md:p-8 overflow-y-auto">
-      <!-- Top Bar Header -->
-      <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Tools</h1>
-        
-        <!-- Search & Actions -->
-        <div class="flex items-center gap-4 w-full sm:w-auto">
+    <main class="flex-1 bg-slate-50/50 p-6 md:p-8 md:overflow-y-auto flex flex-col min-h-0">
+      <!-- Top Bar Header (tetap tampil di semua menu) -->
+      <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 shrink-0">
+        <h1 id="pageTitle" class="text-3xl font-bold text-slate-800 tracking-tight">Tools</h1>
+
+        <!-- Search & Actions (hanya relevan di Dashboard) -->
+        <div id="headerActions" class="flex items-center gap-4 w-full sm:w-auto">
           <div class="relative flex-1 sm:flex-none">
             <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
             <input
@@ -106,9 +106,19 @@
         </div>
       </header>
 
-      <!-- Course Cards Container -->
-      <div id="courseListContainer" class="space-y-6">
-        <!-- Rendered dynamically via JavaScript -->
+      <!-- ================= DASHBOARD VIEW ================= -->
+      <div id="dashboardView">
+        <!-- Course Cards Container -->
+        <div id="courseListContainer" class="space-y-6">
+          <!-- Rendered dynamically via JavaScript -->
+        </div>
+      </div>
+
+      <!-- ================= TOOL VIEW (IMO / Serah Terima PDF / PDF to A4) =================
+           Dimuat via iframe di dalam shell yang sama supaya sidebar & info user login
+           tetap terlihat saat berpindah menu — tidak pernah reload halaman penuh. -->
+      <div id="toolView" class="hidden flex-1 min-h-[80vh] md:min-h-0 flex-col">
+        <iframe id="toolFrame" title="Tool" class="w-full flex-1 min-h-[80vh] md:min-h-0 border-0 rounded-3xl bg-white shadow-inner"></iframe>
       </div>
     </main>
 
@@ -245,7 +255,7 @@
         borderColor: "border-purple-100",
         accentColor: "bg-indigo-600",
         bgGradient: "from-blue-50 to-indigo-50",
-        href: "imo/index.html"
+        tab: "imo"
       },
       {
         id: 2,
@@ -255,7 +265,7 @@
         borderColor: "border-purple-200",
         accentColor: "bg-purple-600",
         bgGradient: "from-purple-50 to-pink-50",
-        href: "serah-terima-pdf/index.html"
+        tab: "serah-terima-pdf"
       },
       {
         id: 3,
@@ -265,16 +275,29 @@
         borderColor: "border-rose-200",
         accentColor: "bg-rose-500",
         bgGradient: "from-rose-50 to-orange-50",
-        href: "pdf-to-a4/index.html"
+        tab: "pdf-to-a4"
       }
     ];
 
-    // Peta tab menu -> halaman tools (dipakai oleh selectTab)
+    // Peta tab menu -> halaman tools (dimuat via iframe, bukan pindah halaman)
     const tabRoutes = {
       imo: "imo/index.html",
       "serah-terima-pdf": "serah-terima-pdf/index.html",
       "pdf-to-a4": "pdf-to-a4/index.html"
     };
+
+    // Judul header per tab
+    const tabTitles = {
+      dashboard: "Tools",
+      imo: "IMO",
+      "serah-terima-pdf": "Serah Terima PDF",
+      "pdf-to-a4": "PDF to A4",
+      settings: "Settings",
+      directory: "Directory"
+    };
+
+    const LOGIN_STORAGE_KEY = "imoUser";
+    const TAB_STORAGE_KEY = "imoActiveTab";
 
     // Variabel Kalender Realtime
     let calendarDate = new Date();
@@ -363,7 +386,7 @@
       courses.forEach(course => {
         const card = document.createElement('div');
         card.className = `relative p-6 rounded-3xl border ${course.borderColor} ${course.bgColor} shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group flex flex-col md:flex-row items-center justify-between gap-6`;
-        card.onclick = () => { window.location.href = course.href; };
+        card.onclick = () => { selectTab(course.tab); };
 
         card.innerHTML = `
           <!-- Left Vector Illustration Mockup -->
@@ -446,29 +469,20 @@
       return parts[0].substring(0, 2).toUpperCase();
     }
 
-    // Submit Handler Login
-    function handleLoginSubmit(e) {
-      e.preventDefault();
+    // Terapkan data user ke UI (widget profil + badge pojok kanan atas).
+    // Dipakai baik saat login baru maupun saat memulihkan sesi dari localStorage,
+    // sehingga status login tetap tampil konsisten di semua menu (dashboard & 3 tool).
+    function applyLoggedInUI(user) {
+      document.getElementById('profileName').innerText = user.nama;
+      document.getElementById('profileNipp').innerText = user.nipp;
+      document.getElementById('profileJabatan').innerText = user.jabatan;
+      document.getElementById('profileStasiun').innerText = user.stasiun;
 
-      // Ambil data dari input form
-      const nameVal = document.getElementById('loginNameInput').value.trim() || 'Christine Eva';
-      const nippVal = document.getElementById('loginNippInput').value.trim() || '1094881999';
-      const jabatanVal = document.getElementById('loginJabatanInput').value.trim() || 'PPKA Utama';
-      const stasiunVal = document.getElementById('loginStasiunInput').value.trim() || 'Stasiun Gambir (GMR)';
-
-      // 1. Update data pada widget profil di bawah kalender
-      document.getElementById('profileName').innerText = nameVal;
-      document.getElementById('profileNipp').innerText = nippVal;
-      document.getElementById('profileJabatan').innerText = jabatanVal;
-      document.getElementById('profileStasiun').innerText = stasiunVal;
-
-      // 2. Tampilkan widget profil di bawah kalender
       const profileWidget = document.getElementById('userProfileWidget');
       profileWidget.classList.remove('hidden');
       profileWidget.classList.add('flex');
 
-      // 3. Tampilkan User Badge di pojok kanan atas menggantikan tombol "Masuk / Login"
-      const initials = getInitials(nameVal);
+      const initials = getInitials(user.nama);
       const loginBtnContainer = document.getElementById('loginBtnContainer');
       loginBtnContainer.innerHTML = `
         <div class="flex items-center justify-between w-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-2.5 shadow-sm">
@@ -477,8 +491,8 @@
               ${initials}
             </div>
             <div class="truncate">
-              <p class="text-xs font-bold text-slate-800 truncate">${nameVal}</p>
-              <p class="text-[10px] text-indigo-600 font-semibold font-mono truncate">NIPP: ${nippVal}</p>
+              <p class="text-xs font-bold text-slate-800 truncate">${user.nama}</p>
+              <p class="text-[10px] text-indigo-600 font-semibold font-mono truncate">NIPP: ${user.nipp}</p>
             </div>
           </div>
           <button 
@@ -489,9 +503,27 @@
           </button>
         </div>
       `;
+    }
+
+    // Submit Handler Login
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+
+      // Ambil data dari input form
+      const user = {
+        nama: document.getElementById('loginNameInput').value.trim() || 'Christine Eva',
+        nipp: document.getElementById('loginNippInput').value.trim() || '1094881999',
+        jabatan: document.getElementById('loginJabatanInput').value.trim() || 'PPKA Utama',
+        stasiun: document.getElementById('loginStasiunInput').value.trim() || 'Stasiun Gambir (GMR)'
+      };
+
+      applyLoggedInUI(user);
+
+      // Simpan sesi supaya status login tetap ada di semua menu & saat halaman dimuat ulang
+      localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(user));
 
       closeLoginModal();
-      showToast(`Selamat datang, ${nameVal}!`);
+      showToast(`Selamat datang, ${user.nama}!`);
     }
 
     function handleLogout() {
@@ -512,17 +544,15 @@
         </button>
       `;
 
+      localStorage.removeItem(LOGIN_STORAGE_KEY);
       showToast('Anda telah keluar dari akun.');
     }
 
     // Tab Navigation
+    // Dashboard & 3 menu tools tetap berada di satu shell yang sama (sidebar kiri +
+    // panel kanan tidak pernah ikut hilang/reload) — menu tools dimuat ke dalam
+    // #toolFrame, hanya area kontennya saja yang berganti.
     function selectTab(tabId) {
-      // Tools punya halaman sendiri — arahkan langsung ke sana.
-      if (tabRoutes[tabId]) {
-        window.location.href = tabRoutes[tabId];
-        return;
-      }
-
       document.querySelectorAll('.nav-item').forEach(btn => {
         btn.classList.remove('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md');
         btn.classList.add('text-indigo-100/70', 'font-medium');
@@ -534,9 +564,38 @@
         activeBtn.classList.remove('text-indigo-100/70', 'font-medium');
       }
 
-      if (tabId === 'settings' || tabId === 'directory') {
-        showToast(`Halaman "${tabId}" belum tersedia.`);
+      const dashboardView = document.getElementById('dashboardView');
+      const toolView = document.getElementById('toolView');
+      const toolFrame = document.getElementById('toolFrame');
+      const headerActions = document.getElementById('headerActions');
+      const pageTitle = document.getElementById('pageTitle');
+
+      pageTitle.textContent = tabTitles[tabId] || 'Tools';
+
+      if (tabRoutes[tabId]) {
+        // Tampilkan tool di dalam frame pada shell yang sama.
+        dashboardView.classList.add('hidden');
+        toolView.classList.remove('hidden');
+        toolView.classList.add('flex');
+        headerActions.classList.add('hidden');
+
+        // Muat ulang iframe hanya jika berpindah ke tool yang berbeda.
+        if (toolFrame.dataset.loaded !== tabId) {
+          toolFrame.src = tabRoutes[tabId];
+          toolFrame.dataset.loaded = tabId;
+        }
+      } else {
+        toolView.classList.add('hidden');
+        toolView.classList.remove('flex');
+        dashboardView.classList.remove('hidden');
+        headerActions.classList.remove('hidden');
+
+        if (tabId === 'settings' || tabId === 'directory') {
+          showToast(`Halaman "${tabId}" belum tersedia.`);
+        }
       }
+
+      localStorage.setItem(TAB_STORAGE_KEY, tabId);
     }
 
     // Toast Notification Helper
@@ -560,6 +619,19 @@
     window.addEventListener('DOMContentLoaded', () => {
       renderCalendar();
       renderCourses(coursesData);
+
+      // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap
+      // terlihat login di semua menu, termasuk setelah refresh halaman.
+      try {
+        const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+        if (savedUser && savedUser.nama) {
+          applyLoggedInUI(savedUser);
+        }
+      } catch (err) { /* abaikan data sesi yang rusak */ }
+
+      // Pulihkan menu terakhir yang aktif.
+      const savedTab = localStorage.getItem(TAB_STORAGE_KEY) || 'dashboard';
+      selectTab(savedTab);
     });
   </script>
 </body>

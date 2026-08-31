@@ -197,7 +197,7 @@ button {
 
 .sidebar {
   position: sticky;
-  top: 92px;
+  top: 20px;
   display: flex;
   flex-direction: column;
   gap: 4px;
