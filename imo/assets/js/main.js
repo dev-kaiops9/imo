@@ -1,203 +1,121 @@
 /**
  * main.js
  * -----------------------------------------------------------------------
- * Titik masuk aplikasi: navigasi stepper, toast, overlay "sedang
- * memproses", dan alur akhir (preview -> generate PDF -> kirim ke
- * Apps Script -> tampilkan hasil).
+ * PLACEHOLDER SEMENTARA — file asli tidak berhasil dipulihkan dari backup.
+ * Menyatukan semua modul: navigasi stepper, tab menu utama, jam realtime,
+ * overlay preview, dan tombol simpan.
  * -----------------------------------------------------------------------
  */
 
-// ---------------------------------------------------------------------
-// Toast notifications
-// ---------------------------------------------------------------------
-const Toast = {
-  show(message, type = "success") {
-    const stack = document.getElementById("toastStack");
-    const el = document.createElement("div");
-    el.className = `toast toast--${type}`;
-    el.textContent = message;
-    stack.appendChild(el);
-    setTimeout(() => {
-      el.style.opacity = "0";
-      el.style.transition = "opacity 0.25s ease";
-      setTimeout(() => el.remove(), 260);
-    }, 4200);
-  },
-};
+let currentStep = 1;
 
-// ---------------------------------------------------------------------
-// Busy overlay (loading saat generate PDF / upload / simpan)
-// ---------------------------------------------------------------------
-const Busy = {
-  show(text) {
-    document.getElementById("busyText").textContent = text || "MEMPROSES…";
-    document.getElementById("busyOverlay").classList.add("is-open");
-  },
-  hide() {
-    document.getElementById("busyOverlay").classList.remove("is-open");
-  },
-};
+function showStep(step) {
+  document.querySelectorAll(".step-panel").forEach((p) => {
+    p.classList.toggle("hidden", Number(p.dataset.panel) !== step);
+  });
+  document.querySelectorAll(".step").forEach((s) => {
+    const n = Number(s.dataset.step);
+    s.classList.toggle("is-active", n === step);
+    s.classList.toggle("is-done", n < step);
+  });
+  currentStep = step;
+}
 
-// ---------------------------------------------------------------------
-// Stepper navigation
-// ---------------------------------------------------------------------
-const Stepper = {
-  current: 1,
+function goToStep(step, validate) {
+  if (validate && !validate()) return;
+  showStep(step);
+}
 
-  goTo(stepNumber) {
-    this.current = stepNumber;
-
-    document.querySelectorAll(".step-panel").forEach((panel) => {
-      panel.classList.toggle("hidden", Number(panel.dataset.panel) !== stepNumber);
-    });
-
-    document.querySelectorAll(".step").forEach((step) => {
-      const n = Number(step.dataset.step);
-      step.classList.toggle("is-active", n === stepNumber);
-      step.classList.toggle("is-done", n < stepNumber);
-    });
-
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  },
-};
-
-// ---------------------------------------------------------------------
-// Wiring tombol next/back antar step
-// ---------------------------------------------------------------------
-function wireStepNavigation() {
+function wireStepper() {
   document.querySelectorAll("[data-next]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const target = Number(btn.dataset.next);
-      const currentValid =
-        (Stepper.current === 1 && Form.validateStep1()) ||
-        (Stepper.current === 2 && Form.validateStep2()) ||
-        Stepper.current > 2;
-      if (currentValid) Stepper.goTo(target);
+      const next = Number(btn.dataset.next);
+      const validators = { 2: () => Form.validateStep1(), 3: () => Form.validateStep2() };
+      goToStep(next, validators[next]);
     });
   });
-
   document.querySelectorAll("[data-back]").forEach((btn) => {
-    btn.addEventListener("click", () => Stepper.goTo(Number(btn.dataset.back)));
+    btn.addEventListener("click", () => showStep(Number(btn.dataset.back)));
   });
-}
 
-// ---------------------------------------------------------------------
-// Alur Preview -> Simpan
-// ---------------------------------------------------------------------
-function wirePreviewAndSave() {
   document.getElementById("btnGoPreview").addEventListener("click", () => {
     if (!Form.validateStep3()) return;
-    const data = Form.collect();
-    Preview.open(data, UploadField.state);
+    Preview.render();
+    document.getElementById("previewOverlay").classList.add("is-open");
   });
 
-  document.getElementById("btnEditPreview").addEventListener("click", () => Preview.close());
+  document.getElementById("btnEditPreview").addEventListener("click", () => {
+    document.getElementById("previewOverlay").classList.remove("is-open");
+  });
 
   document.getElementById("btnSavePreview").addEventListener("click", async () => {
+    document.getElementById("previewOverlay").classList.remove("is-open");
+    const busy = document.getElementById("busyOverlay");
+    busy.classList.add("is-open");
+    document.getElementById("busyText").textContent = "MEMPROSES…";
+
     const data = Form.collect();
-    const photos = UploadField.state;
+    await Pdf.build(data);
+    const res = await Api.saveSerahTerima(data);
 
-    try {
-      Busy.show("MEMBUAT PDF…");
-      const pdf = await PdfBuilder.build(data, photos);
-
-      Busy.show("MENYIMPAN DATA…");
-      await Api.simpanData({
-        nipp: data.nipp,
-        nama: data.nama,
-        jabatan: data.jabatan,
-        stasiun: data.stasiun,
-        dinas: data.dinas,
-        tanggal: data.tanggal,
-        jenisSerahTerima: data.jenisSerahTerima,
-        employeeFound: data.employeeFound,
-        tabel: data.mapping.tabel,
-        driveRootFolder: CONFIG.DRIVE_ROOT_FOLDER,
-        pdfFileName: pdf.fileName,
-        pdfBase64: pdf.base64,
-        // Catatan: file foto serah terima & dokumentasi TIDAK dikirim ke
-        // backend lagi — sudah tertempel di dalam PDF, jadi tidak perlu
-        // disimpan sebagai file terpisah di Google Drive.
-      });
-
-      Busy.hide();
-      Preview.close();
-      showResult(true, `Tersimpan sebagai "${pdf.fileName}" di IMO_2026/${data.stasiun}/${data.jabatan}/${data.nipp}/`);
-      Toast.show("Data berhasil disimpan.", "success");
-    } catch (err) {
-      Busy.hide();
-      Toast.show("Gagal menyimpan: " + err.message, "error");
+    busy.classList.remove("is-open");
+    if (res.ok) {
+      Toast.show("Data tersimpan (mode demo — belum tersambung ke Drive).", "success");
+      showStep(4);
+    } else {
+      Toast.show("Gagal menyimpan data.", "error");
     }
   });
-}
 
-function showResult(success, text) {
-  document.getElementById("resultTitle").textContent = success ? "Tersimpan" : "Gagal Menyimpan";
-  document.getElementById("resultText").textContent = text;
-  Stepper.goTo(4);
-}
-
-// ---------------------------------------------------------------------
-// Switch tab menu utama: "Isi Serah Terima" <-> "Cek PDF Tersimpan"
-// ---------------------------------------------------------------------
-function wireMainMenu() {
-  const tabForm = document.getElementById("tabIsiForm");
-  const tabCekPdf = document.getElementById("tabCekPdf");
-  const stepperNav = document.getElementById("stepperNav");
-  const mainFormArea = document.getElementById("mainFormArea");
-  const cekPdfArea = document.getElementById("cekPdfArea");
-
-  function activate(mode) {
-    const isForm = mode === "form";
-    tabForm.classList.toggle("is-active", isForm);
-    tabCekPdf.classList.toggle("is-active", !isForm);
-    stepperNav.classList.toggle("hidden", !isForm);
-    mainFormArea.classList.toggle("hidden", !isForm);
-    cekPdfArea.classList.toggle("hidden", isForm);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  tabForm.addEventListener("click", () => activate("form"));
-  tabCekPdf.addEventListener("click", () => activate("cekpdf"));
-}
-
-// ---------------------------------------------------------------------
-// Reset untuk entri baru
-// ---------------------------------------------------------------------
-function wireReset() {
   document.getElementById("btnReset").addEventListener("click", () => {
     Form.reset();
     UploadField.reset();
-    Stepper.goTo(1);
+    showStep(1);
   });
 }
 
-// ---------------------------------------------------------------------
-// Jam berjalan di top bar (nuansa papan informasi stasiun)
-// ---------------------------------------------------------------------
-function startLiveClock() {
+function wireMainMenuTabs() {
+  const formTab = document.getElementById("tabIsiForm");
+  const cekTab = document.getElementById("tabCekPdf");
+  const formArea = document.getElementById("mainFormArea");
+  const cekArea = document.getElementById("cekPdfArea");
+  const stepperNav = document.getElementById("stepperNav");
+
+  formTab.addEventListener("click", () => {
+    formTab.classList.add("is-active");
+    cekTab.classList.remove("is-active");
+    formArea.classList.remove("hidden");
+    stepperNav.classList.remove("hidden");
+    cekArea.classList.add("hidden");
+  });
+
+  cekTab.addEventListener("click", () => {
+    cekTab.classList.add("is-active");
+    formTab.classList.remove("is-active");
+    cekArea.classList.remove("hidden");
+    formArea.classList.add("hidden");
+    stepperNav.classList.add("hidden");
+  });
+}
+
+function startClock() {
   const el = document.getElementById("liveClock");
   const tick = () => {
-    const now = new Date();
-    el.textContent = now.toLocaleString("id-ID", {
-      weekday: "short", day: "2-digit", month: "short", year: "numeric",
-      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    el.textContent = new Date().toLocaleString("id-ID", {
+      weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
   };
   tick();
   setInterval(tick, 1000);
 }
 
-// ---------------------------------------------------------------------
-// Init
-// ---------------------------------------------------------------------
-document.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", () => {
+  Toast.init();
   Form.init();
   UploadField.init();
   CekPdf.init();
-  wireStepNavigation();
-  wirePreviewAndSave();
-  wireReset();
-  wireMainMenu();
-  startLiveClock();
+  wireStepper();
+  wireMainMenuTabs();
+  startClock();
+  showStep(1);
 });

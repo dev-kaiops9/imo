@@ -8,21 +8,21 @@
    ========================================================================= */
 
 :root {
-  --mint-50:  #FDECEA;
-  --mint-100: #FBD9D5;
-  --mint-200: #F5BEB7;
-  --mint-500: #E6675C;
-  --mint-600: #C94B41;
-  --mint-700: #A83A32;
+  --mint-50:  #f1f0fb;
+  --mint-100: #e5e3f7;
+  --mint-200: #c9c6ee;
+  --mint-500: #5B58CA;
+  --mint-600: #4a47b5;
+  --mint-700: #3d3a8f;
 
   --emerald-900: #1b1f3b;
   --ink-900: #1b1f3b;
   --ink-600: #6b7280;
   --ink-300: #b6bcd6;
 
-  --bg: #eef1fb;
+  --bg: #f1f5f9;
   --surface: #ffffff;
-  --border: #e6e9f5;
+  --border: #e2e8f0;
 
   --rail-green: var(--mint-500);
   --rail-green-dark: var(--mint-700);
@@ -277,6 +277,15 @@ button {
 .cekpdf-status--error { background: var(--signal-red-tint); color: var(--signal-red); }
 
 .cekpdf-result { margin-top: 20px; }
+
+.cekpdf-item {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
 
 .cekpdf-result__caption {
   font-size: 13px;

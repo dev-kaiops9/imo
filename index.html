@@ -1,234 +1,566 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PDF Hub — Beranda</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/shell.css">
-<style>
-  html,body{ margin:0; padding:0; }
-  body{ font-family:'Inter', system-ui, sans-serif; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IMO Tools</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome CDN untuk Ikon -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  .hero{
-    position:relative;
-    overflow:hidden;
-    border-radius:20px;
-    background:var(--brand-grad);
-    color:#fff;
-    padding:32px 28px;
-    margin-bottom:30px;
-  }
-  .hero h1{
-    margin:0 0 8px;
-    font-size:23px;
-    font-weight:800;
-    letter-spacing:-0.02em;
-  }
-  .hero p{
-    margin:0;
-    max-width:480px;
-    font-size:13.5px;
-    line-height:1.6;
-    color:rgba(255,255,255,0.88);
-  }
-  .hero-shapes{
-    position:absolute; right:-30px; top:-40px;
-    width:240px; height:240px; pointer-events:none;
-  }
-  .hero-doc{
-    position:absolute; border-radius:14px;
-    background:rgba(255,255,255,0.14);
-    border:1px solid rgba(255,255,255,0.25);
-  }
-  .hero-doc.d1{ width:96px; height:124px; right:66px; top:34px; transform:rotate(-8deg); }
-  .hero-doc.d2{ width:96px; height:124px; right:18px; top:58px; transform:rotate(9deg); background:rgba(255,255,255,0.22); }
-  .hero-doc.d3{ width:60px; height:60px; right:124px; top:124px; border-radius:50%; background:rgba(255,255,255,0.16); }
-
-  .section-title{
-    display:flex; align-items:center; justify-content:space-between;
-    margin:0 0 14px;
-  }
-  .section-title h2{ font-size:15px; font-weight:700; margin:0; color:var(--shell-ink); }
-  .section-title span{ font-size:12px; color:var(--shell-ink-faint); }
-
-  .tool-list{ display:flex; flex-direction:column; gap:14px; }
-  .tool-card{
-    display:flex;
-    align-items:center;
-    gap:20px;
-    text-decoration:none;
-    color:inherit;
-    border-radius:18px;
-    padding:20px 22px;
-    background:var(--tint);
-    transition:transform .15s ease, box-shadow .15s ease;
-  }
-  .tool-card:hover{
-    transform:translateY(-2px);
-    box-shadow:0 16px 30px rgba(34,22,25,0.09);
-  }
-  .tool-icon{
-    width:60px; height:60px; border-radius:16px;
-    background:var(--accent);
-    display:flex; align-items:center; justify-content:center;
-    color:#fff; flex-shrink:0;
-  }
-  .tool-icon svg{ width:26px; height:26px; }
-  .tool-body{ flex:1; min-width:0; }
-  .tool-title{ font-size:15.5px; font-weight:800; color:var(--shell-ink); margin-bottom:4px; }
-  .tool-desc{ font-size:12.5px; color:var(--shell-ink-soft); line-height:1.6; max-width:520px; }
-  .tool-arrow{
-    width:40px; height:40px; border-radius:50%;
-    background:var(--accent);
-    display:flex; align-items:center; justify-content:center;
-    color:#fff; flex-shrink:0;
-  }
-  .tool-arrow svg{ width:16px; height:16px; }
-
-  .tool-a{ --accent:#E6675C; --tint:#FDECEA; }
-  .tool-b{ --accent:#A84C8C; --tint:#F8ECF4; }
-  .tool-c{ --accent:#D9652E; --tint:#FCEEDF; }
-
-  .footnote{
-    margin-top:26px;
-    font-size:12px;
-    color:var(--shell-ink-faint);
-    line-height:1.6;
-  }
-
-  @media (max-width:760px){
-    .hero-shapes{ display:none; }
-    .hero{ padding:24px 20px; }
-  }
-</style>
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
 </head>
-<body>
+<body class="bg-slate-100 min-h-screen flex items-center justify-center p-2 sm:p-6 text-slate-800">
 
-<div class="ph-shell">
-
-  <aside class="ph-sidebar">
-    <div class="ph-sidebar-logo">
-      <div class="ph-sidebar-logo-mark">PH</div>
+  <!-- Main Container -->
+  <div class="w-full max-w-7xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[780px] border border-slate-200">
+    
+    <!-- ================= SIDEBAR NAV (KIRI) ================= -->
+    <aside class="w-full md:w-64 bg-[#5B58CA] text-white p-6 flex flex-col justify-between shrink-0">
       <div>
-        <div class="ph-sidebar-logo-text">PDF Hub</div>
-        <div class="ph-sidebar-logo-tag">Built by 69451</div>
+        <!-- Logo -->
+        <div class="flex items-center gap-2 mb-10">
+          <span class="text-2xl font-extrabold tracking-tight">IMO Tools</span>
+        </div>
+
+        <!-- Menu Utama -->
+        <nav class="space-y-2">
+          <button onclick="selectTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-semibold bg-white/20 text-white shadow-inner backdrop-blur-md">
+            <i class="fa-solid fa-table-cells-large w-5 text-center"></i>
+            <span>Dashboard</span>
+          </button>
+          <button onclick="selectTab('imo')" id="nav-imo" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+            <i class="fa-solid fa-book-open w-5 text-center"></i>
+            <span>IMO</span>
+          </button>
+          <button onclick="selectTab('serah-terima-pdf')" id="nav-serah-terima-pdf" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+            <i class="fa-solid fa-file-pdf w-5 text-center"></i>
+            <span>Serah Terima PDF</span>
+          </button>
+          <button onclick="selectTab('pdf-to-a4')" id="nav-pdf-to-a4" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+            <i class="fa-solid fa-file-export w-5 text-center"></i>
+            <span>PDF to A4</span>
+          </button>
+        </nav>
       </div>
-    </div>
 
-    <nav class="ph-sidebar-nav">
-      <span class="ph-sidebar-label">Menu</span>
-      <a href="index.html" class="ph-nav-item active">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
-        Dashboard
-      </a>
-      <a href="imo/index.html" class="ph-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-        IMO
-      </a>
-      <a href="serah-terima-pdf/index.html" class="ph-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-        Serah Terima PDF
-      </a>
-      <a href="convert-per-file-pdf/index.html" class="ph-nav-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6M20 20v-6h-6"></path><path d="M20 8a8 8 0 0 0-14.9-3.7M4 16a8 8 0 0 0 14.9 3.7"></path></svg>
-        Convert per File PDF
-      </a>
-    </nav>
-
-    <div class="ph-sidebar-spacer"></div>
-
-    <a href="#" class="ph-sidebar-login">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
-      Login
-    </a>
-    <div class="ph-sidebar-login-hint">Fitur akun & login akan segera hadir.</div>
-  </aside>
-
-  <div class="ph-shell-main">
-
-    <header class="ph-topbar-shell">
-      <div>
-        <h1 class="ph-topbar-shell-title">Dashboard</h1>
-        <div class="ph-topbar-shell-sub">Pusat kumpulan alat bantu dokumen PDF</div>
+      <!-- Menu Bawah -->
+      <div class="space-y-2 pt-8 border-t border-indigo-400/30 mt-6 md:mt-0">
+        <button onclick="selectTab('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
+          <i class="fa-solid fa-gear w-5 text-center"></i>
+          <span>Settings</span>
+        </button>
+        <button onclick="selectTab('directory')" id="nav-directory" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
+          <i class="fa-regular fa-folder-open w-5 text-center"></i>
+          <span>Directory</span>
+        </button>
       </div>
-      <a href="#" class="ph-user-chip">
-        <div class="ph-user-chip-avatar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+    </aside>
+
+    <!-- ================= MAIN CONTENT (TENGAH) ================= -->
+    <main class="flex-1 bg-slate-50/50 p-6 md:p-8 overflow-y-auto">
+      <!-- Top Bar Header -->
+      <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <h1 class="text-3xl font-bold text-slate-800 tracking-tight">Tools</h1>
+        
+        <!-- Search & Actions -->
+        <div class="flex items-center gap-4 w-full sm:w-auto">
+          <div class="relative flex-1 sm:flex-none">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input
+              type="text"
+              id="searchInput"
+              oninput="handleSearch()"
+              placeholder="Cari tools..."
+              class="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 w-full sm:w-64 shadow-sm transition"
+            />
+          </div>
+          <button onclick="showToast('Tidak ada notifikasi baru.')" class="relative p-2.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition shadow-sm">
+            <i class="fa-regular fa-bell"></i>
+            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Course Cards Container -->
+      <div id="courseListContainer" class="space-y-6">
+        <!-- Rendered dynamically via JavaScript -->
+      </div>
+    </main>
+
+    <!-- ================= RIGHT WIDGET BAR ================= -->
+    <aside class="w-full md:w-80 bg-white border-l border-slate-100 p-6 flex flex-col justify-start shrink-0">
+      <!-- Tombol Login / Info User Container (Pojok Kanan Atas Widget) -->
+      <div id="loginBtnContainer" class="flex items-center justify-end mb-6">
+        <button 
+          onclick="openLoginModal()" 
+          id="loginBtn" 
+          class="w-full flex items-center justify-center gap-2.5 px-5 py-2.5 bg-[#5B58CA] hover:bg-[#4a47b5] active:scale-95 text-white rounded-full font-semibold text-sm shadow-md shadow-indigo-200 transition-all duration-200">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Masuk / Login</span>
+        </button>
+      </div>
+
+      <!-- Calendar Widget Realtime -->
+      <div class="bg-slate-50/70 p-4 rounded-3xl border border-slate-100 shadow-sm">
+        <!-- Month Header -->
+        <div class="flex items-center justify-between mb-4 px-1">
+          <h3 id="calendarMonthYear" class="font-bold text-slate-700 text-base">Des 2024</h3>
+          <div class="flex items-center gap-1">
+            <button onclick="prevMonth()" class="p-1 hover:bg-slate-200 rounded-full transition text-slate-500">
+              <i class="fa-solid fa-chevron-left text-xs"></i>
+            </button>
+            <button onclick="nextMonth()" class="p-1 hover:bg-slate-200 rounded-full transition text-slate-500">
+              <i class="fa-solid fa-chevron-right text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Days Header -->
+        <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 font-medium mb-2">
+          <span>Mon</span>
+          <span>Tue</span>
+          <span>Wed</span>
+          <span>Thu</span>
+          <span>Fri</span>
+          <span>Sat</span>
+          <span>Sun</span>
+        </div>
+
+        <!-- Dates Grid -->
+        <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center text-xs font-semibold">
+          <!-- Rendered via JavaScript -->
+        </div>
+      </div>
+
+      <!-- User Profile Widget (Muncul Di Bawah Tanggal / Kalender Setelah Login) -->
+      <div id="userProfileWidget" class="hidden flex-col gap-3 mt-6 p-5 bg-gradient-to-br from-indigo-50/90 to-slate-50 rounded-3xl border border-indigo-100 shadow-sm transition-all duration-300">
+        <div class="flex items-center justify-between pb-3 border-b border-indigo-100">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs font-bold text-slate-700 tracking-wider uppercase">Informasi Akun</span>
+          </div>
+          <span class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">Aktif</span>
+        </div>
+
+        <div class="space-y-2.5 text-xs text-slate-700 pt-1">
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-slate-400 font-medium shrink-0">Nama</span>
+            <span id="profileName" class="font-bold text-slate-800 text-right">Christine Eva</span>
+          </div>
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-slate-400 font-medium shrink-0">NIPP</span>
+            <span id="profileNipp" class="font-bold text-indigo-600 font-mono text-right">1094881999</span>
+          </div>
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-slate-400 font-medium shrink-0">Jabatan</span>
+            <span id="profileJabatan" class="font-semibold text-slate-700 text-right">PPKA Utama</span>
+          </div>
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-slate-400 font-medium shrink-0">Stasiun</span>
+            <span id="profileStasiun" class="font-semibold text-slate-700 text-right">Stasiun Gambir (GMR)</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ================= LOGIN MODAL (DIUBAH) ================= -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-100 transform scale-95 transition-transform duration-300" id="loginModalCard">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h3 class="text-xl font-bold text-slate-800">Masuk ke IMO Tools</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Isi data akun Anda di bawah ini</p>
+        </div>
+        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+      
+      <form onsubmit="handleLoginSubmit(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap</label>
+          <input type="text" id="loginNameInput" placeholder="Contoh: Christine Eva" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
         </div>
         <div>
-          <div class="ph-user-chip-name">Tamu</div>
-          <div class="ph-user-chip-role">Masuk / Login</div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">NIPP</label>
+          <input type="text" id="loginNippInput" placeholder="Contoh: 1094881999" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition font-mono" />
         </div>
-      </a>
-    </header>
-
-    <div class="ph-shell-content">
-
-      <div class="hero">
-        <div class="hero-shapes">
-          <div class="hero-doc d1"></div>
-          <div class="hero-doc d2"></div>
-          <div class="hero-doc d3"></div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Jabatan</label>
+          <input type="text" id="loginJabatanInput" placeholder="Contoh: PPKA Utama" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
         </div>
-        <h1>Selamat Datang di PDF Hub</h1>
-        <p>Pilih salah satu alat di bawah untuk mulai bekerja dengan berkas PDF Anda.</p>
-      </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Stasiun / Dipo</label>
+          <input type="text" id="loginStasiunInput" placeholder="Contoh: Stasiun Gambir (GMR)" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+        </div>
 
-      <div class="section-title">
-        <h2>Menu Tersedia</h2>
-        <span>3 alat siap dipakai</span>
-      </div>
-
-      <div class="tool-list">
-
-        <a class="tool-card tool-a" href="imo/index.html">
-          <div class="tool-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-          </div>
-          <div class="tool-body">
-            <div class="tool-title">IMO</div>
-            <div class="tool-desc">Serah Terima Dinas — catat data pegawai, dinas, dan foto, lalu cetak PDF yang otomatis tersimpan ke Google Sheet & Drive.</div>
-          </div>
-          <div class="tool-arrow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
-          </div>
-        </a>
-
-        <a class="tool-card tool-b" href="serah-terima-pdf/index.html">
-          <div class="tool-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-          </div>
-          <div class="tool-body">
-            <div class="tool-title">Serah Terima PDF</div>
-            <div class="tool-desc">Upload semua file Serah Terima dalam format ZIP, gabungkan jadi satu PDF A4 lengkap dengan cover.</div>
-          </div>
-          <div class="tool-arrow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
-          </div>
-        </a>
-
-        <a class="tool-card tool-c" href="convert-per-file-pdf/index.html">
-          <div class="tool-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6M20 20v-6h-6"></path><path d="M20 8a8 8 0 0 0-14.9-3.7M4 16a8 8 0 0 0 14.9 3.7"></path></svg>
-          </div>
-          <div class="tool-body">
-            <div class="tool-title">Convert per File PDF</div>
-            <div class="tool-desc">Gabung 2 halaman PDF jadi satu lembar A4, siap diunduh sebagai JPG.</div>
-          </div>
-          <div class="tool-arrow">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
-          </div>
-        </a>
-
-      </div>
-
-      <p class="footnote">Semua alat berjalan langsung di browser Anda — tidak ada file yang diunggah ke server mana pun.</p>
-
+        <button type="submit" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
+          Masuk Sekarang
+        </button>
+      </form>
     </div>
   </div>
-</div>
 
+  <!-- ================= TOAST NOTIFICATION ================= -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 bg-slate-800 text-white text-xs font-medium px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 flex items-center gap-2">
+    <i class="fa-solid fa-circle-info text-indigo-400"></i>
+    <span id="toastMessage">Pesan Notifikasi</span>
+  </div>
+
+  <!-- ================= LOGIC JAVASCRIPT ================= -->
+  <script>
+    // Data Kursus
+    const coursesData = [
+      {
+        id: 1,
+        title: "IMO",
+        description: "Buat Data IMO disini, Simpan data IMO harian, dan buat seluruhnya diakhir bulan.",
+        bgColor: "bg-white",
+        borderColor: "border-purple-100",
+        accentColor: "bg-indigo-600",
+        bgGradient: "from-blue-50 to-indigo-50",
+        href: "imo/index.html"
+      },
+      {
+        id: 2,
+        title: "Serah Terima PDF",
+        description: "Download Serah Terima Satu Bulan di Rolink format ZIP, upload beberapa ZIP dari dinasan PPKA/PLR/PRS/PJL, dan jadikan satu dalam format PDF.",
+        bgColor: "bg-purple-50/70",
+        borderColor: "border-purple-200",
+        accentColor: "bg-purple-600",
+        bgGradient: "from-purple-50 to-pink-50",
+        href: "serah-terima-pdf/index.html"
+      },
+      {
+        id: 3,
+        title: "PDF to A4",
+        description: "Rubah serah terima harian PDF dari Rolink jadi satu dalam format JPG/Gambar.",
+        bgColor: "bg-rose-50/60",
+        borderColor: "border-rose-200",
+        accentColor: "bg-rose-500",
+        bgGradient: "from-rose-50 to-orange-50",
+        href: "pdf-to-a4/index.html"
+      }
+    ];
+
+    // Peta tab menu -> halaman tools (dipakai oleh selectTab)
+    const tabRoutes = {
+      imo: "imo/index.html",
+      "serah-terima-pdf": "serah-terima-pdf/index.html",
+      "pdf-to-a4": "pdf-to-a4/index.html"
+    };
+
+    // Variabel Kalender Realtime
+    let calendarDate = new Date();
+    let selectedCalendarDay = calendarDate.getDate();
+
+    const monthNames = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+
+    // Render Kalender Realtime Dynamic
+    function renderCalendar() {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+
+      // Header Bulan & Tahun
+      document.getElementById('calendarMonthYear').innerText = `${monthNames[month].slice(0, 3)} ${year}`;
+
+      const calendarGrid = document.getElementById('calendarGrid');
+      calendarGrid.innerHTML = '';
+
+      // Hari pertama pada bulan (dimulai dari Senin=0 hingga Minggu=6)
+      const firstDay = new Date(year, month, 1);
+      const startingDayIndex = (firstDay.getDay() + 6) % 7; 
+      const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+      const today = new Date();
+      const isCurrentRealMonth = today.getFullYear() === year && today.getMonth() === month;
+
+      // Slot kosong sebelum tanggal 1
+      for (let i = 0; i < startingDayIndex; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'h-8 w-8';
+        calendarGrid.appendChild(emptyCell);
+      }
+
+      // Render tanggal-tanggal
+      for (let day = 1; day <= totalDaysInMonth; day++) {
+        const isToday = isCurrentRealMonth && today.getDate() === day;
+        const isSelected = selectedCalendarDay === day && isCurrentRealMonth;
+
+        let activeClasses = 'text-slate-600 hover:bg-slate-200/60';
+        if (isToday) {
+          activeClasses = 'bg-[#5B58CA] text-white shadow-md font-bold ring-2 ring-indigo-300';
+        } else if (isSelected) {
+          activeClasses = 'bg-indigo-100 text-indigo-700 font-bold';
+        }
+
+        const button = document.createElement('button');
+        button.className = `h-8 w-8 mx-auto flex items-center justify-center rounded-full transition text-xs ${activeClasses}`;
+        button.innerText = day;
+        button.onclick = () => {
+          selectedCalendarDay = day;
+          renderCalendar();
+          showToast(`Tanggal ${day} ${monthNames[month]} ${year} dipilih`);
+        };
+
+        calendarGrid.appendChild(button);
+      }
+    }
+
+    function prevMonth() {
+      calendarDate.setMonth(calendarDate.getMonth() - 1);
+      renderCalendar();
+    }
+
+    function nextMonth() {
+      calendarDate.setMonth(calendarDate.getMonth() + 1);
+      renderCalendar();
+    }
+
+    // Render Kartu Kursus
+    function renderCourses(courses) {
+      const container = document.getElementById('courseListContainer');
+      container.innerHTML = '';
+
+      if (courses.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300">
+            <p class="text-slate-400 font-medium text-sm">Tidak ada tools yang ditemukan.</p>
+          </div>
+        `;
+        return;
+      }
+
+      courses.forEach(course => {
+        const card = document.createElement('div');
+        card.className = `relative p-6 rounded-3xl border ${course.borderColor} ${course.bgColor} shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group flex flex-col md:flex-row items-center justify-between gap-6`;
+        card.onclick = () => { window.location.href = course.href; };
+
+        card.innerHTML = `
+          <!-- Left Vector Illustration Mockup -->
+          <div class="w-full md:w-48 h-32 rounded-2xl bg-gradient-to-br ${course.bgGradient} flex items-center justify-center p-4 relative overflow-hidden shrink-0">
+            <div class="w-28 h-20 bg-white rounded-lg shadow-md p-2 border border-slate-100 flex flex-col justify-between">
+              <div class="flex items-center gap-1.5">
+                <div class="w-2 h-2 rounded-full bg-red-400"></div>
+                <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                <div class="w-2 h-2 rounded-full bg-green-400"></div>
+              </div>
+              <div class="space-y-1 my-auto">
+                <div class="h-2 w-3/4 bg-slate-200 rounded"></div>
+                <div class="h-2 w-1/2 bg-slate-200 rounded"></div>
+              </div>
+              <div class="h-1.5 w-full bg-slate-100 rounded"></div>
+            </div>
+            <div class="absolute bottom-2 right-4 w-12 h-10 bg-white/90 rounded-md shadow-lg border border-slate-100 p-1 flex items-center justify-center">
+              <div class="w-full h-full bg-indigo-100/50 rounded flex items-center justify-center">
+                <div class="w-3 h-3 border-2 border-indigo-400 rounded-full"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle Course Content -->
+          <div class="flex-1 space-y-2 text-left w-full">
+            <h2 class="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition">
+              ${course.title}
+            </h2>
+            <p class="text-xs md:text-sm text-slate-600 leading-relaxed">
+              ${course.description}
+            </p>
+          </div>
+
+          <!-- Right Action Button -->
+          <div class="self-end md:self-center">
+            <button class="w-11 h-11 rounded-full ${course.accentColor} text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition duration-300">
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // Search Logic
+    function handleSearch() {
+      const searchVal = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = coursesData.filter(course => 
+        course.title.toLowerCase().includes(searchVal) || 
+        course.description.toLowerCase().includes(searchVal)
+      );
+      renderCourses(filtered);
+    }
+
+    // Modal Login Logic
+    function openLoginModal() {
+      const modal = document.getElementById('loginModal');
+      const card = document.getElementById('loginModalCard');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }
+
+    function closeLoginModal() {
+      const modal = document.getElementById('loginModal');
+      const card = document.getElementById('loginModalCard');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+    }
+
+    // Helper membuat inisial nama
+    function getInitials(name) {
+      if (!name) return 'U';
+      const parts = name.trim().split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+
+    // Submit Handler Login
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+
+      // Ambil data dari input form
+      const nameVal = document.getElementById('loginNameInput').value.trim() || 'Christine Eva';
+      const nippVal = document.getElementById('loginNippInput').value.trim() || '1094881999';
+      const jabatanVal = document.getElementById('loginJabatanInput').value.trim() || 'PPKA Utama';
+      const stasiunVal = document.getElementById('loginStasiunInput').value.trim() || 'Stasiun Gambir (GMR)';
+
+      // 1. Update data pada widget profil di bawah kalender
+      document.getElementById('profileName').innerText = nameVal;
+      document.getElementById('profileNipp').innerText = nippVal;
+      document.getElementById('profileJabatan').innerText = jabatanVal;
+      document.getElementById('profileStasiun').innerText = stasiunVal;
+
+      // 2. Tampilkan widget profil di bawah kalender
+      const profileWidget = document.getElementById('userProfileWidget');
+      profileWidget.classList.remove('hidden');
+      profileWidget.classList.add('flex');
+
+      // 3. Tampilkan User Badge di pojok kanan atas menggantikan tombol "Masuk / Login"
+      const initials = getInitials(nameVal);
+      const loginBtnContainer = document.getElementById('loginBtnContainer');
+      loginBtnContainer.innerHTML = `
+        <div class="flex items-center justify-between w-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-2.5 shadow-sm">
+          <div class="flex items-center gap-2.5 overflow-hidden">
+            <div class="w-9 h-9 rounded-xl bg-[#5B58CA] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+              ${initials}
+            </div>
+            <div class="truncate">
+              <p class="text-xs font-bold text-slate-800 truncate">${nameVal}</p>
+              <p class="text-[10px] text-indigo-600 font-semibold font-mono truncate">NIPP: ${nippVal}</p>
+            </div>
+          </div>
+          <button 
+            onclick="handleLogout()" 
+            title="Keluar / Logout"
+            class="p-2 text-rose-500 hover:bg-rose-100/70 active:scale-95 rounded-xl transition shrink-0 ml-1">
+            <i class="fa-solid fa-right-from-bracket text-sm"></i>
+          </button>
+        </div>
+      `;
+
+      closeLoginModal();
+      showToast(`Selamat datang, ${nameVal}!`);
+    }
+
+    function handleLogout() {
+      // Sembunyikan widget profil di bawah kalender
+      const profileWidget = document.getElementById('userProfileWidget');
+      profileWidget.classList.add('hidden');
+      profileWidget.classList.remove('flex');
+
+      // Kembalikan tombol di pojok kanan atas ke "Masuk / Login"
+      const loginBtnContainer = document.getElementById('loginBtnContainer');
+      loginBtnContainer.innerHTML = `
+        <button 
+          onclick="openLoginModal()" 
+          id="loginBtn" 
+          class="w-full flex items-center justify-center gap-2.5 px-5 py-2.5 bg-[#5B58CA] hover:bg-[#4a47b5] active:scale-95 text-white rounded-full font-semibold text-sm shadow-md shadow-indigo-200 transition-all duration-200">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Masuk / Login</span>
+        </button>
+      `;
+
+      showToast('Anda telah keluar dari akun.');
+    }
+
+    // Tab Navigation
+    function selectTab(tabId) {
+      // Tools punya halaman sendiri — arahkan langsung ke sana.
+      if (tabRoutes[tabId]) {
+        window.location.href = tabRoutes[tabId];
+        return;
+      }
+
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.classList.remove('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md');
+        btn.classList.add('text-indigo-100/70', 'font-medium');
+      });
+
+      const activeBtn = document.getElementById(`nav-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md');
+        activeBtn.classList.remove('text-indigo-100/70', 'font-medium');
+      }
+
+      if (tabId === 'settings' || tabId === 'directory') {
+        showToast(`Halaman "${tabId}" belum tersedia.`);
+      }
+    }
+
+    // Toast Notification Helper
+    let toastTimeout;
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMessage');
+      toastMsg.innerText = msg;
+
+      toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+      }, 3000);
+    }
+
+    // Initial Load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderCalendar();
+      renderCourses(coursesData);
+    });
+  </script>
 </body>
 </html>
