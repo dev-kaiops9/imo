@@ -15,8 +15,8 @@
 
 const Preview = {
   open(data, photos) {
-    const columns = CONFIG.getTableColumns(data.mapping.tabel);
     const targetKey = CONFIG.getTargetPhotoKey(data.jenisSerahTerima);
+    const columns = CONFIG.getTableColumns(data.mapping.tabel, targetKey);
     const tanggalLabel = this._formatTanggalPanjang(data.tanggal);
 
     const photoByKey = {

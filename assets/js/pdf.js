@@ -22,16 +22,22 @@ const PdfBuilder = {
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const marginX = 12;
+    const marginY = 8; // tidak ada header/footer halaman lain, jadi tabel boleh
+                       // mepet ke atas & bawah — cuma sisakan margin cetak tipis.
     const tableW = pageW - marginX * 2;
     const rowHeaderH = 12;
-    const rowBodyH = 100; // tinggi baris tetap & wajar — sebelumnya dipaksa mengisi
-                          // seluruh sisa halaman, jadi foto & teks terlihat "ditarik"
-                          // memanjang ke atas/bawah. Tabel sekarang diposisikan
-                          // di tengah halaman secara vertikal.
-    const tableTop = (pageH - (rowHeaderH + rowBodyH)) / 2;
+    const rowBodyH = pageH - marginY * 2 - rowHeaderH; // isi hampir seluruh
+                          // tinggi halaman (sebelumnya nilai tetap 140mm dengan
+                          // tabel dipusatkan vertikal, menyisakan ~29mm kosong
+                          // di atas & bawah). Foto jadi lebih besar lagi.
+    const tableTop = marginY;
 
     // ---- Struktur kolom (sumber tunggal: CONFIG, sama dengan preview) ----
-    const columns = CONFIG.getTableColumns(data.mapping.tabel);
+    // targetKey dihitung lebih dulu supaya lebar kolom "Awal Dinas"/"Akhir
+    // Dinas" bisa digeser ke kolom yang benar-benar dipakai (lihat komentar
+    // di CONFIG.getTableColumns).
+    const targetKey = CONFIG.getTargetPhotoKey(data.jenisSerahTerima);
+    const columns = CONFIG.getTableColumns(data.mapping.tabel, targetKey);
     let x = marginX;
     columns.forEach((c) => {
       c.x = x;
@@ -60,24 +66,20 @@ const PdfBuilder = {
 
     const tanggalLabel = this._formatTanggalPanjang(data.tanggal);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(9.5);
+    doc.setFontSize(14); // diperbesar dari 9.5 — teks Hari/Tanggal & Kegiatan jadi
+                         // lebih terbaca; kalau tidak muat 1 baris, otomatis
+                         // pecah ke beberapa baris (lihat _drawCenteredText) tapi
+                         // tetap di dalam batas lebar kolom.
     columns.forEach((c) => {
       if (c.key === "hari") {
-        doc.text(tanggalLabel, c.x + c.width / 2, bodyTop + rowBodyH / 2, {
-          align: "center",
-          maxWidth: c.width - 4,
-        });
+        this._drawCenteredText(doc, tanggalLabel, c, bodyTop, rowBodyH);
       }
       if (c.key === "kegiatan") {
-        doc.text(data.kegiatan || "", c.x + c.width / 2, bodyTop + rowBodyH / 2, {
-          align: "center",
-          maxWidth: c.width - 4,
-        });
+        this._drawCenteredText(doc, data.kegiatan || "", c, bodyTop, rowBodyH);
       }
     });
 
     // ---- Tempatkan foto sesuai mapping ----
-    const targetKey = CONFIG.getTargetPhotoKey(data.jenisSerahTerima);
     const targetCol = columns.find((c) => c.key === targetKey);
     const dokCol = columns.find((c) => c.key === "dok");
 
@@ -100,6 +102,26 @@ const PdfBuilder = {
     const base64 = doc.output("datauristring").split(",")[1];
 
     return { blob, base64, fileName };
+  },
+
+  /**
+   * Menulis teks di tengah sel (horizontal & vertikal), memecah ke beberapa
+   * baris otomatis kalau tidak muat dalam lebar kolom (dipakai untuk
+   * Hari/Tanggal & Kegiatan yang sekarang pakai font lebih besar).
+   */
+  _drawCenteredText(doc, text, col, bodyTop, rowBodyH) {
+    const maxWidth = col.width - 4;
+    const lines = doc.splitTextToSize(text || "", maxWidth);
+    const fontSize = doc.getFontSize(); // pt
+    const lineHeight = (fontSize / doc.internal.scaleFactor) * 1.15; // mm, per baris
+    const totalHeight = lines.length * lineHeight;
+    const startY = bodyTop + rowBodyH / 2 - totalHeight / 2 + lineHeight * 0.8;
+
+    lines.forEach((line, i) => {
+      doc.text(line, col.x + col.width / 2, startY + i * lineHeight, {
+        align: "center",
+      });
+    });
   },
 
   /**

@@ -61,13 +61,27 @@ const CONFIG = {
   // Struktur kolom tabel — dipakai bersama oleh preview.js (tampilan di
   // layar) dan pdf.js (hasil akhir), supaya keduanya SELALU identik.
   // "w" = proporsi lebar kolom (total per tabel harus berjumlah 1).
-  getTableColumns(tabel) {
+  //
+  // "targetKey" (opsional) = key kolom yang menampung foto serah terima
+  // untuk data ini ("awal"/"akhir"/"gabung"). Khusus tabel_dinas_tutup,
+  // dipakai untuk menggeser alokasi lebar antar kolom "Awal Dinas" dan
+  // "Akhir Dinas": kolom yang jadi tujuan foto diperlebar, kolom
+  // pasangannya (yang kosong, tidak dipakai untuk jenis serah terima ini)
+  // disempitkan — total lebar keduanya tetap sama seperti sebelumnya,
+  // jadi kolom lain (Hari/Tanggal, Kegiatan, Dokumentasi Kegiatan) tidak
+  // ikut terpengaruh. tabel_dinas_buka tidak punya sepasang kolom seperti
+  // ini (cuma 1 kolom tujuan foto), jadi lebarnya tetap statis.
+  getTableColumns(tabel, targetKey) {
     if (tabel === "tabel_dinas_tutup") {
+      const WIDE = 0.34;
+      const NARROW = 0.10;
+      const awalW = targetKey === "akhir" ? NARROW : WIDE;
+      const akhirW = targetKey === "akhir" ? WIDE : NARROW;
       return [
         { key: "hari", label: "Hari, Tanggal", w: 0.14 },
         { key: "kegiatan", label: "Kegiatan", w: 0.10 },
-        { key: "awal", label: "Awal Dinas", w: 0.22 },
-        { key: "akhir", label: "Akhir Dinas", w: 0.22 },
+        { key: "awal", label: "Awal Dinas", w: awalW },
+        { key: "akhir", label: "Akhir Dinas", w: akhirW },
         { key: "dok", label: "Dokumentasi Kegiatan", w: 0.32 },
       ];
     }
