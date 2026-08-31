@@ -23,7 +23,7 @@ const summaryEl = document.getElementById('summary');
 const downloadRow = document.getElementById('downloadRow');
 const downloadBtn = document.getElementById('downloadBtn');
 
-let selectedDpi = 300;
+let selectedDpi = 150; // default rendah agar ringan di PC spek rendah; user tetap bisa naikkan ke 300/450
 
 /* ---- Form Data Cover: isi dropdown Bulan & Tahun, paksa huruf besar Nama Stasiun ---- */
 const BULAN_LIST = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
@@ -259,6 +259,7 @@ async function buildAttendanceCanvas(file, dpi){
   fctx.imageSmoothingEnabled = true;
   fctx.imageSmoothingQuality = 'high';
   fctx.drawImage(work, 0, 0, work.width, work.height, offsetX, offsetY, drawW, drawH);
+  freeCanvas(work); // kanvas rotasi sementara tidak diperlukan lagi setelah dipindah ke 'final'
   return final;
 }
 
@@ -352,6 +353,14 @@ function log(msg, kind){
 }
 function yieldUI(){ return new Promise(r => setTimeout(r, 0)); }
 
+// Melepas buffer piksel kanvas besar (c1/c2/crop/stack) begitu tidak dipakai lagi,
+// supaya browser bisa garbage-collect lebih cepat dan RAM tidak menumpuk di PC spek rendah.
+function freeCanvas(c){
+  if(!c) return;
+  c.width = 0;
+  c.height = 0;
+}
+
 async function runPipeline(){
   isProcessing = true;
   processBtn.disabled = true;
@@ -436,18 +445,28 @@ async function runPipeline(){
         const page1 = await pdf.getPage(1);
         const c1 = renderCanvasForPage(page1, scale);
         await drawPageToCanvas(page1, c1, scale);
+        await yieldUI(); // jeda setelah render halaman 1 (operasi berat di DPI tinggi)
 
         const page2 = await pdf.getPage(2);
         const c2 = renderCanvasForPage(page2, scale);
         await drawPageToCanvas(page2, c2, scale);
+        await yieldUI(); // jeda setelah render halaman 2
 
         const t1 = cropCanvas(c1, detectContentBounds(c1));
         const t2 = cropCanvas(c2, detectContentBounds(c2));
+        freeCanvas(c1); // kanvas mentah tidak dipakai lagi setelah di-crop
+        freeCanvas(c2);
 
         const finalCanvas = composeOntoA4(t1, t2, dpi);
+        freeCanvas(t1); // kanvas hasil crop tidak dipakai lagi setelah digabung
+        freeCanvas(t2);
+        await yieldUI(); // jeda setelah compose (juga operasi berat)
+
         const wmm = finalCanvas.width / dpi * 25.4;
         const hmm = finalCanvas.height / dpi * 25.4;
         const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.92);
+        freeCanvas(finalCanvas); // sudah jadi dataUrl, kanvas besar tidak diperlukan lagi
+        await yieldUI(); // jeda setelah encode JPEG (paling berat & sinkron)
 
         results.push({
           dateKey: cand.dateKey,
@@ -491,6 +510,8 @@ async function runPipeline(){
       await yieldUI();
       const coverCanvas = await buildCoverCanvas(coverData, selectedDpi);
       pdfPages.push({ dataUrl: coverCanvas.toDataURL('image/jpeg', 0.95), wmm: 210, hmm: 297, orientation: 'p' });
+      freeCanvas(coverCanvas);
+      await yieldUI();
     }
 
     // ---- Halaman 2 dst: Daftar Hadir / Daftar Dinasan (landscape, auto-rotate jika potret) ----
@@ -501,9 +522,11 @@ async function runPipeline(){
         try{
           const attCanvas = await buildAttendanceCanvas(attendancePhotos[i].file, selectedDpi);
           pdfPages.push({ dataUrl: attCanvas.toDataURL('image/jpeg', 0.92), wmm: 297, hmm: 210, orientation: 'l' });
+          freeCanvas(attCanvas);
         }catch(err){
           log('Daftar Hadir "' + attendancePhotos[i].file.name + '" gagal diproses: ' + err.message, 'err');
         }
+        await yieldUI();
       }
     }
 
@@ -690,6 +713,7 @@ function composeOntoA4(canvas1, canvas2, dpi){
   fctx.imageSmoothingEnabled = true;
   fctx.imageSmoothingQuality = 'high';
   fctx.drawImage(stack, 0, 0, stackWidth, stackHeight, offsetX, offsetY, drawW, drawH);
+  freeCanvas(stack); // kanvas tumpukan sementara tidak diperlukan lagi setelah dipindah ke 'final'
 
   return final;
 }
