@@ -10,25 +10,70 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
+<link rel="stylesheet" href="../assets/css/shell.css" />
 <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 <body>
 
+<div class="ph-shell">
 
-<header class="topbar">
-  <div class="topbar__brand">
-    <div class="topbar__mark">ST</div>
-    <div>
-      <div class="topbar__title">Serah Terima Dinas</div>
-      <div class="topbar__subtitle">Sistem Pencatatan Dinas Stasiun</div>
+  <aside class="ph-sidebar">
+    <div class="ph-sidebar-logo">
+      <div class="ph-sidebar-logo-mark">PH</div>
+      <div>
+        <div class="ph-sidebar-logo-text">PDF Hub</div>
+        <div class="ph-sidebar-logo-tag">Built by 69451</div>
+      </div>
     </div>
-  </div>
-  <a href="../index.html" style="display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:inherit;text-decoration:none;opacity:0.75;margin-right:12px;">
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
-    PDF Hub
-  </a>
-  <div class="topbar__clock" id="liveClock">—</div>
-</header>
+
+    <nav class="ph-sidebar-nav">
+      <span class="ph-sidebar-label">Menu</span>
+      <a href="../index.html" class="ph-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        Dashboard
+      </a>
+      <a href="index.html" class="ph-nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        IMO
+      </a>
+      <a href="../serah-terima-pdf/index.html" class="ph-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+        Serah Terima PDF
+      </a>
+      <a href="../convert-per-file-pdf/index.html" class="ph-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6M20 20v-6h-6"></path><path d="M20 8a8 8 0 0 0-14.9-3.7M4 16a8 8 0 0 0 14.9 3.7"></path></svg>
+        Convert per File PDF
+      </a>
+    </nav>
+
+    <div class="ph-sidebar-spacer"></div>
+
+    <a href="#" class="ph-sidebar-login">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+      Login
+    </a>
+    <div class="ph-sidebar-login-hint">Fitur akun & login akan segera hadir.</div>
+  </aside>
+
+  <div class="ph-shell-main">
+
+    <header class="ph-topbar-shell">
+      <div>
+        <h1 class="ph-topbar-shell-title">IMO — Serah Terima Dinas</h1>
+        <div class="ph-topbar-shell-sub" id="liveClock">—</div>
+      </div>
+      <a href="#" class="ph-user-chip">
+        <div class="ph-user-chip-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <div>
+          <div class="ph-user-chip-name">Tamu</div>
+          <div class="ph-user-chip-role">Masuk / Login</div>
+        </div>
+      </a>
+    </header>
+
+    <div class="ph-shell-content">
 
 <div class="shell">
 
@@ -240,27 +285,10 @@
   </main>
 
   </div>
+</div>
 
-  <!-- ==================== INFO RAIL: VISUAL DASHBOARD ==================== -->
-  <aside class="insight-rail" aria-label="Informasi aplikasi">
-    <section class="rail-card">
-      <div class="rail-label">Pusat Aktivitas</div>
-      <h3 class="rail-title">Serah Terima Dinas</h3>
-      <p class="rail-copy">Selesaikan pencatatan dalam empat langkah sederhana, dari data pegawai sampai dokumen tersimpan.</p>
-      <div class="rail-progress"><span></span></div>
-      <p class="rail-copy">Alur kerja terstruktur &amp; mudah dipantau.</p>
-    </section>
-    <section class="rail-card">
-      <div class="rail-label">Navigasi Cepat</div>
-      <div class="rail-stat"><i class="rail-dot"></i><div><strong>Isi Serah Terima</strong><span>Form pencatatan dinas</span></div></div>
-      <div class="rail-stat"><i class="rail-dot plum"></i><div><strong>Cek PDF</strong><span>Temukan dokumen tersimpan</span></div></div>
-      <div class="rail-stat"><i class="rail-dot rose"></i><div><strong>Preview</strong><span>Periksa sebelum simpan</span></div></div>
-    </section>
-    <section class="rail-card">
-      <div class="rail-label">Ringkasan</div>
-      <div class="rail-mini"><div><b>4</b><small>Tahap proses</small></div><div><b>PDF</b><small>Dokumen akhir</small></div></div>
-    </section>
-  </aside>
+    </div>
+  </div>
 </div>
 
 <!-- ==================== PREVIEW OVERLAY ==================== -->

@@ -9,24 +9,72 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="../assets/css/shell.css">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
 
-<div class="page">
+<div class="ph-shell">
 
-  <div class="topbar">
-    <div class="logo">PH</div>
-    <div>
-      <div class="brand-name">PDF Hub</div>
-      <div class="brand-tag">Built by 69451</div>
+  <aside class="ph-sidebar">
+    <div class="ph-sidebar-logo">
+      <div class="ph-sidebar-logo-mark">PH</div>
+      <div>
+        <div class="ph-sidebar-logo-text">PDF Hub</div>
+        <div class="ph-sidebar-logo-tag">Built by 69451</div>
+      </div>
     </div>
-  </div>
 
-  <a class="back-link" href="../index.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg>
-    Kembali ke Beranda
-  </a>
+    <nav class="ph-sidebar-nav">
+      <span class="ph-sidebar-label">Menu</span>
+      <a href="../index.html" class="ph-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="7" height="7" rx="1.5"></rect><rect x="14" y="14" width="7" height="7" rx="1.5"></rect></svg>
+        Dashboard
+      </a>
+      <a href="../imo/index.html" class="ph-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+        IMO
+      </a>
+      <a href="index.html" class="ph-nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+        Serah Terima PDF
+      </a>
+      <a href="../convert-per-file-pdf/index.html" class="ph-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4v6h6M20 20v-6h-6"></path><path d="M20 8a8 8 0 0 0-14.9-3.7M4 16a8 8 0 0 0 14.9 3.7"></path></svg>
+        Convert per File PDF
+      </a>
+    </nav>
+
+    <div class="ph-sidebar-spacer"></div>
+
+    <a href="#" class="ph-sidebar-login">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+      Login
+    </a>
+    <div class="ph-sidebar-login-hint">Fitur akun & login akan segera hadir.</div>
+  </aside>
+
+  <div class="ph-shell-main">
+
+    <header class="ph-topbar-shell">
+      <div>
+        <h1 class="ph-topbar-shell-title">Serah Terima PDF</h1>
+        <div class="ph-topbar-shell-sub">Gabungkan PDF Serah Terima dari ZIP jadi satu PDF A4</div>
+      </div>
+      <a href="#" class="ph-user-chip">
+        <div class="ph-user-chip-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <div>
+          <div class="ph-user-chip-name">Tamu</div>
+          <div class="ph-user-chip-role">Masuk / Login</div>
+        </div>
+      </a>
+    </header>
+
+    <div class="ph-shell-content">
+
+<div class="page">
 
   <div class="heading">
     <h1>Serah Terima PDF</h1>
@@ -138,6 +186,10 @@
 
   <p class="footnote">Semua proses berjalan di browser Anda — file ZIP dan PDF tidak diunggah ke server mana pun. Nama file harus diawali "Serah Terima" dan mengandung tanggal DD-MM-YYYY serta ID dalam kurung, misal "Serah Terima PPKA 01-08-2026(367891).pdf" — bagian tengah bebas apa saja.</p>
 
+</div>
+
+    </div>
+  </div>
 </div>
 
 <script src="assets/js/app.js"></script>
