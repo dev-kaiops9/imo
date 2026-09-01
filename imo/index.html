@@ -15,6 +15,108 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
 <link rel="stylesheet" href="assets/css/style.css" />
+
+<!-- ==================== MODE SWITCHER (Stasiun Kedudukan / Stasiun Tempat
+     Wakilan) — style ditulis di sini (bukan di assets/css/style.css) supaya
+     tidak perlu menyentuh file CSS terpisah. Tampilan "glass shadow":
+     latar semi-transparan + blur + shadow lembut. ==================== -->
+<style>
+  .mode-switcher {
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    margin-bottom: 20px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow:
+      0 8px 28px rgba(79, 70, 229, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+  .mode-switcher__tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 14px;
+    border: none;
+    border-radius: 13px;
+    background: transparent;
+    color: #64748b;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  }
+  .mode-switcher__tab:hover:not(.is-active) {
+    background: rgba(99, 102, 241, 0.08);
+    color: #4f46e5;
+  }
+  .mode-switcher__tab.is-active {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+  }
+  .mode-switcher__tab:active { transform: scale(0.98); }
+  .mode-switcher__badge {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.35);
+  }
+  .mode-switcher__tab:not(.is-active) .mode-switcher__badge {
+    background: rgba(148, 163, 184, 0.18);
+    color: #64748b;
+  }
+
+  .mode-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    padding: 72px 24px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px dashed rgba(99, 102, 241, 0.35);
+    box-shadow:
+      0 8px 28px rgba(79, 70, 229, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    color: #475569;
+  }
+  .mode-placeholder__icon {
+    width: 52px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15));
+    color: #6366f1;
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+  .mode-placeholder__title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #334155;
+  }
+  .mode-placeholder__text {
+    font-size: 13px;
+    color: #94a3b8;
+    max-width: 320px;
+  }
+</style>
 </head>
 <body>
 
@@ -30,6 +132,24 @@
        yang muncul otomatis setelah login — jadi sidebar internal & tab
        menu di halaman ini tidak diperlukan lagi. -->
   <div class="content">
+
+  <!-- ==================== MODE SWITCHER ====================
+       Dua mode form: "Stasiun Kedudukan" (form yang sudah ada, aktif
+       secara default) dan "Stasiun Tempat Wakilan" (masih placeholder,
+       belum ada form-nya). Pilihan mode murni tampilan sisi client —
+       tidak memanggil backend maupun mengubah data yang sudah ada. -->
+  <div class="mode-switcher" id="modeSwitcher" role="tablist" aria-label="Mode form serah terima">
+    <button type="button" class="mode-switcher__tab is-active" id="modeTabKedudukan" data-mode="kedudukan" role="tab" aria-selected="true">
+      Stasiun Kedudukan
+    </button>
+    <button type="button" class="mode-switcher__tab" id="modeTabWakilan" data-mode="wakilan" role="tab" aria-selected="false">
+      Stasiun Tempat Wakilan
+      <span class="mode-switcher__badge">SEGERA</span>
+    </button>
+  </div>
+
+  <!-- ==================== MODE: STASIUN KEDUDUKAN ==================== -->
+  <div id="modeContentKedudukan">
 
   <!-- ==================== IDENTITAS AKTIF (dari sesi Login IMO Tools) ====================
        Menggantikan form "Data Pegawai" (langkah 1 lama): Nama/NIPP/Jabatan/Stasiun
@@ -190,6 +310,19 @@
   </main>
 
   </div>
+  <!-- /modeContentKedudukan -->
+
+  <!-- ==================== MODE: STASIUN TEMPAT WAKILAN ====================
+       Form untuk mode ini belum dibuat — sengaja hanya placeholder dulu. -->
+  <div class="hidden" id="modeContentWakilan">
+    <div class="mode-placeholder">
+      <div class="mode-placeholder__icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+      <div class="mode-placeholder__title">Masih Tahap Pengembangan</div>
+      <div class="mode-placeholder__text">Form untuk mode Stasiun Tempat Wakilan sedang disiapkan. Silakan gunakan mode Stasiun Kedudukan untuk saat ini.</div>
+    </div>
+  </div>
+
+  </div>
 </div>
 
 <!-- ==================== PREVIEW OVERLAY ==================== -->
@@ -231,5 +364,33 @@
 <script src="assets/js/pdf.js"></script>
 <script src="assets/js/preview.js"></script>
 <script src="assets/js/main.js"></script>
+
+<!-- ==================== MODE SWITCHER SCRIPT ====================
+     Toggle tampilan antara mode "Stasiun Kedudukan" (form yang sudah
+     ada) dan "Stasiun Tempat Wakilan" (placeholder). Berdiri sendiri,
+     tidak menyentuh logic form.js/main.js lain. -->
+<script>
+  (function () {
+    var tabKedudukan = document.getElementById('modeTabKedudukan');
+    var tabWakilan = document.getElementById('modeTabWakilan');
+    var contentKedudukan = document.getElementById('modeContentKedudukan');
+    var contentWakilan = document.getElementById('modeContentWakilan');
+
+    function setMode(mode) {
+      var isKedudukan = mode === 'kedudukan';
+
+      tabKedudukan.classList.toggle('is-active', isKedudukan);
+      tabWakilan.classList.toggle('is-active', !isKedudukan);
+      tabKedudukan.setAttribute('aria-selected', String(isKedudukan));
+      tabWakilan.setAttribute('aria-selected', String(!isKedudukan));
+
+      contentKedudukan.classList.toggle('hidden', !isKedudukan);
+      contentWakilan.classList.toggle('hidden', isKedudukan);
+    }
+
+    tabKedudukan.addEventListener('click', function () { setMode('kedudukan'); });
+    tabWakilan.addEventListener('click', function () { setMode('wakilan'); });
+  })();
+</script>
 </body>
 </html>
