@@ -341,6 +341,9 @@ function setPill(stage){
   if(stage === 'processing'){ statusLabel.textContent = 'Memproses'; statusPill.classList.add('processing'); }
   if(stage === 'done'){ statusLabel.textContent = 'Selesai'; statusPill.classList.add('done'); }
   if(stage === 'error'){ statusLabel.textContent = 'Gagal'; statusPill.classList.add('error'); }
+  // Anjuran "jangan tutup tab" hanya relevan selama proses berjalan.
+  const warning = document.getElementById('processingWarning');
+  if(warning){ warning.style.display = (stage === 'processing') ? 'flex' : 'none'; }
 }
 function setStatusMsg(msg){ statusMsg.textContent = msg || ''; }
 function setProgress(pct){ progressFill.style.width = Math.max(0, Math.min(100, pct)) + '%'; }
