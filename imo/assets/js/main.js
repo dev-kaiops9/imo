@@ -93,6 +93,7 @@ function wirePreviewAndSave() {
       document.getElementById("previewOverlay").setAttribute("aria-hidden", "true");
       showResult(true, `Tersimpan sebagai "${pdf.fileName}" di ${CONFIG.DRIVE_ROOT_FOLDER}/${data.stasiun}/${data.jabatan}/${data.nipp}/`);
       Toast.show("Data berhasil disimpan.", "success");
+      notifyParentPdfSaved();
     } catch (err) {
       Busy.hide();
       Toast.show("Gagal menyimpan: " + err.message, "error");
@@ -104,32 +105,6 @@ function showResult(success, text) {
   document.getElementById("resultTitle").textContent = success ? "Tersimpan" : "Gagal Menyimpan";
   document.getElementById("resultText").textContent = text;
   Stepper.goTo(3);
-}
-
-// ---------------------------------------------------------------------
-// Switch tab menu utama: "Isi Serah Terima" <-> "Cek PDF Tersimpan"
-// ---------------------------------------------------------------------
-function wireMainMenu() {
-  const tabForm = document.getElementById("tabIsiForm");
-  const tabCekPdf = document.getElementById("tabCekPdf");
-  const stepperNav = document.getElementById("stepperNav");
-  const mainFormArea = document.getElementById("mainFormArea");
-  const cekPdfArea = document.getElementById("cekPdfArea");
-
-  function activate(mode) {
-    const isForm = mode === "form";
-    tabForm.classList.toggle("is-active", isForm);
-    tabCekPdf.classList.toggle("is-active", !isForm);
-    // Saat mode "form", stepper hanya ditampilkan jika user sudah login
-    // (lihat Form.loadSession — disembunyikan otomatis kalau belum login).
-    stepperNav.classList.toggle("hidden", !isForm || !Form.currentUser);
-    mainFormArea.classList.toggle("hidden", !isForm);
-    cekPdfArea.classList.toggle("hidden", isForm);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
-
-  tabForm.addEventListener("click", () => activate("form"));
-  tabCekPdf.addEventListener("click", () => activate("cekpdf"));
 }
 
 // ---------------------------------------------------------------------
@@ -162,6 +137,22 @@ function startLiveClock() {
 }
 
 // ---------------------------------------------------------------------
+// Beritahu shell dashboard (parent) supaya widget "PDF Tersimpan" di
+// sidebar kanan langsung memuat ulang daftarnya setelah PDF baru
+// tersimpan — tanpa ini, widget hanya akan ter-update saat halaman
+// dashboard di-refresh/login ulang.
+// ---------------------------------------------------------------------
+function notifyParentPdfSaved() {
+  try {
+    if (window.parent && window.parent !== window && typeof window.parent.refreshSavedPdfWidget === "function") {
+      window.parent.refreshSavedPdfWidget();
+    }
+  } catch (err) {
+    // Halaman dimuat di luar shell dashboard (mis. dibuka langsung) — abaikan.
+  }
+}
+
+// ---------------------------------------------------------------------
 // Ajakan login (kalau user belum login lewat dashboard IMO Tools)
 // ---------------------------------------------------------------------
 function wireLoginGate() {
@@ -189,11 +180,9 @@ document.addEventListener("DOMContentLoaded", () => {
   Toast.init();
   Form.init();
   UploadField.init();
-  CekPdf.init();
   wireStepNavigation();
   wirePreviewAndSave();
   wireReset();
-  wireMainMenu();
   wireLoginGate();
   startLiveClock();
   Stepper.goTo(1);

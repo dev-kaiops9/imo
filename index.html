@@ -135,66 +135,28 @@
         </button>
       </div>
 
-      <!-- Calendar Widget Realtime -->
-      <div class="bg-slate-50/70 p-4 rounded-3xl border border-slate-100 shadow-sm">
-        <!-- Month Header -->
-        <div class="flex items-center justify-between mb-4 px-1">
-          <h3 id="calendarMonthYear" class="font-bold text-slate-700 text-base">Des 2024</h3>
-          <div class="flex items-center gap-1">
-            <button onclick="prevMonth()" class="p-1 hover:bg-slate-200 rounded-full transition text-slate-500">
-              <i class="fa-solid fa-chevron-left text-xs"></i>
-            </button>
-            <button onclick="nextMonth()" class="p-1 hover:bg-slate-200 rounded-full transition text-slate-500">
-              <i class="fa-solid fa-chevron-right text-xs"></i>
-            </button>
+      <!-- PDF Tersimpan Widget (menggantikan Kalender & Informasi Akun) —
+           muncul otomatis begitu user login, berisi daftar seluruh PDF
+           serah terima milik user tersebut, terurut tanggal termuda dulu
+           lalu Dinas Pagi -> Siang -> Malam dalam tanggal yang sama. -->
+      <div id="savedPdfWidget" class="hidden flex-col gap-3 p-5 bg-gradient-to-br from-indigo-50/90 to-slate-50 rounded-3xl border border-indigo-100 shadow-sm transition-all duration-300 flex-1 min-h-0">
+        <div class="flex items-center justify-between pb-3 border-b border-indigo-100 shrink-0">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-file-pdf text-indigo-500 text-sm"></i>
+            <span class="text-xs font-bold text-slate-700 tracking-wider uppercase">PDF Tersimpan</span>
           </div>
+          <span id="savedPdfCount" class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">0</span>
         </div>
 
-        <!-- Days Header -->
-        <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 font-medium mb-2">
-          <span>Mon</span>
-          <span>Tue</span>
-          <span>Wed</span>
-          <span>Thu</span>
-          <span>Fri</span>
-          <span>Sat</span>
-          <span>Sun</span>
-        </div>
-
-        <!-- Dates Grid -->
-        <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center text-xs font-semibold">
-          <!-- Rendered via JavaScript -->
+        <div id="savedPdfListWrap" class="flex flex-col gap-2 overflow-y-auto pr-1 max-h-[440px]">
+          <div class="text-center py-6 text-xs text-slate-400">Belum ada PDF tersimpan.</div>
         </div>
       </div>
 
-      <!-- User Profile Widget (Muncul Di Bawah Tanggal / Kalender Setelah Login) -->
-      <div id="userProfileWidget" class="hidden flex-col gap-3 mt-6 p-5 bg-gradient-to-br from-indigo-50/90 to-slate-50 rounded-3xl border border-indigo-100 shadow-sm transition-all duration-300">
-        <div class="flex items-center justify-between pb-3 border-b border-indigo-100">
-          <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-xs font-bold text-slate-700 tracking-wider uppercase">Informasi Akun</span>
-          </div>
-          <span class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">Aktif</span>
-        </div>
-
-        <div class="space-y-2.5 text-xs text-slate-700 pt-1">
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-slate-400 font-medium shrink-0">Nama</span>
-            <span id="profileName" class="font-bold text-slate-800 text-right">Christine Eva</span>
-          </div>
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-slate-400 font-medium shrink-0">NIPP</span>
-            <span id="profileNipp" class="font-bold text-indigo-600 font-mono text-right">1094881999</span>
-          </div>
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-slate-400 font-medium shrink-0">Jabatan</span>
-            <span id="profileJabatan" class="font-semibold text-slate-700 text-right">PPKA Utama</span>
-          </div>
-          <div class="flex items-start justify-between gap-2">
-            <span class="text-slate-400 font-medium shrink-0">Stasiun</span>
-            <span id="profileStasiun" class="font-semibold text-slate-700 text-right">Stasiun Gambir (GMR)</span>
-          </div>
-        </div>
+      <!-- Belum login: ajakan singkat menggantikan slot widget di atas. -->
+      <div id="savedPdfLoggedOutHint" class="p-5 bg-slate-50/70 rounded-3xl border border-dashed border-slate-200 text-center">
+        <i class="fa-solid fa-file-pdf text-slate-300 text-xl mb-2"></i>
+        <p class="text-xs text-slate-400">Login untuk melihat daftar PDF serah terima yang sudah tersimpan.</p>
       </div>
     </aside>
   </div>
@@ -370,75 +332,86 @@
       return json.data;
     }
 
-    // Variabel Kalender Realtime
-    let calendarDate = new Date();
-    let selectedCalendarDay = calendarDate.getDate();
+    // ---------------------------------------------------------------------
+    // Widget "PDF Tersimpan" (sidebar kanan) — daftar riwayat PDF serah
+    // terima milik user yang sedang login, dibaca dari sheet SerahTerima
+    // lewat action "cekPdfTersimpan" (sama seperti dipakai imo/imo).
+    // ---------------------------------------------------------------------
+    const DINAS_ORDER = { "Pagi": 0, "Siang": 1, "Malam": 2 };
 
-    const monthNames = [
-      "Januari", "Februari", "Maret", "April", "Mei", "Juni", 
-      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
-    ];
+    // Format tanggal dari backend selalu "dd-mm-yyyy" (lihat formatTanggal_
+    // di Code.gs) — di-parse ke timestamp supaya bisa diurutkan.
+    function parseTanggalDDMMYYYY(str) {
+      const parts = String(str || '').split('-').map(Number);
+      const dd = parts[0] || 1, mm = parts[1] || 1, yyyy = parts[2] || 1970;
+      return new Date(yyyy, mm - 1, dd).getTime();
+    }
 
-    // Render Kalender Realtime Dynamic
-    function renderCalendar() {
-      const year = calendarDate.getFullYear();
-      const month = calendarDate.getMonth();
+    // Urutkan tanggal termuda (paling awal) dulu, lalu dalam tanggal yang
+    // sama dimulai dari Dinas Pagi -> Siang -> Malam.
+    function sortSavedPdfList(list) {
+      return list.slice().sort((a, b) => {
+        const ta = parseTanggalDDMMYYYY(a.tanggal);
+        const tb = parseTanggalDDMMYYYY(b.tanggal);
+        if (ta !== tb) return ta - tb;
+        const da = DINAS_ORDER.hasOwnProperty(a.dinas) ? DINAS_ORDER[a.dinas] : 99;
+        const db = DINAS_ORDER.hasOwnProperty(b.dinas) ? DINAS_ORDER[b.dinas] : 99;
+        return da - db;
+      });
+    }
 
-      // Header Bulan & Tahun
-      document.getElementById('calendarMonthYear').innerText = `${monthNames[month].slice(0, 3)} ${year}`;
+    function renderSavedPdfList(list) {
+      const wrap = document.getElementById('savedPdfListWrap');
+      document.getElementById('savedPdfCount').innerText = list.length;
 
-      const calendarGrid = document.getElementById('calendarGrid');
-      calendarGrid.innerHTML = '';
-
-      // Hari pertama pada bulan (dimulai dari Senin=0 hingga Minggu=6)
-      const firstDay = new Date(year, month, 1);
-      const startingDayIndex = (firstDay.getDay() + 6) % 7; 
-      const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
-
-      const today = new Date();
-      const isCurrentRealMonth = today.getFullYear() === year && today.getMonth() === month;
-
-      // Slot kosong sebelum tanggal 1
-      for (let i = 0; i < startingDayIndex; i++) {
-        const emptyCell = document.createElement('div');
-        emptyCell.className = 'h-8 w-8';
-        calendarGrid.appendChild(emptyCell);
+      if (!list.length) {
+        wrap.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">Belum ada PDF tersimpan.</div>`;
+        return;
       }
 
-      // Render tanggal-tanggal
-      for (let day = 1; day <= totalDaysInMonth; day++) {
-        const isToday = isCurrentRealMonth && today.getDate() === day;
-        const isSelected = selectedCalendarDay === day && isCurrentRealMonth;
+      wrap.innerHTML = list.map((item) => `
+        <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm">
+          <div class="min-w-0">
+            <p class="text-[11px] font-bold text-slate-700 font-mono truncate">${item.tanggal}</p>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full shrink-0">${item.dinas}</span>
+              <span class="text-[10px] text-slate-500 truncate">${item.jenisSerahTerima}</span>
+            </div>
+          </div>
+          ${item.fileUrl
+            ? `<a href="${item.fileUrl}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-[10px] font-semibold text-white bg-[#5B58CA] hover:bg-[#4a47b5] px-3 py-1.5 rounded-full transition">Lihat PDF</a>`
+            : `<span class="shrink-0 text-[10px] text-slate-300">Tidak ada</span>`}
+        </div>
+      `).join('');
+    }
 
-        let activeClasses = 'text-slate-600 hover:bg-slate-200/60';
-        if (isToday) {
-          activeClasses = 'bg-[#5B58CA] text-white shadow-md font-bold ring-2 ring-indigo-300';
-        } else if (isSelected) {
-          activeClasses = 'bg-indigo-100 text-indigo-700 font-bold';
-        }
+    async function loadSavedPdfWidget(user) {
+      if (!user || !user.nipp) return;
 
-        const button = document.createElement('button');
-        button.className = `h-8 w-8 mx-auto flex items-center justify-center rounded-full transition text-xs ${activeClasses}`;
-        button.innerText = day;
-        button.onclick = () => {
-          selectedCalendarDay = day;
-          renderCalendar();
-          showToast(`Tanggal ${day} ${monthNames[month]} ${year} dipilih`);
-        };
+      document.getElementById('savedPdfLoggedOutHint').classList.add('hidden');
+      const widget = document.getElementById('savedPdfWidget');
+      widget.classList.remove('hidden');
+      widget.classList.add('flex');
 
-        calendarGrid.appendChild(button);
+      const wrap = document.getElementById('savedPdfListWrap');
+      wrap.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">Memuat…</div>`;
+
+      try {
+        const data = await callBackend({ action: 'cekPdfTersimpan', nipp: user.nipp });
+        renderSavedPdfList(sortSavedPdfList((data && data.list) || []));
+      } catch (err) {
+        wrap.innerHTML = `<div class="text-center py-6 text-xs text-rose-400">Gagal memuat riwayat PDF: ${err.message}</div>`;
       }
     }
 
-    function prevMonth() {
-      calendarDate.setMonth(calendarDate.getMonth() - 1);
-      renderCalendar();
-    }
-
-    function nextMonth() {
-      calendarDate.setMonth(calendarDate.getMonth() + 1);
-      renderCalendar();
-    }
+    // Dipanggil dari luar (mis. iframe imo/imo setelah berhasil simpan PDF
+    // baru) supaya daftar di widget langsung ter-update tanpa perlu reload.
+    window.refreshSavedPdfWidget = function () {
+      try {
+        const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+        if (savedUser && savedUser.nipp) loadSavedPdfWidget(savedUser);
+      } catch (err) { /* abaikan data sesi yang rusak */ }
+    };
 
     // Render Kartu Kursus
     function renderCourses(courses) {
@@ -548,14 +521,7 @@
     // Dipakai baik saat login baru maupun saat memulihkan sesi dari localStorage,
     // sehingga status login tetap tampil konsisten di semua menu (dashboard & 3 tool).
     function applyLoggedInUI(user) {
-      document.getElementById('profileName').innerText = user.nama;
-      document.getElementById('profileNipp').innerText = user.nipp;
-      document.getElementById('profileJabatan').innerText = user.jabatan;
-      document.getElementById('profileStasiun').innerText = user.stasiun;
-
-      const profileWidget = document.getElementById('userProfileWidget');
-      profileWidget.classList.remove('hidden');
-      profileWidget.classList.add('flex');
+      loadSavedPdfWidget(user);
 
       const initials = getInitials(user.nama);
       const loginBtnContainer = document.getElementById('loginBtnContainer');
@@ -694,10 +660,14 @@
     }
 
     function handleLogout() {
-      // Sembunyikan widget profil di bawah kalender
-      const profileWidget = document.getElementById('userProfileWidget');
-      profileWidget.classList.add('hidden');
-      profileWidget.classList.remove('flex');
+      // Sembunyikan widget "PDF Tersimpan", tampilkan lagi ajakan login.
+      const savedPdfWidget = document.getElementById('savedPdfWidget');
+      savedPdfWidget.classList.add('hidden');
+      savedPdfWidget.classList.remove('flex');
+      document.getElementById('savedPdfListWrap').innerHTML =
+        `<div class="text-center py-6 text-xs text-slate-400">Belum ada PDF tersimpan.</div>`;
+      document.getElementById('savedPdfCount').innerText = '0';
+      document.getElementById('savedPdfLoggedOutHint').classList.remove('hidden');
 
       // Kembalikan tombol di pojok kanan atas ke "Masuk / Login"
       const loginBtnContainer = document.getElementById('loginBtnContainer');
@@ -784,7 +754,6 @@
 
     // Initial Load
     window.addEventListener('DOMContentLoaded', () => {
-      renderCalendar();
       renderCourses(coursesData);
 
       // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap

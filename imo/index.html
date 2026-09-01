@@ -24,18 +24,11 @@
 
 <div class="shell">
 
-  <!-- ==================== SIDEBAR: MENU UTAMA ==================== -->
-  <nav class="sidebar" aria-label="Menu utama">
-    <div class="sidebar__eyebrow">Menu</div>
-    <button type="button" class="sidebar__item is-active" id="tabIsiForm" data-mainmenu="form">
-      <span class="sidebar__item-icon">📝</span> Isi Serah Terima
-    </button>
-    <button type="button" class="sidebar__item" id="tabCekPdf" data-mainmenu="cekpdf">
-      <span class="sidebar__item-icon">📄</span> Cek PDF Tersimpan
-    </button>
-  </nav>
-
-  <!-- ==================== KONTEN KANAN ==================== -->
+  <!-- ==================== KONTEN ====================
+       Menu "Cek PDF Tersimpan" sudah dipindah ke widget "PDF Tersimpan" di
+       sidebar kanan dashboard IMO Tools (index.html satu level di atas),
+       yang muncul otomatis setelah login — jadi sidebar internal & tab
+       menu di halaman ini tidak diperlukan lagi. -->
   <div class="content">
 
   <!-- ==================== IDENTITAS AKTIF (dari sesi Login IMO Tools) ====================
@@ -186,34 +179,6 @@
 
   </main>
 
-  <!-- ==================== CEK PDF TERSIMPAN ==================== -->
-  <main class="hidden" id="cekPdfArea">
-    <section class="panel">
-      <div class="panel__header">
-        <div>
-          <span class="panel__eyebrow">Riwayat Serah Terima</span>
-          <h2 class="panel__title">Cek PDF Tersimpan</h2>
-        </div>
-      </div>
-      <p class="panel__hint">Masukkan NIPP untuk melihat seluruh PDF serah terima yang sudah tersimpan.</p>
-
-      <div class="field-row field-row--search">
-        <div class="field">
-          <label class="field__label" for="cekNippInput">NIPP <span class="req">*</span></label>
-          <input type="text" inputmode="numeric" id="cekNippInput" class="input is-mono" placeholder="Contoh: 69444" autocomplete="off" />
-        </div>
-        <button type="button" class="btn btn--primary" id="btnCariPdf">Cari</button>
-      </div>
-
-      <div id="cekPdfStatus" class="cekpdf-status hidden"></div>
-
-      <div id="cekPdfResultWrap" class="cekpdf-result hidden">
-        <div class="cekpdf-result__caption" id="cekPdfCaption"></div>
-        <div class="cekpdf-list" id="cekPdfList"></div>
-      </div>
-    </section>
-  </main>
-
   </div>
 </div>
 
@@ -255,7 +220,6 @@
 <script src="assets/js/form.js"></script>
 <script src="assets/js/pdf.js"></script>
 <script src="assets/js/preview.js"></script>
-<script src="assets/js/cekpdf.js"></script>
 <script src="assets/js/main.js"></script>
 </body>
 </html>
