@@ -86,13 +86,9 @@
 
       <!-- Menu Bawah -->
       <div class="space-y-2 pt-8 border-t border-indigo-400/30 mt-6 md:mt-0">
-        <button onclick="selectTab('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
-          <i class="fa-solid fa-gear w-5 text-center"></i>
-          <span>Settings</span>
-        </button>
-        <button onclick="selectTab('directory')" id="nav-directory" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
-          <i class="fa-regular fa-folder-open w-5 text-center"></i>
-          <span>Directory</span>
+        <button onclick="selectTab('about')" id="nav-about" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
+          <i class="fa-solid fa-circle-info w-5 text-center"></i>
+          <span>About | Data Backup</span>
         </button>
       </div>
     </aside>
@@ -172,6 +168,127 @@
            tetap terlihat saat berpindah menu — tidak pernah reload halaman penuh. -->
       <div id="toolView" class="hidden flex-1 min-h-[80vh] md:min-h-0 flex-col">
         <iframe id="toolFrame" title="Tool" class="w-full flex-1 min-h-[80vh] md:min-h-0 border-0 rounded-3xl bg-white shadow-inner"></iframe>
+      </div>
+
+      <!-- ================= ABOUT | DATA BACKUP VIEW ================= -->
+      <div id="aboutView" class="hidden flex-1 flex-col min-h-0 md:overflow-y-auto">
+        <div class="max-w-3xl w-full mx-auto space-y-6 pb-4">
+
+          <!-- Card: Tentang IMO Tools -->
+          <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-[#5B58CA] flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-circle-info text-lg"></i>
+              </div>
+              <h2 class="text-lg sm:text-xl font-bold text-slate-800">Tentang IMO Tools</h2>
+            </div>
+
+            <p class="text-slate-600 text-sm leading-relaxed">
+              <strong class="text-slate-800">IMO Tools</strong> adalah platform digital yang dirancang untuk membantu mempermudah pengelolaan data dan administrasi operasional dinasan secara lebih
+              <strong class="text-slate-800">cepat, rapi, akurat, dan efisien</strong>.
+            </p>
+            <p class="text-slate-600 text-sm leading-relaxed mt-3">
+              IMO Tools menyediakan berbagai fitur dalam satu platform, mulai dari pengelolaan <strong class="text-slate-800">IMO Harian dan Bulanan</strong>, pembuatan <strong class="text-slate-800">Serah Terima PDF</strong>, hingga penyesuaian dokumen <strong class="text-slate-800">PDF ke format A4</strong>.
+            </p>
+            <p class="text-slate-600 text-sm leading-relaxed mt-3">
+              Platform ini dikembangkan untuk membantu mengurangi pekerjaan administrasi secara manual, meminimalkan kesalahan pengolahan data, serta mempermudah pengelolaan dan dokumentasi pekerjaan.
+            </p>
+
+            <h3 class="text-sm font-bold text-slate-800 mt-6 mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-bullseye text-[#5B58CA] text-xs"></i>
+              Tujuan Kami
+            </h3>
+            <p class="text-slate-600 text-sm leading-relaxed">
+              IMO Tools dikembangkan sebagai solusi sederhana dan praktis untuk mendukung kebutuhan administrasi dan pengolahan data sehari-hari. Dengan memanfaatkan teknologi digital, proses pencatatan, pengolahan, dan dokumentasi dapat dilakukan dengan lebih terstruktur dan efisien.
+            </p>
+
+            <h3 class="text-sm font-bold text-slate-800 mt-6 mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-[#5B58CA] text-xs"></i>
+              Fitur Utama
+            </h3>
+            <ul class="space-y-2.5">
+              <li class="flex items-start gap-2.5 text-sm text-slate-600">
+                <i class="fa-solid fa-circle-check text-emerald-500 text-xs mt-1 shrink-0"></i>
+                <span><strong class="text-slate-800">IMO Per Hari</strong> — Pengelolaan dan pencatatan data IMO harian.</span>
+              </li>
+              <li class="flex items-start gap-2.5 text-sm text-slate-600">
+                <i class="fa-solid fa-circle-check text-emerald-500 text-xs mt-1 shrink-0"></i>
+                <span><strong class="text-slate-800">IMO Per Bulan</strong> — Rekap dan pengelolaan data IMO berdasarkan periode bulanan.</span>
+              </li>
+              <li class="flex items-start gap-2.5 text-sm text-slate-600">
+                <i class="fa-solid fa-circle-check text-emerald-500 text-xs mt-1 shrink-0"></i>
+                <span><strong class="text-slate-800">Serah Terima PDF</strong> — Membantu pembuatan dan pengelolaan dokumen serah terima.</span>
+              </li>
+              <li class="flex items-start gap-2.5 text-sm text-slate-600">
+                <i class="fa-solid fa-circle-check text-emerald-500 text-xs mt-1 shrink-0"></i>
+                <span><strong class="text-slate-800">PDF to A4</strong> — Menyesuaikan dokumen PDF ke ukuran A4.</span>
+              </li>
+              <li class="flex items-start gap-2.5 text-sm text-slate-600">
+                <i class="fa-solid fa-circle-check text-emerald-500 text-xs mt-1 shrink-0"></i>
+                <span><strong class="text-slate-800">Pengelolaan Data</strong> — Membantu menyimpan dan mengelola data secara lebih terstruktur.</span>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Card: Identitas Developer & Data Backup -->
+          <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
+            <div class="flex items-center gap-3 mb-5">
+              <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-[#5B58CA] flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-id-badge text-lg"></i>
+              </div>
+              <h2 class="text-lg sm:text-xl font-bold text-slate-800">Identitas Developer</h2>
+            </div>
+
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">IMO Tools dikembangkan dan dikelola oleh:</p>
+
+            <div class="bg-slate-50/70 border border-slate-100 rounded-2xl p-5 space-y-3">
+              <div class="flex items-center justify-between gap-3">
+                <span class="text-xs font-medium text-slate-400">Nama</span>
+                <span class="text-sm font-bold text-slate-800">Bagus Dwi Sulaksono</span>
+              </div>
+              <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-200/70">
+                <span class="text-xs font-medium text-slate-400">NIPP</span>
+                <span class="text-sm font-bold text-indigo-600 font-mono">69451</span>
+              </div>
+              <div class="flex items-center justify-between gap-3 pt-3 border-t border-slate-200/70">
+                <span class="text-xs font-medium text-slate-400">WhatsApp</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-slate-800">0853-2211-2251</span>
+                  <button
+                    onclick="copyWhatsApp()"
+                    title="Salin nomor WhatsApp"
+                    class="w-7 h-7 flex items-center justify-center rounded-full bg-indigo-50 text-[#5B58CA] hover:bg-indigo-100 active:scale-95 transition"
+                  >
+                    <i id="copyWaIcon" class="fa-regular fa-copy text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <h3 class="text-sm font-bold text-slate-800 mt-6 mb-2 flex items-center gap-2">
+              <i class="fa-solid fa-database text-[#5B58CA] text-xs"></i>
+              Layanan Pengambilan Data Backup
+            </h3>
+            <p class="text-slate-600 text-sm leading-relaxed">
+              Untuk keperluan <strong class="text-slate-800">pengambilan data backup, pemulihan data, perpindahan data, atau bantuan teknis</strong> terkait IMO Tools, silakan menghubungi developer melalui nomor WhatsApp yang tercantum di atas.
+            </p>
+
+            <a
+              href="https://wa.me/6285322112251"
+              target="_blank"
+              rel="noopener"
+              class="mt-5 inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-6 py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white rounded-full font-semibold text-sm shadow-md shadow-emerald-200 transition-all duration-200"
+            >
+              <i class="fa-brands fa-whatsapp text-base"></i>
+              Hubungi via WhatsApp
+            </a>
+
+            <p class="text-center text-xs font-semibold text-slate-400 mt-6 tracking-wide">
+              IMO Tools — Sederhanakan Administrasi, Tingkatkan Efisiensi.
+            </p>
+          </div>
+
+        </div>
       </div>
     </main>
 
@@ -449,8 +566,7 @@
       "imo-per-bulan": "IMO - Per Bulan",
       "serah-terima-pdf": "Serah Terima PDF",
       "pdf-to-a4": "PDF to A4",
-      settings: "Settings",
-      directory: "Directory"
+      about: "About | Data Backup"
     };
 
     const LOGIN_STORAGE_KEY = "imoUser";
@@ -1029,15 +1145,22 @@
       const dashboardView = document.getElementById('dashboardView');
       const toolView = document.getElementById('toolView');
       const toolFrame = document.getElementById('toolFrame');
+      const aboutView = document.getElementById('aboutView');
       const headerActions = document.getElementById('headerActions');
       const pageTitle = document.getElementById('pageTitle');
 
       pageTitle.textContent = tabTitles[tabId] || 'Tools';
       updateRightWidgetsVisibility(tabId);
 
+      // Sembunyikan ketiga view dulu, lalu tampilkan yang sesuai tab aktif.
+      dashboardView.classList.add('hidden');
+      toolView.classList.add('hidden');
+      toolView.classList.remove('flex');
+      aboutView.classList.add('hidden');
+      aboutView.classList.remove('flex');
+
       if (tabRoutes[tabId]) {
         // Tampilkan tool di dalam frame pada shell yang sama.
-        dashboardView.classList.add('hidden');
         toolView.classList.remove('hidden');
         toolView.classList.add('flex');
         headerActions.classList.add('hidden');
@@ -1047,18 +1170,33 @@
           toolFrame.src = tabRoutes[tabId];
           toolFrame.dataset.loaded = tabId;
         }
+      } else if (tabId === 'about') {
+        aboutView.classList.remove('hidden');
+        aboutView.classList.add('flex');
+        headerActions.classList.add('hidden');
       } else {
-        toolView.classList.add('hidden');
-        toolView.classList.remove('flex');
         dashboardView.classList.remove('hidden');
         headerActions.classList.remove('hidden');
-
-        if (tabId === 'settings' || tabId === 'directory') {
-          showToast(`Halaman "${tabId}" belum tersedia.`);
-        }
       }
 
       localStorage.setItem(TAB_STORAGE_KEY, tabId);
+    }
+
+    // Salin nomor WhatsApp developer ke clipboard (dari menu About | Data Backup)
+    function copyWhatsApp() {
+      const number = '0853-2211-2251';
+      navigator.clipboard.writeText(number).then(() => {
+        const icon = document.getElementById('copyWaIcon');
+        icon.classList.remove('fa-regular', 'fa-copy');
+        icon.classList.add('fa-solid', 'fa-check');
+        showToast('Nomor WhatsApp berhasil disalin.');
+        setTimeout(() => {
+          icon.classList.remove('fa-solid', 'fa-check');
+          icon.classList.add('fa-regular', 'fa-copy');
+        }, 1500);
+      }).catch(() => {
+        showToast('Gagal menyalin nomor. Silakan salin manual.');
+      });
     }
 
     // Toast Notification Helper
