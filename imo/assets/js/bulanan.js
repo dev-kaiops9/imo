@@ -429,13 +429,14 @@ const PdfBulanan = {
     // ---- Halaman 2: Foto SmartCard (landscape) ----
     if (smartcard) {
       const page = out.addPage(A4_LANDSCAPE);
-      await this._drawImageFitted(out, page, smartcard);
+      await this._drawHeaderedPhotoPage(out, page, { fontBold, title: "SMARTCARD", photo: smartcard });
     }
 
     // ---- Halaman 3: Foto Daftar Hadir ----
     if (daftarHadir) {
       const page = out.addPage(A4_LANDSCAPE);
-      await this._drawImageFitted(out, page, daftarHadir);
+      const title = `DAFTAR HADIR BULAN ${String(bulanNama).toUpperCase()} ${tahun}`;
+      await this._drawHeaderedPhotoPage(out, page, { fontBold, title, photo: daftarHadir });
     }
 
     // ---- Halaman 4-selesai: gabungan PDF harian tersimpan ----
@@ -466,16 +467,23 @@ const PdfBulanan = {
   },
 
   /**
-   * Menggambar Halaman 1 (Cover) sesuai desain:
-   *  - Panel putih di kiri: logo Danantara Indonesia, garis aksen, judul
-   *    "Laporan Kegiatan Pengoperasian Bulan {Bulan} {Tahun}", lalu daftar
-   *    identitas (Nama/NIPP/Jabatan/Unit Kerja/DAOP).
-   *  - Panel foto di kanan (full-bleed): foto kereta yang sudah menyertakan
-   *    logo KAI (kanan atas) & caption "PT. Kereta Api Indonesia (Persero)"
-   *    (kanan bawah) — dipakai apa adanya dari assets/img/cover-photo-panel.jpg
-   *    supaya logo & caption tidak terpotong di berbagai ukuran halaman.
-   * Kedua aset gambar (logo Danantara & panel foto) dipotong dari mockup
-   * desain (cover_imo.jpg) dan disimpan statis di assets/img/.
+   * Menggambar Halaman 1 (Cover) — LANGSUNG PAKAI GAMBAR DESAIN cover yang
+   * diberikan (assets/img/cover-background.jpg) sebagai background 1
+   * halaman penuh (logo Danantara, logo KAI, foto kereta, kartu abu-abu,
+   * garis aksen, & label "Nama/NIPP/Jabatan/Unit Kerja/DAOP" SEMUA sudah
+   * jadi bagian dari gambar ini, apa adanya).
+   *
+   * Yang di-generate ulang secara dinamis (ditimpa di atas background,
+   * pakai warna kartu yang sama supaya menyatu) hanya BAGIAN YANG BERUBAH
+   * per pegawai/bulan:
+   *   - 3 baris judul ("Laporan Kegiatan" / "Pengoperasian" / "Bulan {Bulan} {Tahun}")
+   *   - nilai di kolom kanan tiap baris identitas (Nama/NIPP/Jabatan/Unit Kerja/DAOP)
+   *
+   * Koordinat di bawah (dalam px, lalu dikonversi ke pt lewat COVER_SCALE)
+   * diukur langsung dari file assets/img/cover-background.jpg
+   * (3508 x 2480 px = A4 landscape @300dpi). Kalau gambar background ini
+   * diganti dengan desain baru yang layout-nya beda, angka-angka ini perlu
+   * diukur ulang.
    */
   async _drawCoverPage(pdfDoc, page, { fontBold, fontRegular, bulanNama, tahun, user }) {
     const { rgb } = PDFLib;
@@ -483,84 +491,96 @@ const PdfBulanan = {
 
     const INK = rgb(0.07, 0.08, 0.11);
     const INK_SOFT = rgb(0.18, 0.19, 0.22);
-    const ACCENT = rgb(0.85, 0.16, 0.16);
+    // Warna "kartu" abu-abu sangat muda di background — dipakai untuk
+    // menimpa teks contoh sebelum menulis nilai yang sebenarnya, supaya
+    // tidak ada bekas kotak putih yang kelihatan beda dari sekitarnya.
+    const CARD_BG = rgb(0.988, 0.988, 0.988);
 
-    // ---- Panel putih (kiri) + panel foto (kanan, full-bleed) ----
-    const panelW = pw * 0.38;
-    page.drawRectangle({ x: 0, y: 0, width: pw, height: ph, color: rgb(1, 1, 1) });
+    // ---- Gambar background (1 halaman penuh) ----
+    const bgBytes = await this._fetchArrayBuffer("assets/img/cover-background.jpg");
+    const bgImg = await pdfDoc.embedJpg(bgBytes);
+    page.drawImage(bgImg, { x: 0, y: 0, width: pw, height: ph });
 
-    const photoBytes = await this._fetchArrayBuffer("assets/img/cover-photo-panel.jpg");
-    const photoImg = await pdfDoc.embedJpg(photoBytes);
-    page.drawImage(photoImg, { x: panelW, y: 0, width: pw - panelW, height: ph });
+    // Skala px (ukuran asli gambar) -> pt (ukuran halaman PDF).
+    const scale = bgImg.width / pw; // ~4.1667 untuk aset 3508x2480 di halaman A4
 
-    // ---- Logo Danantara Indonesia ----
-    const marginX = 42;
-    const logoBytes = await this._fetchArrayBuffer("assets/img/cover-logo-danantara.png");
-    const logoImg = await pdfDoc.embedPng(logoBytes);
-    const logoW = 118;
-    const logoH = logoW * (logoImg.height / logoImg.width);
-    const logoTop = 40;
-    page.drawImage(logoImg, { x: marginX, y: ph - logoTop - logoH, width: logoW, height: logoH });
+    /** px (dari kiri-atas gambar) -> pt (dari kiri-bawah halaman PDF). */
+    const X = (px) => px / scale;
+    const Y = (pxFromTop) => ph - pxFromTop / scale;
+    const H = (pxHeight) => pxHeight / scale;
 
-    // ---- Garis aksen kecil di bawah logo ----
-    const accentTop = logoTop + logoH + 22;
-    page.drawRectangle({ x: marginX, y: ph - accentTop - 3, width: 22, height: 3, color: ACCENT });
+    // ==================== JUDUL (3 baris) ====================
+    // Kotak judul di dalam kartu (px, hasil ukur langsung di gambar).
+    const titleBox = { x0: 63, x1: 1320, yTop: 715, yBottom: 1210 };
+    page.drawRectangle({
+      x: X(titleBox.x0),
+      y: Y(titleBox.yBottom),
+      width: X(titleBox.x1) - X(titleBox.x0),
+      height: H(titleBox.yBottom - titleBox.yTop),
+      color: CARD_BG,
+    });
 
-    // ---- Judul (auto-shrink kalau kepanjangan untuk lebar panel) ----
-    const titleMaxWidth = panelW - marginX * 2;
     const titleLines = ["Laporan Kegiatan", "Pengoperasian", `Bulan ${bulanNama} ${tahun}`];
-    let titleSize = 23;
+    const titleMaxWidth = X(titleBox.x1) - X(titleBox.x0);
+    let titleSize = 32; // besar & tegas, TIDAK di-auto-shrink kecuali kepanjangan
+    const titleFloor = 22;
     titleLines.forEach((line) => {
-      while (titleSize > 14 && fontBold.widthOfTextAtSize(line, titleSize) > titleMaxWidth) {
+      while (titleSize > titleFloor && fontBold.widthOfTextAtSize(line, titleSize) > titleMaxWidth) {
         titleSize -= 0.5;
       }
     });
-    const titleLineH = titleSize * 1.22;
-    let titleTop = accentTop + 34;
+    const titleLineH = titleSize * 1.24;
+    // Baris pertama diposisikan sejajar dengan baris pertama judul asli di gambar.
+    let titleBaseline = Y(872); // px 872 = batas bawah baris "Laporan Kegiatan" di gambar
     titleLines.forEach((line) => {
-      page.drawText(line, { x: marginX, y: ph - titleTop, size: titleSize, font: fontBold, color: INK });
-      titleTop += titleLineH;
+      page.drawText(line, { x: X(titleBox.x0), y: titleBaseline, size: titleSize, font: fontBold, color: INK });
+      titleBaseline -= titleLineH;
     });
 
-    // ---- Daftar identitas (Nama / NIPP / Jabatan / Unit Kerja / DAOP) ----
+    // ==================== BARIS IDENTITAS ====================
+    // Untuk tiap baris: hanya kolom NILAI (kanan) yang ditimpa & ditulis
+    // ulang — label ("Nama", "NIPP", dst.) & tanda titik dua sudah ada di
+    // gambar dan tidak disentuh.
+    const valueX = 567; // px — posisi mulai teks nilai (persis setelah titik dua)
+    const valueRightEdge = 1320; // px — tepi kanan kartu
     const rows = [
-      ["Nama", user.nama || "-"],
-      ["NIPP", user.nipp || "-"],
-      ["Jabatan", user.jabatan || "-"],
-      ["Unit Kerja", user.stasiun || "-"],
-      ["DAOP", "9 Jember"],
+      { label: "Nama", value: user.nama || "-", yTop: 1294, yBottom: 1372, baseline: 1350 },
+      { label: "NIPP", value: user.nipp || "-", yTop: 1395, yBottom: 1472, baseline: 1450 },
+      { label: "Jabatan", value: user.jabatan || "-", yTop: 1497, yBottom: 1574, baseline: 1552 },
+      { label: "Unit Kerja", value: user.stasiun || "-", yTop: 1597, yBottom: 1675, baseline: 1653 },
+      { label: "DAOP", value: "9 Jember", yTop: 1698, yBottom: 1776, baseline: 1754 },
     ];
-    const fieldSize = 12.5;
-    const fieldMinSize = 10.5; // di bawah ini, teks dibungkus ke baris ke-2 alih-alih terus mengecil
-    const labelColW = 92;
-    const valueX = marginX + labelColW;
-    const valueMaxWidth = panelW - valueX;
-    const rowGap = 18; // jarak antar baris field (di luar tinggi teks value itu sendiri)
-    let fieldTop = titleTop + 30;
 
-    rows.forEach(([label, rawValue]) => {
-      page.drawText(label, { x: marginX, y: ph - fieldTop, size: fieldSize, font: fontBold, color: INK });
-      page.drawText(":", { x: valueX - 10, y: ph - fieldTop, size: fieldSize, font: fontRegular, color: INK_SOFT });
+    const fieldSize = 16;
+    const fieldMinSize = 12;
+    const valueMaxWidth = X(valueRightEdge) - X(valueX);
 
-      const value = String(rawValue);
+    rows.forEach((row) => {
+      // Timpa nilai contoh dengan warna kartu (label & ":" di kirinya tidak disentuh).
+      page.drawRectangle({
+        x: X(valueX),
+        y: Y(row.yBottom),
+        width: X(valueRightEdge) - X(valueX),
+        height: H(row.yBottom - row.yTop),
+        color: CARD_BG,
+      });
+
+      const value = String(row.value);
       let valueSize = fieldSize;
-      // Coba muat dalam 1 baris dengan mengecilkan font sampai batas minimum dulu.
       while (valueSize > fieldMinSize && fontRegular.widthOfTextAtSize(value, valueSize) > valueMaxWidth) {
         valueSize -= 0.5;
       }
 
       let valueLines = [value];
       if (fontRegular.widthOfTextAtSize(value, valueSize) > valueMaxWidth) {
-        // Masih kepanjangan di ukuran minimum -> bungkus jadi maks. 2 baris.
         valueLines = this._wrapTextToLines(fontRegular, value, valueSize, valueMaxWidth, 2);
       }
 
-      const valueLineH = valueSize * 1.2;
+      const valueLineH = valueSize * 1.15;
+      const baseY = Y(row.baseline);
       valueLines.forEach((line, i) => {
-        page.drawText(line, { x: valueX, y: ph - fieldTop - i * valueLineH, size: valueSize, font: fontRegular, color: INK_SOFT });
+        page.drawText(line, { x: X(valueX), y: baseY + (valueLines.length - 1 - i) * valueLineH, size: valueSize, font: fontRegular, color: INK_SOFT });
       });
-
-      fieldTop += rowGap + (valueLines.length - 1) * valueLineH + 12;
     });
   },
 
@@ -597,20 +617,54 @@ const PdfBulanan = {
     return lines;
   },
 
-  async _drawImageFitted(pdfDoc, page, photo) {
+  /**
+   * Halaman berisi 1 judul (header) di atas + 1 foto yang diperbesar
+   * memenuhi SISA halaman (bukan cuma ukuran asli fotonya) — dipakai untuk
+   * halaman SmartCard & Daftar Hadir.
+   *
+   * Foto SELALU diperbesar (ratio TIDAK dibatasi maksimum 1x) sampai
+   * menyentuh salah satu sisi area yang tersedia, supaya foto kecil
+   * sekalipun tetap terlihat penuh 1 halaman — hanya menyisakan sedikit
+   * jarak di kanan/kiri/bawah, dan tidak menutupi header di atas.
+   */
+  async _drawHeaderedPhotoPage(pdfDoc, page, { fontBold, title, photo }) {
+    const { rgb } = PDFLib;
+    const { width: pw, height: ph } = page.getSize();
+    const INK = rgb(0.07, 0.08, 0.11);
+    const LINE = rgb(0.85, 0.85, 0.85);
+
+    // ---- Header ----
+    const headerSize = 22;
+    const headerY = ph - 40; // baseline judul, 40pt dari atas halaman
+    const headerW = fontBold.widthOfTextAtSize(title, headerSize);
+    page.drawText(title, { x: (pw - headerW) / 2, y: headerY, size: headerSize, font: fontBold, color: INK });
+
+    const dividerY = headerY - 16;
+    page.drawLine({ start: { x: 40, y: dividerY }, end: { x: pw - 40, y: dividerY }, thickness: 1, color: LINE });
+
+    // ---- Area foto: sisa halaman di bawah header, sedikit ruang di semua sisi ----
+    const sideMargin = 20;
+    const bottomMargin = 20;
+    const topGap = 16; // jarak dari garis pembatas ke foto, supaya tidak menempel header
+    const areaLeft = sideMargin;
+    const areaRight = pw - sideMargin;
+    const areaTop = dividerY - topGap;
+    const areaBottom = bottomMargin;
+    const maxW = areaRight - areaLeft;
+    const maxH = areaTop - areaBottom;
+
     const isPng = photo.mimeType && photo.mimeType.includes("png");
     const bytes = await (await fetch(photo.dataUrl)).arrayBuffer();
     const img = isPng ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
-    const { width: pw, height: ph } = page.getSize();
-    const margin = 24;
-    const maxW = pw - margin * 2;
-    const maxH = ph - margin * 2;
-    const ratio = Math.min(maxW / img.width, maxH / img.height, 1);
+
+    // TANPA batas ", 1" — foto selalu diperbesar sampai memenuhi area,
+    // berapa pun ukuran aslinya (sesuai permintaan: "buat full 1 halaman").
+    const ratio = Math.min(maxW / img.width, maxH / img.height);
     const drawW = img.width * ratio;
     const drawH = img.height * ratio;
     page.drawImage(img, {
-      x: (pw - drawW) / 2,
-      y: (ph - drawH) / 2,
+      x: areaLeft + (maxW - drawW) / 2,
+      y: areaBottom + (maxH - drawH) / 2,
       width: drawW,
       height: drawH,
     });
