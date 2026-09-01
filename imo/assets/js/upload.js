@@ -1,13 +1,15 @@
 /**
  * upload.js
  * -----------------------------------------------------------------------
- * PLACEHOLDER SEMENTARA — file asli tidak berhasil dipulihkan dari backup.
- * Menangani drag & drop + preview thumbnail foto secara lokal di browser.
- * Belum meng-upload apa pun ke Google Drive (lihat api.js).
+ * Mengelola dua dropzone foto (Serah Terima & Dokumentasi Kegiatan):
+ * klik untuk pilih file, drag & drop, preview thumbnail, dan simpan
+ * hasilnya sebagai base64 supaya siap dipakai oleh pdf.js / preview.js /
+ * api.js (foto ditempel langsung di dalam PDF, tidak diunggah terpisah).
  * -----------------------------------------------------------------------
  */
 
 const UploadField = {
+  // Menyimpan state 2 foto: { file, dataUrl, base64, mimeType, fileName }
   state: {
     fotoSerahTerima: null,
     fotoDokumentasi: null,
@@ -21,53 +23,86 @@ const UploadField = {
   _wire(dzId, inputId, thumbId, stateKey) {
     const dz = document.getElementById(dzId);
     const input = document.getElementById(inputId);
-    if (!dz || !input) return;
+    const thumbWrap = document.getElementById(thumbId);
+    if (!dz || !input || !thumbWrap) return;
 
-    dz.addEventListener("click", () => input.click());
+    const openPicker = () => input.click();
+    dz.addEventListener("click", openPicker);
     dz.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); input.click(); }
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(); }
     });
-    dz.addEventListener("dragover", (e) => { e.preventDefault(); dz.classList.add("is-dragover"); });
-    dz.addEventListener("dragleave", () => dz.classList.remove("is-dragover"));
+
+    input.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) this._handleFile(file, stateKey, thumbWrap, dz);
+    });
+
+    ["dragenter", "dragover"].forEach((evt) => {
+      dz.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dz.classList.add("is-dragover");
+      });
+    });
+    ["dragleave", "drop"].forEach((evt) => {
+      dz.addEventListener(evt, (e) => {
+        e.preventDefault();
+        dz.classList.remove("is-dragover");
+      });
+    });
     dz.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dz.classList.remove("is-dragover");
-      if (e.dataTransfer.files[0]) this._setFile(e.dataTransfer.files[0], dz, thumbId, stateKey);
-    });
-    input.addEventListener("change", () => {
-      if (input.files[0]) this._setFile(input.files[0], dz, thumbId, stateKey);
+      const file = e.dataTransfer.files[0];
+      if (file) this._handleFile(file, stateKey, thumbWrap, dz);
     });
   },
 
-  _setFile(file, dz, thumbId, stateKey) {
+  async _handleFile(file, stateKey, thumbWrap, dz) {
     if (!file.type.startsWith("image/")) {
-      Toast.show("File harus berupa gambar (JPG/PNG).", "error");
+      Toast.show("File yang dipilih bukan gambar.", "error");
       return;
     }
-    this.state[stateKey] = file;
-    dz.classList.remove("is-invalid");
+    if (file.size > 8 * 1024 * 1024) {
+      Toast.show("Ukuran foto maksimal 8MB.", "error");
+      return;
+    }
 
-    const thumbRow = document.getElementById(thumbId);
-    const url = URL.createObjectURL(file);
-    thumbRow.innerHTML = `
+    const dataUrl = await this._readAsDataURL(file);
+    this.state[stateKey] = {
+      file,
+      dataUrl,
+      base64: dataUrl.split(",")[1],
+      mimeType: file.type,
+      fileName: file.name,
+    };
+
+    dz.classList.remove("is-invalid");
+    thumbWrap.innerHTML = `
       <div class="thumb">
-        <img src="${url}" alt="preview" />
-        <button type="button" class="thumb__remove" aria-label="Hapus foto">&times;</button>
-      </div>
-    `;
-    thumbRow.querySelector(".thumb__remove").addEventListener("click", (e) => {
+        <img src="${dataUrl}" alt="${file.name}" />
+        <button type="button" class="thumb__remove" aria-label="Hapus foto">✕</button>
+      </div>`;
+
+    thumbWrap.querySelector(".thumb__remove").addEventListener("click", (e) => {
       e.stopPropagation();
       this.state[stateKey] = null;
-      thumbRow.innerHTML = "";
+      thumbWrap.innerHTML = "";
+    });
+  },
+
+  _readAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
   },
 
   reset() {
     this.state.fotoSerahTerima = null;
     this.state.fotoDokumentasi = null;
-    ["thumbSerahTerima", "thumbDokumentasi"].forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) el.innerHTML = "";
-    });
+    const a = document.getElementById("thumbSerahTerima");
+    const b = document.getElementById("thumbDokumentasi");
+    if (a) a.innerHTML = "";
+    if (b) b.innerHTML = "";
   },
 };

@@ -1,10 +1,10 @@
 /**
  * api.js
  * -----------------------------------------------------------------------
- * PLACEHOLDER SEMENTARA — file asli tidak berhasil dipulihkan dari backup.
- * Saat ini semua pemanggilan API di-stub (tidak benar-benar mengirim data)
- * supaya UI bisa dicoba. Saat siap, sambungkan fetch() di bawah ini ke
- * CONFIG.APPS_SCRIPT_URL (lihat config.js).
+ * Semua komunikasi ke backend Google Apps Script lewat di sini.
+ * Apps Script Web App hanya mengenal query string (GET) atau body teks
+ * biasa (POST) — dikirim sebagai text/plain agar browser tidak melakukan
+ * CORS preflight (Apps Script tidak bisa membalas preflight OPTIONS).
  * -----------------------------------------------------------------------
  */
 
@@ -35,20 +35,73 @@ const Toast = {
 };
 
 const Api = {
-  // TODO: ganti stub ini dengan fetch ke CONFIG.APPS_SCRIPT_URL saat backend disambungkan kembali.
+  async _post(payload) {
+    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server merespons status ${res.status}`);
+    }
+
+    const json = await res.json();
+    if (json.ok === false) {
+      throw new Error(json.message || "Terjadi kesalahan pada server.");
+    }
+    return json;
+  },
+
+  /**
+   * Cek NIPP ke sheet Pegawai.
+   * @param {string} nipp
+   * @returns {Promise<{found: boolean, data?: {nama, jabatan, stasiun}}>}
+   */
   async cekNipp(nipp) {
-    await new Promise((r) => setTimeout(r, 400));
-    return { found: false, data: null };
+    const json = await this._post({ action: "cekNipp", nipp });
+    return json.data;
   },
 
-  async saveSerahTerima(payload) {
-    await new Promise((r) => setTimeout(r, 900));
-    console.log("[stub] saveSerahTerima payload:", payload);
-    return { ok: true, fileUrl: null };
+  /**
+   * Kirim seluruh data serah terima (form + foto sudah tertempel di PDF
+   * base64) ke backend — PDF disimpan ke Google Drive dan baris baru
+   * dicatat ke sheet SerahTerima.
+   * @param {object} data hasil Form.collect()
+   * @param {object} pdf hasil Pdf.build(data): { base64, fileName }
+   * @returns {Promise<{pdfUrl: string, folderUrl: string}>}
+   */
+  async saveSerahTerima(data, pdf) {
+    const json = await this._post({
+      action: "simpanData",
+      payload: {
+        nipp: data.nipp,
+        nama: data.nama,
+        jabatan: data.jabatan,
+        stasiun: data.stasiun,
+        dinas: data.dinas,
+        tanggal: data.tanggal,
+        jenisSerahTerima: data.jenisSerahTerima,
+        employeeFound: data.employeeFound,
+        tabel: data.mapping.tabel,
+        driveRootFolder: CONFIG.DRIVE_ROOT_FOLDER,
+        pdfFileName: pdf.fileName,
+        pdfBase64: pdf.base64,
+        // Foto "Serah Terima" & "Dokumentasi Kegiatan" TIDAK dikirim
+        // terpisah — sudah tertempel di dalam PDF ini.
+      },
+    });
+    return json.data;
   },
 
+  /**
+   * Ambil daftar riwayat PDF serah terima berdasarkan NIPP, sudah terurut
+   * dari backend (tanggal termuda dulu, lalu Dinas Pagi -> Siang -> Malam).
+   * @param {string} nipp
+   * @returns {Promise<{found: boolean, list: Array<{tanggal, dinas, jenisSerahTerima, fileUrl}>}>}
+   */
   async cariPdf(nipp) {
-    await new Promise((r) => setTimeout(r, 500));
-    return { found: false, items: [] };
+    const json = await this._post({ action: "cekPdfTersimpan", nipp });
+    return json.data;
   },
 };

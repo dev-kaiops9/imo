@@ -1,45 +1,85 @@
 /**
  * preview.js
  * -----------------------------------------------------------------------
- * PLACEHOLDER SEMENTARA — file asli tidak berhasil dipulihkan dari backup.
- * Menyusun tabel preview (persis struktur PDF akhir, lihat CONFIG.getTableColumns)
- * dari data yang sudah diisi + foto yang sudah diunggah, murni di sisi klien.
+ * Menampilkan tabel preview PERSIS seperti hasil akhir PDF: satu tabel
+ * dengan kolom & posisi yang sama (struktur diambil dari
+ * CONFIG.getTableColumns(), sumber tunggal yang sama dipakai pdf.js) —
+ * sama persis dengan tampilan di imo versi lama.
+ *
+ * Identitas (Nama/NIPP/Jabatan/Stasiun) sekarang diambil dari sesi Login
+ * (Form.currentUser) alih-alih step form "Data Pegawai" yang sudah tidak
+ * ada lagi. Preview ini HANYA menampilkan data (tidak mengirim apa pun ke
+ * server) — main.js yang memanggil Preview.render() lalu membuka overlay,
+ * dan penyimpanan permanen baru terjadi saat tombol "Simpan" ditekan.
  * -----------------------------------------------------------------------
  */
 
 const Preview = {
   render() {
     const data = Form.collect();
-    const cols = CONFIG.getTableColumns(data.mapping.tabel, CONFIG.getTargetPhotoKey(data.jenisSerahTerima));
-    const wrap = document.getElementById("pvTableWrap");
+    const photos = UploadField.state;
 
     const targetKey = CONFIG.getTargetPhotoKey(data.jenisSerahTerima);
-    const cellValue = {
-      hari: data.tanggal
-        ? new Date(data.tanggal + "T00:00:00").toLocaleDateString("id-ID", { weekday: "long", day: "2-digit", month: "long", year: "numeric" })
-        : "-",
-      kegiatan: data.kegiatan || "-",
-      dok: UploadField.state.fotoDokumentasi ? URL.createObjectURL(UploadField.state.fotoDokumentasi) : null,
-      [targetKey]: UploadField.state.fotoSerahTerima ? URL.createObjectURL(UploadField.state.fotoSerahTerima) : null,
+    const columns = CONFIG.getTableColumns(data.mapping.tabel, targetKey);
+    const tanggalLabel = this._formatTanggalPanjang(data.tanggal);
+
+    const photoByKey = {
+      [targetKey]: photos.fotoSerahTerima,
+      dok: photos.fotoDokumentasi,
     };
 
-    const headerHtml = cols.map((c) => `<th style="width:${(c.w * 100).toFixed(1)}%">${c.label}</th>`).join("");
-    const cellHtml = cols.map((c) => {
-      const v = cellValue[c.key];
-      if (c.key === "dok" || c.key === targetKey) {
-        return `<td>${v ? `<img src="${v}" alt="${c.label}" style="width:100%;border-radius:8px;" />` : "—"}</td>`;
-      }
-      return `<td>${v || "—"}</td>`;
-    }).join("");
+    const wrap = document.getElementById("pvTableWrap");
+    wrap.innerHTML = "";
+    wrap.appendChild(this._buildTable(columns, data.kegiatan, tanggalLabel, photoByKey));
+  },
 
-    wrap.innerHTML = `
-      <table class="preview-table" style="width:100%;border-collapse:collapse;font-size:12.5px;">
-        <thead><tr>${headerHtml}</tr></thead>
-        <tbody><tr>${cellHtml}</tr></tbody>
-      </table>
-      <div style="margin-top:14px;font-family:var(--font-mono);font-size:11px;color:var(--ink-600);">
-        NIPP ${data.nipp} · ${data.nama} · ${data.jabatan} · ${data.stasiun}
-      </div>
-    `;
+  _buildTable(columns, kegiatan, tanggalLabel, photoByKey) {
+    const table = document.createElement("table");
+    table.className = "pv-table";
+
+    const colgroup = document.createElement("colgroup");
+    columns.forEach((c) => {
+      const col = document.createElement("col");
+      col.style.width = `${c.w * 100}%`;
+      colgroup.appendChild(col);
+    });
+    table.appendChild(colgroup);
+
+    const thead = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    columns.forEach((c) => {
+      const th = document.createElement("th");
+      th.textContent = c.label;
+      headRow.appendChild(th);
+    });
+    thead.appendChild(headRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    const bodyRow = document.createElement("tr");
+    columns.forEach((c) => {
+      const td = document.createElement("td");
+      if (c.key === "hari") {
+        td.textContent = tanggalLabel;
+      } else if (c.key === "kegiatan") {
+        td.textContent = kegiatan || "";
+      } else if (photoByKey[c.key]) {
+        const img = document.createElement("img");
+        img.src = photoByKey[c.key].dataUrl;
+        img.alt = c.label;
+        td.className = "pv-table__photo-cell";
+        td.appendChild(img);
+      }
+      bodyRow.appendChild(td);
+    });
+    tbody.appendChild(bodyRow);
+    table.appendChild(tbody);
+
+    return table;
+  },
+
+  _formatTanggalPanjang(isoDate) {
+    const d = new Date(isoDate + "T00:00:00");
+    return d.toLocaleDateString("id-ID", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   },
 };

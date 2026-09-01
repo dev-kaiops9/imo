@@ -1,115 +1,169 @@
 /**
  * main.js
  * -----------------------------------------------------------------------
- * PLACEHOLDER SEMENTARA — file asli tidak berhasil dipulihkan dari backup.
- * Menyatukan semua modul: navigasi stepper, tab menu utama, jam realtime,
- * overlay preview, dan tombol simpan.
+ * Titik masuk aplikasi: navigasi stepper, overlay "sedang memproses", dan
+ * alur akhir (preview -> generate PDF -> kirim ke Apps Script -> simpan
+ * ke Google Drive -> tampilkan hasil).
  * -----------------------------------------------------------------------
  */
 
-let currentStep = 1;
+// ---------------------------------------------------------------------
+// Busy overlay (loading saat generate PDF / simpan)
+// ---------------------------------------------------------------------
+const Busy = {
+  show(text) {
+    document.getElementById("busyText").textContent = text || "MEMPROSES…";
+    document.getElementById("busyOverlay").classList.add("is-open");
+  },
+  hide() {
+    document.getElementById("busyOverlay").classList.remove("is-open");
+  },
+};
 
-function showStep(step) {
-  document.querySelectorAll(".step-panel").forEach((p) => {
-    p.classList.toggle("hidden", Number(p.dataset.panel) !== step);
-  });
-  document.querySelectorAll(".step").forEach((s) => {
-    const n = Number(s.dataset.step);
-    s.classList.toggle("is-active", n === step);
-    s.classList.toggle("is-done", n < step);
-  });
-  currentStep = step;
-}
+// ---------------------------------------------------------------------
+// Stepper navigation (3 langkah: Data Dinas -> Unggah Foto -> Hasil)
+// ---------------------------------------------------------------------
+const Stepper = {
+  current: 1,
 
-function goToStep(step, validate) {
-  if (validate && !validate()) return;
-  showStep(step);
-}
+  goTo(stepNumber) {
+    this.current = stepNumber;
 
-function wireStepper() {
+    document.querySelectorAll(".step-panel").forEach((panel) => {
+      panel.classList.toggle("hidden", Number(panel.dataset.panel) !== stepNumber);
+    });
+
+    document.querySelectorAll(".step").forEach((step) => {
+      const n = Number(step.dataset.step);
+      step.classList.toggle("is-active", n === stepNumber);
+      step.classList.toggle("is-done", n < stepNumber);
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  },
+};
+
+// ---------------------------------------------------------------------
+// Wiring tombol next/back antar step
+// ---------------------------------------------------------------------
+function wireStepNavigation() {
   document.querySelectorAll("[data-next]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const next = Number(btn.dataset.next);
-      const validators = { 2: () => Form.validateStep1() };
-      goToStep(next, validators[next]);
+      const target = Number(btn.dataset.next);
+      const currentValid =
+        (Stepper.current === 1 && Form.validateStep1()) ||
+        Stepper.current > 1;
+      if (currentValid) Stepper.goTo(target);
     });
   });
-  document.querySelectorAll("[data-back]").forEach((btn) => {
-    btn.addEventListener("click", () => showStep(Number(btn.dataset.back)));
-  });
 
+  document.querySelectorAll("[data-back]").forEach((btn) => {
+    btn.addEventListener("click", () => Stepper.goTo(Number(btn.dataset.back)));
+  });
+}
+
+// ---------------------------------------------------------------------
+// Alur Preview -> Simpan
+// ---------------------------------------------------------------------
+function wirePreviewAndSave() {
   document.getElementById("btnGoPreview").addEventListener("click", () => {
     if (!Form.validateStep2()) return;
     Preview.render();
     document.getElementById("previewOverlay").classList.add("is-open");
+    document.getElementById("previewOverlay").setAttribute("aria-hidden", "false");
   });
 
   document.getElementById("btnEditPreview").addEventListener("click", () => {
     document.getElementById("previewOverlay").classList.remove("is-open");
+    document.getElementById("previewOverlay").setAttribute("aria-hidden", "true");
   });
 
   document.getElementById("btnSavePreview").addEventListener("click", async () => {
-    document.getElementById("previewOverlay").classList.remove("is-open");
-    const busy = document.getElementById("busyOverlay");
-    busy.classList.add("is-open");
-    document.getElementById("busyText").textContent = "MEMPROSES…";
-
     const data = Form.collect();
-    await Pdf.build(data);
-    const res = await Api.saveSerahTerima(data);
 
-    busy.classList.remove("is-open");
-    if (res.ok) {
-      Toast.show("Data tersimpan (mode demo — belum tersambung ke Drive).", "success");
-      showStep(3);
-    } else {
-      Toast.show("Gagal menyimpan data.", "error");
+    try {
+      Busy.show("MEMBUAT PDF…");
+      const pdf = await Pdf.build(data);
+
+      Busy.show("MENYIMPAN DATA…");
+      await Api.saveSerahTerima(data, pdf);
+
+      Busy.hide();
+      document.getElementById("previewOverlay").classList.remove("is-open");
+      document.getElementById("previewOverlay").setAttribute("aria-hidden", "true");
+      showResult(true, `Tersimpan sebagai "${pdf.fileName}" di ${CONFIG.DRIVE_ROOT_FOLDER}/${data.stasiun}/${data.jabatan}/${data.nipp}/`);
+      Toast.show("Data berhasil disimpan.", "success");
+    } catch (err) {
+      Busy.hide();
+      Toast.show("Gagal menyimpan: " + err.message, "error");
     }
   });
+}
 
+function showResult(success, text) {
+  document.getElementById("resultTitle").textContent = success ? "Tersimpan" : "Gagal Menyimpan";
+  document.getElementById("resultText").textContent = text;
+  Stepper.goTo(3);
+}
+
+// ---------------------------------------------------------------------
+// Switch tab menu utama: "Isi Serah Terima" <-> "Cek PDF Tersimpan"
+// ---------------------------------------------------------------------
+function wireMainMenu() {
+  const tabForm = document.getElementById("tabIsiForm");
+  const tabCekPdf = document.getElementById("tabCekPdf");
+  const stepperNav = document.getElementById("stepperNav");
+  const mainFormArea = document.getElementById("mainFormArea");
+  const cekPdfArea = document.getElementById("cekPdfArea");
+
+  function activate(mode) {
+    const isForm = mode === "form";
+    tabForm.classList.toggle("is-active", isForm);
+    tabCekPdf.classList.toggle("is-active", !isForm);
+    // Saat mode "form", stepper hanya ditampilkan jika user sudah login
+    // (lihat Form.loadSession — disembunyikan otomatis kalau belum login).
+    stepperNav.classList.toggle("hidden", !isForm || !Form.currentUser);
+    mainFormArea.classList.toggle("hidden", !isForm);
+    cekPdfArea.classList.toggle("hidden", isForm);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  tabForm.addEventListener("click", () => activate("form"));
+  tabCekPdf.addEventListener("click", () => activate("cekpdf"));
+}
+
+// ---------------------------------------------------------------------
+// Reset untuk entri baru
+// ---------------------------------------------------------------------
+function wireReset() {
   document.getElementById("btnReset").addEventListener("click", () => {
     Form.reset();
     UploadField.reset();
-    showStep(1);
+    Stepper.goTo(1);
   });
 }
 
-function wireMainMenuTabs() {
-  const formTab = document.getElementById("tabIsiForm");
-  const cekTab = document.getElementById("tabCekPdf");
-  const formArea = document.getElementById("mainFormArea");
-  const cekArea = document.getElementById("cekPdfArea");
-  const stepperNav = document.getElementById("stepperNav");
-
-  formTab.addEventListener("click", () => {
-    formTab.classList.add("is-active");
-    cekTab.classList.remove("is-active");
-    formArea.classList.remove("hidden");
-    stepperNav.classList.remove("hidden");
-    cekArea.classList.add("hidden");
-  });
-
-  cekTab.addEventListener("click", () => {
-    cekTab.classList.add("is-active");
-    formTab.classList.remove("is-active");
-    cekArea.classList.remove("hidden");
-    formArea.classList.add("hidden");
-    stepperNav.classList.add("hidden");
-  });
-}
-
-function startClock() {
+// ---------------------------------------------------------------------
+// Jam berjalan (kalau elemen ada — dihilangkan saat dimuat di dalam shell
+// dashboard yang topbar-nya sendiri sudah punya jam).
+// ---------------------------------------------------------------------
+function startLiveClock() {
   const el = document.getElementById("liveClock");
-  if (!el) return; // Header (dan jam) dihilangkan saat menu dimuat di dalam shell dashboard.
+  if (!el) return;
   const tick = () => {
-    el.textContent = new Date().toLocaleString("id-ID", {
-      weekday: "short", day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit",
+    const now = new Date();
+    el.textContent = now.toLocaleString("id-ID", {
+      weekday: "short", day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
   };
   tick();
   setInterval(tick, 1000);
 }
 
+// ---------------------------------------------------------------------
+// Ajakan login (kalau user belum login lewat dashboard IMO Tools)
+// ---------------------------------------------------------------------
 function wireLoginGate() {
   const btnGoLogin = document.getElementById("btnGoLogin");
   if (!btnGoLogin) return;
@@ -128,18 +182,23 @@ function wireLoginGate() {
   });
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+// ---------------------------------------------------------------------
+// Init
+// ---------------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", () => {
   Toast.init();
-  const loggedIn = Form.init(); // Memuat identitas dari sesi Login; false jika belum login.
+  Form.init();
   UploadField.init();
   CekPdf.init();
-  wireStepper();
-  wireMainMenuTabs();
+  wireStepNavigation();
+  wirePreviewAndSave();
+  wireReset();
+  wireMainMenu();
   wireLoginGate();
-  startClock();
-  showStep(1);
+  startLiveClock();
+  Stepper.goTo(1);
 
-  if (!loggedIn) {
+  if (!Form.currentUser) {
     Toast.show("Silakan login terlebih dahulu untuk mengisi serah terima.", "warn");
   }
 });
