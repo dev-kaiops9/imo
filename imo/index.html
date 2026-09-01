@@ -133,28 +133,12 @@
        menu di halaman ini tidak diperlukan lagi. -->
   <div class="content">
 
-  <!-- ==================== MODE SWITCHER ====================
-       Dua mode form: "Stasiun Kedudukan" (form yang sudah ada, aktif
-       secara default) dan "Stasiun Tempat Wakilan" (masih placeholder,
-       belum ada form-nya). Pilihan mode murni tampilan sisi client —
-       tidak memanggil backend maupun mengubah data yang sudah ada. -->
-  <div class="mode-switcher" id="modeSwitcher" role="tablist" aria-label="Mode form serah terima">
-    <button type="button" class="mode-switcher__tab is-active" id="modeTabKedudukan" data-mode="kedudukan" role="tab" aria-selected="true">
-      Stasiun Kedudukan
-    </button>
-    <button type="button" class="mode-switcher__tab" id="modeTabWakilan" data-mode="wakilan" role="tab" aria-selected="false">
-      Stasiun Tempat Wakilan
-      <span class="mode-switcher__badge">SEGERA</span>
-    </button>
-  </div>
-
-  <!-- ==================== MODE: STASIUN KEDUDUKAN ==================== -->
-  <div id="modeContentKedudukan">
-
   <!-- ==================== IDENTITAS AKTIF (dari sesi Login IMO Tools) ====================
        Menggantikan form "Data Pegawai" (langkah 1 lama): Nama/NIPP/Jabatan/Stasiun
        sekarang diambil otomatis dari user yang sedang login (localStorage "imoUser",
-       diisi oleh modal Login di index.html dashboard), bukan diinput ulang di sini. -->
+       diisi oleh modal Login di index.html dashboard), bukan diinput ulang di sini.
+       Diletakkan di luar wrapper mode (di atas switcher) supaya tetap tampil sama
+       di kedua mode — Stasiun Kedudukan maupun Stasiun Tempat Wakilan. -->
   <div class="panel identity-banner" id="identityBanner">
     <div class="identity-banner__row">
       <span class="identity-banner__label">Nama</span>
@@ -183,6 +167,24 @@
       <button type="button" class="btn btn--primary" id="btnGoLogin">Buka Login</button>
     </div>
   </div>
+
+  <!-- ==================== MODE SWITCHER ====================
+       Dua mode form: "Stasiun Kedudukan" (form yang sudah ada, aktif
+       secara default) dan "Stasiun Tempat Wakilan" (masih placeholder,
+       belum ada form-nya). Pilihan mode murni tampilan sisi client —
+       tidak memanggil backend maupun mengubah data yang sudah ada. -->
+  <div class="mode-switcher" id="modeSwitcher" role="tablist" aria-label="Mode form serah terima">
+    <button type="button" class="mode-switcher__tab is-active" id="modeTabKedudukan" data-mode="kedudukan" role="tab" aria-selected="true">
+      Stasiun Kedudukan
+    </button>
+    <button type="button" class="mode-switcher__tab" id="modeTabWakilan" data-mode="wakilan" role="tab" aria-selected="false">
+      Stasiun Tempat Wakilan
+      <span class="mode-switcher__badge">SEGERA</span>
+    </button>
+  </div>
+
+  <!-- ==================== MODE: STASIUN KEDUDUKAN ==================== -->
+  <div id="modeContentKedudukan">
 
   <!-- ==================== STEPPER (HORIZONTAL) ==================== -->
   <nav class="stepper" id="stepperNav" aria-label="Tahapan pengisian">
