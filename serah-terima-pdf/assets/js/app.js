@@ -1,5 +1,11 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+// URL Web App Apps Script (SAMA persis dengan CONFIG.APPS_SCRIPT_URL di
+// imo/assets/js/config.js) — halaman ini berdiri sendiri (tidak memuat
+// config.js), jadi URL-nya didefinisikan di sini juga, HANYA dipakai
+// untuk melapor counter pemakaian lewat catatPemakaian_() di bawah.
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPd0fyxJpy8vWpzj9GBg1-1nENo9Nqq-SfjH3rpm55c1Iy23HiduSNzwYJSt-ikwY4/exec";
+
 const NAME_RE = /^Serah\s+Terima\b.*?(\d{2})-(\d{2})-(\d{4})\(([^)]+)\)\.pdf$/i;
 
 const jenisDinasan = document.getElementById('jenisDinasan');
@@ -621,7 +627,26 @@ downloadBtn.addEventListener('click', ()=>{
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  catatPemakaian_();
 });
+
+/* ---- Lapor pemakaian ke backend (untuk counter "Telah Digunakan") ----
+ * Proses gabung & unduh PDF di halaman ini sepenuhnya berjalan di
+ * browser (pdf-lib/pdf.js), jadi tidak pernah memicu action lain ke
+ * Apps Script. Panggilan ringan ini HANYA melaporkan bahwa tombol
+ * "Unduh PDF Gabungan" baru saja berhasil dipakai, supaya ikut
+ * ke-counter — tidak menyimpan data apa pun, dan kegagalannya (mis.
+ * offline) sengaja diabaikan supaya tidak mengganggu proses unduh yang
+ * sudah berhasil. */
+function catatPemakaian_(){
+  const url = (typeof CONFIG !== 'undefined' && CONFIG.APPS_SCRIPT_URL) || APPS_SCRIPT_URL;
+  if(!url) return;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'catatPemakaian' }),
+  }).catch(()=>{ /* diabaikan sengaja — unduhan sudah berhasil */ });
+}
 
 /* ---- Fungsi konversi PDF -> A4 (identik dengan menu Convert per File PDF) ---- */
 

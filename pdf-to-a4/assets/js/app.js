@@ -1,5 +1,11 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+// URL Web App Apps Script (SAMA persis dengan CONFIG.APPS_SCRIPT_URL di
+// imo/assets/js/config.js) — halaman ini berdiri sendiri (tidak memuat
+// config.js), jadi URL-nya didefinisikan di sini juga, HANYA dipakai
+// untuk melapor counter pemakaian lewat catatPemakaian_() di bawah.
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPd0fyxJpy8vWpzj9GBg1-1nENo9Nqq-SfjH3rpm55c1Iy23HiduSNzwYJSt-ikwY4/exec";
+
 const fileInput = document.getElementById('fileInput');
 const drop = document.getElementById('drop');
 const fileNameEl = document.getElementById('fileName');
@@ -264,4 +270,22 @@ downloadBtn.addEventListener('click', () => {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  catatPemakaian_();
 });
+
+/* ---- Lapor pemakaian ke backend (untuk counter "Telah Digunakan") ----
+ * Proses konversi & unduh JPG di halaman ini sepenuhnya berjalan di
+ * browser (pdf.js + canvas), jadi tidak pernah memicu action lain ke
+ * Apps Script. Panggilan ringan ini HANYA melaporkan bahwa tombol
+ * "Unduh JPG" baru saja berhasil dipakai, supaya ikut ke-counter —
+ * tidak menyimpan data apa pun, dan kegagalannya (mis. offline) sengaja
+ * diabaikan supaya tidak mengganggu proses unduh yang sudah berhasil. */
+function catatPemakaian_(){
+  const url = (typeof CONFIG !== 'undefined' && CONFIG.APPS_SCRIPT_URL) || APPS_SCRIPT_URL;
+  if(!url) return;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'catatPemakaian' }),
+  }).catch(()=>{ /* diabaikan sengaja — unduhan sudah berhasil */ });
+}
