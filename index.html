@@ -85,11 +85,23 @@
       </div>
 
       <!-- Menu Bawah -->
-      <div class="space-y-2 pt-8 border-t border-indigo-400/30 mt-6 md:mt-0">
-        <button onclick="selectTab('about')" id="nav-about" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
-          <i class="fa-solid fa-circle-info w-5 text-center"></i>
-          <span>About | Data Backup</span>
-        </button>
+      <div class="pt-8 border-t border-indigo-400/30 mt-6 md:mt-0">
+        <!-- Widget "Telah Digunakan" — total pemakaian tools dari sheet Counter -->
+        <div id="usageCounterWidget" class="mb-3 px-4 py-3 rounded-2xl bg-white/10 border border-white/10">
+          <p class="text-xs text-indigo-100/80 leading-snug">
+            Telah Digunakan :
+            <span id="usageCounterValue" class="font-bold text-white">-</span>
+            kali Oleh Pengguna
+          </p>
+          <p id="usageCounterDate" class="text-[11px] text-indigo-100/50 mt-1">per -</p>
+        </div>
+
+        <div class="space-y-2">
+          <button onclick="selectTab('about')" id="nav-about" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
+            <i class="fa-solid fa-circle-info w-5 text-center"></i>
+            <span>About | Data Backup</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -111,10 +123,13 @@
               class="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 w-full sm:w-64 shadow-sm transition"
             />
           </div>
-          <button onclick="showToast('Tidak ada notifikasi baru.')" class="relative p-2.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition shadow-sm">
-            <i class="fa-regular fa-bell"></i>
-            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
-          </button>
+          <div class="flex items-center gap-2 pl-3 pr-4 py-2.5 bg-white border border-slate-200 rounded-full shadow-sm">
+            <span class="relative flex h-2.5 w-2.5">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+            </span>
+            <span class="text-xs font-semibold text-green-600">Online</span>
+          </div>
         </div>
       </header>
 
@@ -1199,6 +1214,35 @@
       });
     }
 
+    // ---------------------------------------------------------------------
+    // Widget "Telah Digunakan" (sidebar kiri bawah) — total pemakaian tools,
+    // diambil dari sheet "Counter" lewat action "getCounter" di Code.gs.
+    // Angka counter-nya sendiri bertambah di sisi backend setiap kali menu/
+    // proses apapun dipakai user (lihat Code.gs — belum diupload).
+    // ---------------------------------------------------------------------
+    async function loadUsageCounter() {
+      const valueEl = document.getElementById('usageCounterValue');
+      const dateEl = document.getElementById('usageCounterDate');
+
+      const BULAN_INDO = [
+        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+        "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+      ];
+      const now = new Date();
+      const tanggalHariIni = `${String(now.getDate()).padStart(2, '0')} ${BULAN_INDO[now.getMonth()]} ${now.getFullYear()}`;
+      if (dateEl) dateEl.innerText = `per ${tanggalHariIni}`;
+
+      try {
+        const data = await callBackend({ action: 'getCounter' });
+        const jumlah = Number(data && data.jumlah) || 0;
+        if (valueEl) valueEl.innerText = jumlah.toLocaleString('id-ID');
+      } catch (err) {
+        // Action "getCounter" di Code.gs belum tersedia / gagal diakses.
+        if (valueEl) valueEl.innerText = '-';
+        console.warn('Gagal memuat usage counter:', err.message);
+      }
+    }
+
     // Toast Notification Helper
     let toastTimeout;
     function showToast(msg) {
@@ -1221,6 +1265,7 @@
       renderCourses(coursesData);
       renderCalendar();
       initSavedPdfFilters();
+      loadUsageCounter();
 
       // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap
       // terlihat login di semua menu, termasuk setelah refresh halaman.
