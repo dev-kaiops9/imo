@@ -38,22 +38,51 @@
   <!-- ==================== KONTEN KANAN ==================== -->
   <div class="content">
 
+  <!-- ==================== IDENTITAS AKTIF (dari sesi Login IMO Tools) ====================
+       Menggantikan form "Data Pegawai" (langkah 1 lama): Nama/NIPP/Jabatan/Stasiun
+       sekarang diambil otomatis dari user yang sedang login (localStorage "imoUser",
+       diisi oleh modal Login di index.html dashboard), bukan diinput ulang di sini. -->
+  <div class="panel identity-banner" id="identityBanner">
+    <div class="identity-banner__row">
+      <span class="identity-banner__label">Nama</span>
+      <strong class="identity-banner__value" id="idNama">-</strong>
+    </div>
+    <div class="identity-banner__row">
+      <span class="identity-banner__label">NIPP</span>
+      <strong class="identity-banner__value is-mono" id="idNipp">-</strong>
+    </div>
+    <div class="identity-banner__row">
+      <span class="identity-banner__label">Jabatan</span>
+      <strong class="identity-banner__value" id="idJabatan">-</strong>
+    </div>
+    <div class="identity-banner__row">
+      <span class="identity-banner__label">Stasiun</span>
+      <strong class="identity-banner__value" id="idStasiun">-</strong>
+    </div>
+  </div>
+
+  <!-- ==================== BELUM LOGIN ==================== -->
+  <div class="panel hidden" id="notLoggedInPanel">
+    <p class="panel__title">Anda belum login</p>
+    <p class="panel__hint">Silakan login lebih dulu lewat menu utama IMO Tools — Nama, NIPP, Jabatan, dan Stasiun akan terisi otomatis dari data akun Anda.</p>
+    <div class="btn-row">
+      <span></span>
+      <button type="button" class="btn btn--primary" id="btnGoLogin">Buka Login</button>
+    </div>
+  </div>
+
   <!-- ==================== STEPPER (HORIZONTAL) ==================== -->
   <nav class="stepper" id="stepperNav" aria-label="Tahapan pengisian">
     <div class="step is-active" data-step="1">
       <div class="step__num">1</div>
-      <div class="step__label">Data Pegawai</div>
+      <div class="step__label">Data Dinas</div>
     </div>
     <div class="step" data-step="2">
       <div class="step__num">2</div>
-      <div class="step__label">Data Dinas</div>
+      <div class="step__label">Unggah Foto</div>
     </div>
     <div class="step" data-step="3">
       <div class="step__num">3</div>
-      <div class="step__label">Unggah Foto</div>
-    </div>
-    <div class="step" data-step="4">
-      <div class="step__num">4</div>
       <div class="step__label">Preview &amp; Simpan</div>
     </div>
   </nav>
@@ -61,57 +90,11 @@
   <!-- ==================== MAIN FORM ==================== -->
   <main id="mainFormArea">
 
-    <!-- ---------- STEP 1: DATA PEGAWAI ---------- -->
+    <!-- ---------- STEP 1: DATA DINAS ---------- -->
     <section class="panel step-panel" data-panel="1">
       <div class="panel__header">
         <div>
-          <span class="panel__eyebrow">Langkah 1 dari 4</span>
-          <h2 class="panel__title">Data Pegawai</h2>
-        </div>
-      </div>
-      <p class="panel__hint">Ketik NIPP untuk mencari data pegawai secara otomatis.</p>
-
-      <div class="field">
-        <label class="field__label" for="nipp">NIPP <span class="req">*</span></label>
-        <div class="field__control">
-          <input type="text" inputmode="numeric" id="nipp" class="input is-mono" placeholder="Contoh: 69444" autocomplete="off" />
-        </div>
-        <div class="field__error" id="err-nipp">NIPP wajib diisi.</div>
-        <div class="nipp-status" id="nippStatus"><span class="flap">•</span><span id="nippStatusText">Mencari…</span></div>
-      </div>
-
-      <div class="field">
-        <label class="field__label" for="nama">Nama <span class="req">*</span></label>
-        <input type="text" id="nama" class="input" placeholder="Nama lengkap" />
-        <div class="field__error" id="err-nama">Nama wajib diisi.</div>
-      </div>
-
-      <div class="field-row">
-        <div class="field">
-          <label class="field__label" for="jabatan1">Jabatan <span class="req">*</span></label>
-          <select id="jabatan1" class="select">
-            <option value="">Pilih jabatan</option>
-          </select>
-          <div class="field__error" id="err-jabatan1">Jabatan wajib dipilih.</div>
-        </div>
-        <div class="field">
-          <label class="field__label" for="stasiun">Stasiun <span class="req">*</span></label>
-          <input type="text" id="stasiun" class="input" placeholder="Contoh: Glenmore" />
-          <div class="field__error" id="err-stasiun">Stasiun wajib diisi.</div>
-        </div>
-      </div>
-
-      <div class="btn-row">
-        <span></span>
-        <button type="button" class="btn btn--primary" data-next="2">Lanjut →</button>
-      </div>
-    </section>
-
-    <!-- ---------- STEP 2: DATA DINAS ---------- -->
-    <section class="panel step-panel hidden" data-panel="2">
-      <div class="panel__header">
-        <div>
-          <span class="panel__eyebrow">Langkah 2 dari 4</span>
+          <span class="panel__eyebrow">Langkah 1 dari 3</span>
           <h2 class="panel__title">Data Dinas</h2>
         </div>
       </div>
@@ -141,16 +124,16 @@
       </div>
 
       <div class="btn-row">
-        <button type="button" class="btn btn--ghost" data-back="1">← Kembali</button>
-        <button type="button" class="btn btn--primary" data-next="3">Lanjut →</button>
+        <span></span>
+        <button type="button" class="btn btn--primary" data-next="2">Lanjut →</button>
       </div>
     </section>
 
-    <!-- ---------- STEP 3: UPLOAD FOTO ---------- -->
-    <section class="panel step-panel hidden" data-panel="3">
+    <!-- ---------- STEP 2: UPLOAD FOTO ---------- -->
+    <section class="panel step-panel hidden" data-panel="2">
       <div class="panel__header">
         <div>
-          <span class="panel__eyebrow">Langkah 3 dari 4</span>
+          <span class="panel__eyebrow">Langkah 2 dari 3</span>
           <h2 class="panel__title">Unggah Foto</h2>
         </div>
       </div>
@@ -181,16 +164,16 @@
       </div>
 
       <div class="btn-row">
-        <button type="button" class="btn btn--ghost" data-back="2">← Kembali</button>
+        <button type="button" class="btn btn--ghost" data-back="1">← Kembali</button>
         <button type="button" class="btn btn--primary" id="btnGoPreview">Lihat Preview →</button>
       </div>
     </section>
 
-    <!-- ---------- STEP 4: RINGKASAN (ditampilkan setelah simpan) ---------- -->
-    <section class="panel step-panel hidden" data-panel="4">
+    <!-- ---------- STEP 3: RINGKASAN (ditampilkan setelah simpan) ---------- -->
+    <section class="panel step-panel hidden" data-panel="3">
       <div class="panel__header">
         <div>
-          <span class="panel__eyebrow">Langkah 4 dari 4</span>
+          <span class="panel__eyebrow">Langkah 3 dari 3</span>
           <h2 class="panel__title" id="resultTitle">Tersimpan</h2>
         </div>
       </div>
