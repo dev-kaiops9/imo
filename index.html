@@ -199,27 +199,73 @@
     </aside>
   </div>
 
-  <!-- ================= LOGIN MODAL (DIUBAH) ================= -->
+  <!-- ================= LOGIN MODAL (NIPP-first, tersambung ke sheet Pegawai) ================= -->
   <div id="loginModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
     <div class="bg-white w-full max-w-md rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-100 transform scale-95 transition-transform duration-300" id="loginModalCard">
       <div class="flex items-center justify-between mb-6">
         <div>
           <h3 class="text-xl font-bold text-slate-800">Masuk ke IMO Tools</h3>
-          <p class="text-xs text-slate-500 mt-0.5">Isi data akun Anda di bawah ini</p>
+          <p class="text-xs text-slate-500 mt-0.5" id="loginModalSubtitle">Masukkan NIPP untuk mencari data pegawai</p>
         </div>
         <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition">
           <i class="fa-solid fa-xmark text-lg"></i>
         </button>
       </div>
-      
-      <form onsubmit="handleLoginSubmit(event)" class="space-y-3.5">
+
+      <div id="loginError" class="hidden mb-3 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2"></div>
+
+      <!-- ---- TAHAP 1: CEK NIPP ---- -->
+      <form id="loginStageNipp" onsubmit="handleCekNippSubmit(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">NIPP</label>
+          <input type="text" id="loginNippInput" inputmode="numeric" placeholder="Contoh: 1094881999" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition font-mono" />
+        </div>
+        <button type="submit" id="btnCekNipp" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
+          Cek NIPP
+        </button>
+      </form>
+
+      <!-- ---- TAHAP 2A: NIPP DITEMUKAN ---- -->
+      <div id="loginStageFound" class="hidden space-y-3.5">
+        <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 space-y-2">
+          <p class="text-xs font-bold text-emerald-700 mb-1">Data Pegawai Ditemukan</p>
+          <div class="flex items-start justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium shrink-0">Nama</span>
+            <span id="foundNama" class="font-bold text-slate-800 text-right">-</span>
+          </div>
+          <div class="flex items-start justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium shrink-0">NIPP</span>
+            <span id="foundNipp" class="font-bold text-indigo-600 font-mono text-right">-</span>
+          </div>
+          <div class="flex items-start justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium shrink-0">Jabatan</span>
+            <span id="foundJabatan" class="font-semibold text-slate-700 text-right">-</span>
+          </div>
+          <div class="flex items-start justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium shrink-0">Stasiun</span>
+            <span id="foundStasiun" class="font-semibold text-slate-700 text-right">-</span>
+          </div>
+        </div>
+        <button type="button" onclick="handleLoginConfirmed()" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200">
+          LOGIN
+        </button>
+        <button type="button" onclick="backToNippStage()" class="w-full py-2 text-slate-500 hover:text-slate-700 font-semibold text-xs transition">
+          ← Ganti NIPP
+        </button>
+      </div>
+
+      <!-- ---- TAHAP 2B: NIPP BELUM TERDAFTAR -> FORM PENDAFTARAN ---- -->
+      <form id="loginStageDaftar" onsubmit="handleDaftarDanLogin(event)" class="hidden space-y-3.5">
+        <p class="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl px-3 py-2">
+          NIPP belum terdaftar. Silakan melakukan pendaftaran terlebih dahulu.
+        </p>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap</label>
           <input type="text" id="loginNameInput" placeholder="Contoh: Christine Eva" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">NIPP</label>
-          <input type="text" id="loginNippInput" placeholder="Contoh: 1094881999" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition font-mono" />
+          <input type="text" id="loginNippReadonly" readonly class="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 font-mono cursor-not-allowed" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Jabatan</label>
@@ -230,8 +276,11 @@
           <input type="text" id="loginStasiunInput" placeholder="Contoh: Stasiun Gambir (GMR)" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
         </div>
 
-        <button type="submit" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
-          Masuk Sekarang
+        <button type="submit" id="btnDaftarDanLogin" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
+          Daftar dan Login
+        </button>
+        <button type="button" onclick="backToNippStage()" class="w-full py-2 text-slate-500 hover:text-slate-700 font-semibold text-xs transition">
+          ← Ganti NIPP
         </button>
       </form>
     </div>
@@ -298,6 +347,28 @@
 
     const LOGIN_STORAGE_KEY = "imoUser";
     const TAB_STORAGE_KEY = "imoActiveTab";
+
+    // URL Web App Google Apps Script (Code.gs) — sama dengan CONFIG.APPS_SCRIPT_URL
+    // yang dipakai di imo/assets/js/config.js, sheet "Pegawai" yang sama juga
+    // dipakai sebagai database identitas Login (lihat Code.gs).
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPd0fyxJpy8vWpzj9GBg1-1nENo9Nqq-SfjH3rpm55c1Iy23HiduSNzwYJSt-ikwY4/exec";
+
+    // Data pegawai hasil "Cek NIPP" yang sedang menunggu konfirmasi LOGIN.
+    let pendingNipp = "";
+    let pendingUser = null;
+
+    // Helper pemanggilan backend Code.gs. Melempar Error jika backend
+    // membalas { ok:false }, supaya pesan errornya bisa ditampilkan ke user.
+    async function callBackend(body) {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.message || "Terjadi kesalahan pada server.");
+      return json.data;
+    }
 
     // Variabel Kalender Realtime
     let calendarDate = new Date();
@@ -446,6 +517,10 @@
     function openLoginModal() {
       const modal = document.getElementById('loginModal');
       const card = document.getElementById('loginModalCard');
+      document.getElementById('loginNippInput').value = '';
+      pendingNipp = '';
+      pendingUser = null;
+      showLoginStage('nipp');
       modal.classList.remove('opacity-0', 'pointer-events-none');
       card.classList.remove('scale-95');
       card.classList.add('scale-100');
@@ -505,25 +580,117 @@
       `;
     }
 
-    // Submit Handler Login
-    function handleLoginSubmit(e) {
+    // ---- Tahap 1: Cek NIPP ke sheet Pegawai (via Code.gs action "cekNipp") ----
+    function handleCekNippSubmit(e) {
+      e.preventDefault();
+      handleCekNipp();
+    }
+
+    async function handleCekNipp() {
+      const nipp = document.getElementById('loginNippInput').value.trim();
+      if (!nipp) { showLoginError('NIPP wajib diisi.'); return; }
+
+      setLoginBusy(true);
+      try {
+        const result = await callBackend({ action: 'cekNipp', nipp: nipp });
+        pendingNipp = nipp;
+
+        if (result.found) {
+          // NIPP terdaftar -> tampilkan data yang ditemukan + tombol LOGIN.
+          pendingUser = {
+            nama: result.data.nama,
+            nipp: result.data.nipp || nipp,
+            jabatan: result.data.jabatan,
+            stasiun: result.data.stasiun,
+          };
+          document.getElementById('foundNama').innerText = pendingUser.nama;
+          document.getElementById('foundNipp').innerText = pendingUser.nipp;
+          document.getElementById('foundJabatan').innerText = pendingUser.jabatan;
+          document.getElementById('foundStasiun').innerText = pendingUser.stasiun;
+          showLoginStage('found');
+        } else {
+          // NIPP belum terdaftar -> tampilkan form pendaftaran, NIPP sudah terisi otomatis.
+          document.getElementById('loginNippReadonly').value = nipp;
+          document.getElementById('loginNameInput').value = '';
+          document.getElementById('loginJabatanInput').value = '';
+          document.getElementById('loginStasiunInput').value = '';
+          showLoginStage('daftar');
+        }
+      } catch (err) {
+        showLoginError('Gagal memeriksa NIPP: ' + err.message);
+      } finally {
+        setLoginBusy(false);
+      }
+    }
+
+    // ---- Tahap 2A: NIPP ditemukan -> user menekan LOGIN ----
+    function handleLoginConfirmed() {
+      if (!pendingUser) return;
+      applyLoggedInUI(pendingUser);
+      localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(pendingUser));
+      closeLoginModal();
+      showToast(`Selamat datang, ${pendingUser.nama}!`);
+    }
+
+    // ---- Tahap 2B: NIPP belum terdaftar -> submit form pendaftaran ----
+    // (via Code.gs action "daftarPegawai", menyimpan ke sheet Pegawai yang sama)
+    async function handleDaftarDanLogin(e) {
       e.preventDefault();
 
-      // Ambil data dari input form
-      const user = {
-        nama: document.getElementById('loginNameInput').value.trim() || 'Christine Eva',
-        nipp: document.getElementById('loginNippInput').value.trim() || '1094881999',
-        jabatan: document.getElementById('loginJabatanInput').value.trim() || 'PPKA Utama',
-        stasiun: document.getElementById('loginStasiunInput').value.trim() || 'Stasiun Gambir (GMR)'
-      };
+      const nama = document.getElementById('loginNameInput').value.trim();
+      const jabatan = document.getElementById('loginJabatanInput').value.trim();
+      const stasiun = document.getElementById('loginStasiunInput').value.trim();
 
-      applyLoggedInUI(user);
+      if (!nama || !jabatan || !stasiun) {
+        showLoginError('Lengkapi Nama Lengkap, Jabatan, dan Stasiun terlebih dahulu.');
+        return;
+      }
 
-      // Simpan sesi supaya status login tetap ada di semua menu & saat halaman dimuat ulang
-      localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(user));
+      setLoginBusy(true);
+      try {
+        const data = await callBackend({
+          action: 'daftarPegawai',
+          payload: { nama: nama, nipp: pendingNipp, jabatan: jabatan, stasiun: stasiun },
+        });
+        // Backend mengembalikan nama yang SUDAH dinormalisasi (Title Case) —
+        // pakai persis nilai balikan ini sebagai identitas user aktif.
+        const user = { nama: data.nama, nipp: data.nipp, jabatan: data.jabatan, stasiun: data.stasiun };
 
-      closeLoginModal();
-      showToast(`Selamat datang, ${user.nama}!`);
+        applyLoggedInUI(user);
+        localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(user));
+        closeLoginModal();
+        showToast(`Pendaftaran berhasil. Selamat datang, ${user.nama}!`);
+      } catch (err) {
+        showLoginError('Gagal mendaftar: ' + err.message);
+      } finally {
+        setLoginBusy(false);
+      }
+    }
+
+    function backToNippStage() {
+      showLoginStage('nipp');
+    }
+
+    function showLoginStage(stage) {
+      document.getElementById('loginStageNipp').classList.toggle('hidden', stage !== 'nipp');
+      document.getElementById('loginStageFound').classList.toggle('hidden', stage !== 'found');
+      document.getElementById('loginStageDaftar').classList.toggle('hidden', stage !== 'daftar');
+      document.getElementById('loginModalSubtitle').textContent =
+        stage === 'nipp' ? 'Masukkan NIPP untuk mencari data pegawai' :
+        stage === 'found' ? 'Periksa data pegawai di bawah ini' :
+        'Lengkapi data untuk mendaftar';
+      document.getElementById('loginError').classList.add('hidden');
+    }
+
+    function showLoginError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function setLoginBusy(busy) {
+      document.getElementById('btnCekNipp').disabled = busy;
+      document.getElementById('btnDaftarDanLogin').disabled = busy;
     }
 
     function handleLogout() {

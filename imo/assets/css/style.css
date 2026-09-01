@@ -950,3 +950,31 @@ input[type="date"]:focus {
   overflow: hidden;
   clip: rect(0 0 0 0);
 }
+
+/* ---------------------------------------------------------------------
+   Identitas Aktif (banner data user login — menggantikan step "Data
+   Pegawai" lama; datanya diambil dari sesi Login di dashboard IMO Tools)
+   --------------------------------------------------------------------- */
+
+.identity-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin-bottom: 16px;
+}
+.identity-banner__row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 13px;
+}
+.identity-banner__label {
+  color: var(--muted, #94a3b8);
+  font-weight: 500;
+}
+.identity-banner__value {
+  font-weight: 700;
+}
+.identity-banner__value.is-mono {
+  font-family: var(--font-mono);
+}

@@ -13,6 +13,12 @@ const CekPdf = {
     document.getElementById("cekNippInput").addEventListener("keydown", (e) => {
       if (e.key === "Enter") this.search();
     });
+
+    // Isi otomatis dengan NIPP user yang sedang login (tetap bisa diubah,
+    // misal untuk cek riwayat NIPP lain), sesuai data sesi dari Form.
+    if (Form.currentUser && Form.currentUser.nipp) {
+      document.getElementById("cekNippInput").value = Form.currentUser.nipp;
+    }
   },
 
   async search() {
