@@ -537,17 +537,38 @@ const PdfBulanan = {
       titleBaseline -= titleLineH;
     });
 
+    // ==================== LABEL "NAMA" (perbaikan huruf kapital) ====================
+    // Di gambar background, label baris pertama masih tertulis "Nama" (Title
+    // Case), sedangkan label lain (NIPP/JABATAN/UNIT KERJA/DAOP) sudah UPPERCASE.
+    // Area label ini ditimpa warna kartu lalu ditulis ulang jadi "NAMA" pakai
+    // font bold, supaya konsisten dengan label baris lainnya.
+    const namaLabelBox = { x0: 110, x1: 310, yTop: 1294, yBottom: 1372 };
+    page.drawRectangle({
+      x: X(namaLabelBox.x0),
+      y: Y(namaLabelBox.yBottom),
+      width: X(namaLabelBox.x1) - X(namaLabelBox.x0),
+      height: H(namaLabelBox.yBottom - namaLabelBox.yTop),
+      color: CARD_BG,
+    });
+    page.drawText("NAMA", { x: X(123), y: Y(1350), size: 14.5, font: fontBold, color: INK });
+
     // ==================== BARIS IDENTITAS ====================
     // Untuk tiap baris: hanya kolom NILAI (kanan) yang ditimpa & ditulis
-    // ulang — label ("Nama", "NIPP", dst.) & tanda titik dua sudah ada di
-    // gambar dan tidak disentuh.
+    // ulang — label ("NIPP", "JABATAN", dst.) & tanda titik dua sudah ada di
+    // gambar dan tidak disentuh (label "Nama" ditimpa terpisah di atas).
     const valueX = 567; // px — posisi mulai teks nilai (persis setelah titik dua)
     const valueRightEdge = 1320; // px — tepi kanan kartu
+
+    // UNIT KERJA selalu diawali "Stasiun " (kalau nilainya belum diawali kata itu).
+    const stasiunRaw = String(user.stasiun || "-").trim();
+    const stasiunValue =
+      stasiunRaw === "-" || /^stasiun\b/i.test(stasiunRaw) ? stasiunRaw : `Stasiun ${stasiunRaw}`;
+
     const rows = [
-      { label: "Nama", value: user.nama || "-", yTop: 1294, yBottom: 1372, baseline: 1350 },
+      { label: "NAMA", value: user.nama || "-", yTop: 1294, yBottom: 1372, baseline: 1350 },
       { label: "NIPP", value: user.nipp || "-", yTop: 1395, yBottom: 1472, baseline: 1450 },
-      { label: "Jabatan", value: user.jabatan || "-", yTop: 1497, yBottom: 1574, baseline: 1552 },
-      { label: "Unit Kerja", value: user.stasiun || "-", yTop: 1597, yBottom: 1675, baseline: 1653 },
+      { label: "JABATAN", value: user.jabatan || "-", yTop: 1497, yBottom: 1574, baseline: 1552 },
+      { label: "UNIT KERJA", value: stasiunValue, yTop: 1597, yBottom: 1675, baseline: 1653 },
       { label: "DAOP", value: "9 Jember", yTop: 1698, yBottom: 1776, baseline: 1754 },
     ];
 
