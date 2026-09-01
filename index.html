@@ -126,11 +126,13 @@
       <div id="dashboardView">
 
         <!-- ===== Banner Sambutan (di atas daftar menu / kartu IMO) ===== -->
-        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4a47b5] via-[#5B58CA] to-purple-600 mb-6 shadow-lg shadow-indigo-200/60">
-          <!-- Dekorasi lingkaran -->
-          <div class="absolute -top-10 -right-10 w-56 h-56 bg-white/10 rounded-full"></div>
-          <div class="absolute -bottom-16 right-24 w-40 h-40 bg-white/10 rounded-full"></div>
-          <div class="absolute top-8 right-40 w-6 h-6 bg-white/20 rounded-full hidden md:block"></div>
+        <div class="relative mb-6 mt-6 sm:mt-8">
+          <!-- Lapisan background (rounded + clip lingkaran dekorasi, TIDAK meng-clip karakter) -->
+          <div class="absolute inset-0 rounded-3xl bg-gradient-to-br from-[#4a47b5] via-[#5B58CA] to-purple-600 shadow-lg shadow-indigo-200/60 overflow-hidden">
+            <div class="absolute -top-10 -right-10 w-56 h-56 bg-white/10 rounded-full"></div>
+            <div class="absolute -bottom-16 right-24 w-40 h-40 bg-white/10 rounded-full"></div>
+            <div class="absolute top-8 right-40 w-6 h-6 bg-white/20 rounded-full hidden md:block"></div>
+          </div>
 
           <div class="relative flex items-stretch min-h-[180px] sm:min-h-[200px]">
             <!-- Teks Sambutan -->
@@ -147,12 +149,12 @@
               </p>
             </div>
 
-            <!-- Karakter Petugas -->
-            <div class="absolute right-2 sm:right-6 md:right-10 bottom-0 flex items-end pointer-events-none">
+            <!-- Karakter Petugas (sengaja melebihi tepi atas banner, tidak ikut ke-clip) -->
+            <div class="absolute right-2 sm:right-6 md:right-10 bottom-0 -top-8 sm:-top-10 flex items-end pointer-events-none">
               <img
                 src="assets/img/petugas-imo.png"
                 alt="Petugas KAI menyambut Anda"
-                class="h-[190px] sm:h-[220px] md:h-[240px] w-auto object-contain drop-shadow-2xl select-none"
+                class="h-[220px] sm:h-[250px] md:h-[270px] w-auto object-contain drop-shadow-2xl select-none"
                 draggable="false"
               />
             </div>
