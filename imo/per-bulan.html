@@ -4,33 +4,186 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>IMO - Per Bulan</title>
+<meta name="description" content="Rekap IMO bulanan: cover, SmartCard, Daftar Hadir, dan gabungan seluruh PDF serah terima harian menjadi satu file PDF." />
 
-<!-- Tailwind CSS CDN (senada dengan IMO Tools Hub) -->
+<!-- Tailwind CSS CDN (dipakai untuk daftar PDF & elemen tambahan, senada dengan IMO Tools Hub) -->
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-<style>
-  body { font-family: 'Plus Jakarta Sans', sans-serif; }
-</style>
+<!-- Pakai stylesheet yang sama dengan menu "Per Hari" supaya tampilan (panel,
+     field, dropzone, tombol, dsb) senada persis. -->
+<link rel="stylesheet" href="assets/css/style.css" />
 </head>
-<body class="bg-slate-50/50 min-h-screen">
+<body>
 
-  <!-- Halaman ini dimuat di dalam shell dashboard (IMO Tools), sub-menu
-       "Per Bulan" dari menu sidebar "IMO". Kontennya akan dibangun
-       menyusul — untuk sekarang hanya placeholder. -->
-  <div class="flex items-center justify-center min-h-screen p-8">
-    <div class="text-center max-w-md">
-      <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-indigo-50 flex items-center justify-center">
-        <i class="fa-solid fa-calendar-days text-indigo-400 text-2xl"></i>
-      </div>
-      <h1 class="text-lg font-bold text-slate-800 mb-2">IMO - Per Bulan</h1>
-      <p class="text-sm text-slate-500">Halaman ini sedang dalam pengembangan. Fitur rekap IMO per bulan akan segera hadir di sini.</p>
+<!-- Header & tombol "kembali" sengaja dihilangkan: halaman ini dimuat di
+     dalam shell dashboard (IMO Tools) yang sidebar-nya selalu terlihat. -->
+
+<div class="shell">
+  <div class="content">
+
+  <!-- ==================== IDENTITAS AKTIF (dari sesi Login IMO Tools) ==================== -->
+  <div class="panel identity-banner" id="identityBanner">
+    <div class="identity-banner__row">
+      <span class="identity-banner__label">Nama</span>
+      <strong class="identity-banner__value" id="idNama">-</strong>
+    </div>
+    <div class="identity-banner__row">
+      <span class="identity-banner__label">NIPP</span>
+      <strong class="identity-banner__value is-mono" id="idNipp">-</strong>
+    </div>
+    <div class="identity-banner__row">
+      <span class="identity-banner__label">Jabatan</span>
+      <strong class="identity-banner__value" id="idJabatan">-</strong>
+    </div>
+    <div class="identity-banner__row">
+      <span class="identity-banner__label">Stasiun</span>
+      <strong class="identity-banner__value" id="idStasiun">-</strong>
     </div>
   </div>
 
+  <!-- ==================== BELUM LOGIN ==================== -->
+  <div class="panel hidden" id="notLoggedInPanel">
+    <p class="panel__title">Anda belum login</p>
+    <p class="panel__hint">Silakan login lebih dulu lewat menu utama IMO Tools — Nama, NIPP, Jabatan, dan Stasiun akan terisi otomatis dari data akun Anda.</p>
+    <div class="btn-row">
+      <span></span>
+      <button type="button" class="btn btn--primary" id="btnGoLogin">Buka Login</button>
+    </div>
+  </div>
+
+  <!-- ==================== KONTEN UTAMA (tampil setelah login) ==================== -->
+  <main id="mainFormArea">
+
+    <!-- ---------- 1. COVER: BULAN & TAHUN ---------- -->
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Rekap Bulanan</span>
+          <h2 class="panel__title">Cover IMO</h2>
+        </div>
+      </div>
+      <p class="panel__hint">Pilih bulan &amp; tahun rekap — dipakai untuk mengisi cover, dan sekaligus jadi filter daftar PDF tersimpan di bawah.</p>
+
+      <div class="field-row">
+        <div class="field">
+          <label class="field__label" for="selBulan">Bulan <span class="req">*</span></label>
+          <select id="selBulan" class="select"></select>
+        </div>
+        <div class="field">
+          <label class="field__label" for="selTahun">Tahun <span class="req">*</span></label>
+          <select id="selTahun" class="select"></select>
+        </div>
+      </div>
+    </section>
+
+    <!-- ---------- 2. UPLOAD SMARTCARD ---------- -->
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Lampiran</span>
+          <h2 class="panel__title">Upload SmartCard</h2>
+        </div>
+      </div>
+      <p class="panel__hint">Foto/scan SmartCard — akan ditempatkan pada halaman 2 (orientasi landscape).</p>
+
+      <div class="field">
+        <div class="dropzone" id="dzSmartcard" tabindex="0" role="button">
+          <div class="dropzone__icon">↑</div>
+          <div class="dropzone__text">Tarik &amp; lepas foto di sini, atau klik untuk pilih</div>
+          <div class="dropzone__hint">JPG / PNG, maks. 8MB</div>
+        </div>
+        <input type="file" id="fileSmartcard" accept="image/*" class="hidden" />
+        <div class="thumb-row" id="thumbSmartcard"></div>
+        <div class="field__error" id="err-smartcard">Foto SmartCard wajib diunggah.</div>
+      </div>
+    </section>
+
+    <!-- ---------- 3. UPLOAD DAFTAR HADIR ---------- -->
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Lampiran</span>
+          <h2 class="panel__title">Upload Daftar Hadir</h2>
+        </div>
+      </div>
+      <p class="panel__hint">Foto/scan Daftar Hadir bulan terpilih — akan ditempatkan pada halaman 3.</p>
+
+      <div class="field">
+        <div class="dropzone" id="dzDaftarHadir" tabindex="0" role="button">
+          <div class="dropzone__icon">↑</div>
+          <div class="dropzone__text">Tarik &amp; lepas foto di sini, atau klik untuk pilih</div>
+          <div class="dropzone__hint">JPG / PNG, maks. 8MB</div>
+        </div>
+        <input type="file" id="fileDaftarHadir" accept="image/*" class="hidden" />
+        <div class="thumb-row" id="thumbDaftarHadir"></div>
+        <div class="field__error" id="err-daftarHadir">Foto Daftar Hadir wajib diunggah.</div>
+      </div>
+    </section>
+
+    <!-- ---------- 4. PDF TERSIMPAN (terfilter Bulan & Tahun) ---------- -->
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Halaman 4 — selesai</span>
+          <h2 class="panel__title">PDF Tersimpan</h2>
+        </div>
+      </div>
+      <p class="panel__hint">Seluruh PDF serah terima harian pada bulan &amp; tahun terpilih, terurut tanggal termuda dulu lalu Dinas Pagi → Siang → Malam. Daftar ini yang akan digabungkan ke dalam hasil unduhan.</p>
+
+      <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+        <span class="text-xs font-bold text-slate-500 tracking-wider uppercase">Daftar PDF</span>
+        <span id="bulanPdfCount" class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">0</span>
+      </div>
+      <div id="bulanPdfListWrap" class="flex flex-col gap-2">
+        <div class="text-center py-6 text-xs text-slate-400">Pilih bulan &amp; tahun untuk melihat PDF tersimpan.</div>
+      </div>
+    </section>
+
+    <!-- ---------- 5. UNDUH IMO ---------- -->
+    <section class="panel">
+      <div class="panel__header">
+        <div>
+          <span class="panel__eyebrow">Langkah Terakhir</span>
+          <h2 class="panel__title">Unduh IMO</h2>
+        </div>
+      </div>
+      <p class="panel__hint">
+        Menggabungkan Cover, SmartCard, Daftar Hadir, dan seluruh PDF tersimpan di atas menjadi satu file PDF,
+        lalu menyimpannya ke Google Drive — persis seperti cara simpan di menu Per Hari.
+      </p>
+      <div class="btn-row">
+        <span></span>
+        <button type="button" class="btn btn--primary" id="btnUnduhImo">⬇ Unduh IMO</button>
+      </div>
+    </section>
+
+  </main>
+
+  </div>
+</div>
+
+<!-- ==================== BUSY OVERLAY ==================== -->
+<div class="busy-overlay" id="busyOverlay">
+  <div class="spinner"></div>
+  <div class="busy-overlay__text" id="busyText">MEMPROSES…</div>
+</div>
+
+<!-- ==================== TOASTS ==================== -->
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- ==================== LIBRARIES ==================== -->
+<!-- pdf-lib: dipakai untuk membuat halaman Cover/SmartCard/Daftar Hadir DAN
+     menggabungkan (merge) halaman dari PDF-PDF harian yang sudah tersimpan
+     menjadi satu file PDF akhir. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+
+<!-- ==================== APP SCRIPTS ==================== -->
+<script src="assets/js/config.js"></script>
+<script src="assets/js/bulanan.js"></script>
 </body>
 </html>
