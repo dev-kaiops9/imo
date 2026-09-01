@@ -772,7 +772,7 @@ function wireUnduhImo() {
       });
 
       // Tahap 2 (92% - 97%): mengunggah/menyimpan PDF akhir ke Google Drive.
-      Busy.show("MENYIMPAN PDF KE DRIVE…", { progress: true });
+      Busy.show("MENYIMPAN PDF…", { progress: true });
       Busy.setProgress(92);
       await Api.simpanImoBulanan({ user: Session.current, bulanNama, tahun, pdfFileName: pdf.fileName, pdfBase64: pdf.base64 });
       Busy.setProgress(97);
