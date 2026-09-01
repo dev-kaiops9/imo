@@ -151,10 +151,10 @@
         </button>
       </div>
 
-      <!-- ===== Widget khusus menu DASHBOARD: Kalender + Informasi Akun =====
-           Menggantikan widget "PDF Tersimpan" HANYA di menu Dashboard.
-           Di menu tool lain (IMO / Serah Terima PDF / PDF to A4), widget
-           "PDF Tersimpan" di bawah tetap tampil seperti semula. -->
+      <!-- ===== Widget Kalender + Informasi Akun =====
+           Tampil di menu Dashboard, Serah Terima PDF, dan PDF to A4.
+           Digantikan oleh widget "PDF Tersimpan" HANYA di menu IMO
+           (sub-menu Per Hari & Per Bulan). -->
       <div id="dashboardRightWidgets" class="hidden flex-col">
         <!-- Calendar Widget Realtime -->
         <div class="bg-slate-50/70 p-4 rounded-3xl border border-slate-100 shadow-sm">
@@ -225,11 +225,13 @@
         </div>
       </div>
 
-      <!-- ===== Widget khusus menu TOOL (IMO / Serah Terima PDF / PDF to A4):
+      <!-- ===== Widget khusus menu IMO (Per Hari & Per Bulan):
            PDF Tersimpan — muncul otomatis begitu user login, berisi daftar
            seluruh PDF serah terima milik user tersebut, terurut tanggal
            termuda dulu lalu Dinas Pagi -> Siang -> Malam dalam tanggal
-           yang sama. ===== -->
+           yang sama. Tidak tampil di menu Serah Terima PDF / PDF to A4,
+           yang menampilkan widget Kalender & Informasi Akun sebagai
+           gantinya. ===== -->
       <div id="toolRightWidgets" class="flex-1 min-h-0 flex flex-col">
         <div id="savedPdfWidget" class="hidden flex-col gap-3 p-5 bg-gradient-to-br from-indigo-50/90 to-slate-50 rounded-3xl border border-indigo-100 shadow-sm transition-all duration-300 flex-1 min-h-0">
           <div class="flex items-center justify-between pb-3 border-b border-indigo-100 shrink-0">
@@ -659,12 +661,17 @@
     function updateRightWidgetsVisibility(tabId) {
       const dashboardWidgets = document.getElementById('dashboardRightWidgets');
       const toolWidgets = document.getElementById('toolRightWidgets');
-      const isDashboard = tabId === 'dashboard';
 
-      dashboardWidgets.classList.toggle('hidden', !isDashboard);
-      dashboardWidgets.classList.toggle('flex', isDashboard);
-      toolWidgets.classList.toggle('hidden', isDashboard);
-      toolWidgets.classList.toggle('flex', !isDashboard);
+      // Widget "PDF Tersimpan" HANYA tampil di menu IMO (sub-menu Per Hari
+      // & Per Bulan). Widget "Tanggal (Kalender) & User Aktif" tampil di
+      // menu Dashboard, Serah Terima PDF, dan PDF to A4.
+      const showSavedPdf = isImoGroupTab(tabId);
+      const showDashboardWidgets = !showSavedPdf;
+
+      dashboardWidgets.classList.toggle('hidden', !showDashboardWidgets);
+      dashboardWidgets.classList.toggle('flex', showDashboardWidgets);
+      toolWidgets.classList.toggle('hidden', !showSavedPdf);
+      toolWidgets.classList.toggle('flex', showSavedPdf);
     }
 
     // Render Kartu Kursus
