@@ -30,6 +30,33 @@ const BULAN_LIST = [
 ];
 const DINAS_ORDER = { "Pagi": 0, "Siang": 1, "Malam": 2 };
 
+/**
+ * Susun nama file rekap bulanan: (BULAN)_STA (STASIUN)_(NAMA)_(JABATAN)_(NIPP).pdf
+ * Contoh: AGUSTUS_STA GLENMORE_BUDI SANTOSO_PPKA_69123.pdf
+ * Semua bagian teks (bulan/stasiun/nama/jabatan) diseragamkan ke huruf besar.
+ */
+function buildNamaFileBulanan_(bulanNama, user) {
+  const up = (v) => String(v || "").trim().toUpperCase();
+  return `${up(bulanNama)}_STA ${up(user.stasiun)}_${up(user.nama)}_${up(user.jabatan)}_${up(user.nipp)}.pdf`;
+}
+
+/** Trigger unduhan file PDF (base64) langsung dari browser, terpisah dari
+ *  proses simpan ke Google Drive. */
+function downloadBase64Pdf_(base64, fileName) {
+  const byteChars = atob(base64);
+  const byteNumbers = new Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
+  const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ---------------------------------------------------------------------
 // Toast & Busy overlay (pola sama dengan menu Per Hari)
 // ---------------------------------------------------------------------
@@ -405,7 +432,9 @@ const PdfBulanan = {
 
     const bytes = await out.save();
     const base64 = this._toBase64(bytes);
-    const fileName = `IMO ${bulanNama} ${tahun}.pdf`;
+    // Format: (BULAN)_STA (STASIUN)_(NAMA)_(JABATAN)_(NIPP).pdf
+    // Contoh: AGUSTUS_STA GLENMORE_BUDI SANTOSO_PPKA_69123.pdf
+    const fileName = buildNamaFileBulanan_(bulanNama, user);
     return { base64, fileName };
   },
 
@@ -489,8 +518,11 @@ function wireUnduhImo() {
       Busy.show("MENYIMPAN KE GOOGLE DRIVE…");
       await Api.simpanImoBulanan({ user: Session.current, bulanNama, tahun, pdfFileName: pdf.fileName, pdfBase64: pdf.base64 });
 
+      // Selain tersimpan ke Google Drive, PDF juga langsung diunduh ke perangkat.
+      downloadBase64Pdf_(pdf.base64, pdf.fileName);
+
       Busy.hide();
-      Toast.show(`Tersimpan sebagai "${pdf.fileName}" di ${CONFIG.DRIVE_ROOT_FOLDER}/${Session.current.stasiun}/${Session.current.jabatan}/${Session.current.nipp}/`, "success");
+      Toast.show(`Tersimpan sebagai "${pdf.fileName}" di ${CONFIG.DRIVE_ROOT_FOLDER}/${Session.current.stasiun}/${Session.current.jabatan}/${Session.current.nipp}/${tahun}/${bulanNama}/ dan sudah diunduh.`, "success");
     } catch (err) {
       Busy.hide();
       Toast.show("Gagal membuat/menyimpan IMO bulanan: " + err.message, "error");

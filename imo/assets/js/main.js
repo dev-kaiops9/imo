@@ -7,6 +7,19 @@
  * -----------------------------------------------------------------------
  */
 
+const BULAN_ID_LIST = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+/** "yyyy-mm-dd" -> "2026/Agustus", dipakai hanya untuk menampilkan lokasi
+ *  folder di pesan sukses (folder sebenarnya dibuat di backend/Code.gs). */
+function tahunBulanFolder_(tanggalISO) {
+  const d = new Date(String(tanggalISO || "") + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}/${BULAN_ID_LIST[d.getMonth()]}`;
+}
+
 // ---------------------------------------------------------------------
 // Busy overlay (loading saat generate PDF / simpan)
 // ---------------------------------------------------------------------
@@ -91,7 +104,7 @@ function wirePreviewAndSave() {
       Busy.hide();
       document.getElementById("previewOverlay").classList.remove("is-open");
       document.getElementById("previewOverlay").setAttribute("aria-hidden", "true");
-      showResult(true, `Tersimpan sebagai "${pdf.fileName}" di ${CONFIG.DRIVE_ROOT_FOLDER}/${data.stasiun}/${data.jabatan}/${data.nipp}/`);
+      showResult(true, `Tersimpan sebagai "${pdf.fileName}" di ${CONFIG.DRIVE_ROOT_FOLDER}/${data.stasiun}/${data.jabatan}/${data.nipp}/${tahunBulanFolder_(data.tanggal)}/`);
       Toast.show("Data berhasil disimpan.", "success");
       notifyParentPdfSaved();
     } catch (err) {
