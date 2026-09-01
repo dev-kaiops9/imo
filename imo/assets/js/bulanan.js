@@ -294,7 +294,46 @@ const Api = {
     });
     return json.data || {};
   },
+
+  /**
+   * Ambil isi (base64) satu file PDF harian yang tersimpan di Drive, LEWAT
+   * BACKEND (bukan fetch langsung ke drive.google.com dari browser).
+   *
+   * Kenapa tidak fetch(item.fileUrl) langsung? Karena item.fileUrl adalah
+   * URL viewer Drive ("/file/d/{ID}/view"), bukan file mentah, DAN
+   * drive.google.com tidak mengirim header CORS yang mengizinkan situs ini
+   * membaca responsnya — browser akan memblokir fetch tsb (gagal total,
+   * bukan cuma lambat). Solusinya: Apps Script (server) yang punya akses
+   * langsung ke Drive (tanpa batasan CORS) yang mengambil bytes file lalu
+   * mengirimkannya sebagai base64 ke frontend lewat action
+   * "ambilPdfBase64" (lihat Code.gs).
+   *
+   * @param {string} fileId ID file Drive (diparse dari fileUrl)
+   * @returns {Promise<string>} base64 isi PDF
+   */
+  async ambilPdfBase64(fileId) {
+    const json = await this._post({ action: "ambilPdfBase64", fileId });
+    if (!json.data || !json.data.base64) {
+      throw new Error("Backend tidak mengembalikan isi file.");
+    }
+    return json.data.base64;
+  },
 };
+
+/**
+ * Ekstrak ID file Drive dari URL viewer standar yang dihasilkan
+ * file.getUrl() di Apps Script, contoh:
+ *   https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view?usp=drivesdk
+ * Juga menangani variasi lain seperti "...?id=" atau "/open?id=...".
+ */
+function extractDriveFileId_(url) {
+  const str = String(url || "");
+  let m = str.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  if (m) return m[1];
+  m = str.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+  if (m) return m[1];
+  return null;
+}
 
 // ---------------------------------------------------------------------
 // Daftar "PDF Tersimpan" — diambil sekali per load, difilter ulang tiap
@@ -400,15 +439,21 @@ const PdfBulanan = {
     }
 
     // ---- Halaman 4-selesai: gabungan PDF harian tersimpan ----
+    // Diambil LEWAT BACKEND (Api.ambilPdfBase64), bukan fetch langsung ke
+    // drive.google.com — lihat komentar di Api.ambilPdfBase64 kenapa fetch
+    // langsung selalu gagal (CORS + URL yang diambil bukan file mentah).
     for (const item of savedList) {
       if (!item.fileUrl) continue;
       try {
-        const bytes = await this._fetchArrayBuffer(item.fileUrl);
+        const fileId = extractDriveFileId_(item.fileUrl);
+        if (!fileId) throw new Error("ID file tidak ditemukan pada URL tersimpan.");
+        const base64 = await Api.ambilPdfBase64(fileId);
+        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
         const srcDoc = await PDFDocument.load(bytes);
         const copied = await out.copyPages(srcDoc, srcDoc.getPageIndices());
         copied.forEach((p) => out.addPage(p));
       } catch (err) {
-        Toast.show(`Gagal memuat PDF ${item.tanggal} (${item.dinas}), dilewati.`, "warn");
+        Toast.show(`Gagal memuat PDF ${item.tanggal} (${item.dinas}), dilewati. (${err.message})`, "warn");
       }
     }
 
