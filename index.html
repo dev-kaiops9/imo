@@ -1,203 +1,959 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Serah Terima PDF — IMO Tools</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-  body { font-family: 'Plus Jakarta Sans', sans-serif; }
-  .dropzone.drag { border-color: #5B58CA; background: #f1f0fb; }
-  .option-card.active { border-color: #5B58CA; background: #f1f0fb; box-shadow: 0 0 0 2px rgba(91,88,202,0.25); }
-  .option-card.active .option-icon { background: #5B58CA; color: #fff; }
-  .zip-chip button, .photo-chip .remove { cursor: pointer; }
-  #statusPill.processing { background: #fef3c7; color: #92400e; }
-  #statusPill.done { background: #d1fae5; color: #065f46; }
-  #statusPill.error { background: #fee2e2; color: #991b1b; }
-  #progressPanel { display: none; }
-  #progressPanel.show { display: block; }
-  .zip-chip { display:inline-flex; align-items:center; gap:8px; background:#f1f0fb; color:#3d3a8f; font-size:12.5px; font-weight:600; padding:6px 10px 6px 12px; border-radius:9999px; }
-  .zip-chip button { border:none; background:rgba(91,88,202,0.14); color:#5B58CA; width:18px; height:18px; border-radius:50%; font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; }
-  .photo-chip { position:relative; width:88px; }
-  .photo-thumb { width:88px; height:88px; object-fit:cover; border-radius:12px; border:1px solid #e2e8f0; display:block; background:#f8fafc; }
-  .photo-chip .remove { position:absolute; top:-6px; right:-6px; width:20px; height:20px; border-radius:9999px; background:#ef4444; color:#fff; border:none; font-size:11px; line-height:1; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px #fff; }
-  .photo-chip .fname { font-size:10px; color:#64748b; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:center; }
-  .log-row { display:flex; gap:8px; align-items:flex-start; }
-  .log-row .dot { width:6px; height:6px; border-radius:9999px; background:#94a3b8; margin-top:5px; flex-shrink:0; }
-  .log-row.warn .dot { background:#d97706; }
-  .log-row.err .dot { background:#dc2626; }
-  .log-row.ok .dot { background:#16a34a; }
-  .summary-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:10px; }
-  .summary-box { background:#f8fafc; border-radius:12px; padding:12px 14px; }
-  .summary-box .num { font-size:19px; font-weight:800; color:#1e293b; }
-  .summary-box .lbl { font-size:10.5px; color:#94a3b8; font-weight:600; text-transform:uppercase; letter-spacing:0.02em; margin-top:2px; }
-  .skip-list summary { cursor:pointer; font-weight:700; color:#475569; margin-bottom:8px; }
-  .skip-item { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid #e2e8f0; color:#475569; font-size:12.5px; }
-  .skip-item:last-child { border-bottom:none; }
-  .skip-item .reason { color:#dc2626; font-weight:600; white-space:nowrap; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IMO Tools</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome CDN untuk Ikon -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+  </style>
 </head>
-<body class="bg-slate-100 min-h-screen text-slate-800">
+<body class="bg-slate-100 min-h-screen md:h-screen md:overflow-hidden p-1.5 sm:p-3 text-slate-800">
 
-<!-- Header & tombol "kembali" halaman ini sengaja dihilangkan: menu ini dimuat
-     di dalam shell dashboard (IMO Tools) yang sidebar-nya selalu terlihat.
-     Untuk berpindah menu, cukup pilih menu lain di sidebar. -->
-
-<main class="max-w-3xl mx-auto px-4 py-8 space-y-6">
-
-  <div>
-    <h1 class="text-2xl font-bold text-slate-800 tracking-tight">Serah Terima PDF</h1>
-    <p class="text-sm text-slate-500 mt-1 leading-relaxed">Unggah file ZIP berisi PDF "Serah Terima ...". Pastikan semua file di dalam ZIP berasal dari satu dinasan yang sama (contoh: dinas PPKA atau dinas PLR). Sistem akan otomatis menggabungkannya menjadi satu PDF terurut.</p>
-  </div>
-
-  <!-- ============ RESOLUSI KELUARAN ============ -->
-  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-bold text-slate-800">Resolusi Keluaran</h2>
-      <span id="dpiBadge" class="text-xs font-bold bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full">150 DPI</span>
-    </div>
-    <div id="dpiOptions" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <button type="button" class="option-card active border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:border-indigo-300 transition" data-dpi="150">
-        <span class="option-icon w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">S</span>
-        <span>
-          <span class="block text-sm font-bold text-slate-800">Standar</span>
-          <span class="block text-xs text-slate-400">150 DPI · proses cepat</span>
-        </span>
-      </button>
-      <button type="button" class="option-card border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:border-indigo-300 transition" data-dpi="300">
-        <span class="option-icon w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">T</span>
-        <span>
-          <span class="block text-sm font-bold text-slate-800">Tinggi</span>
-          <span class="block text-xs text-slate-400">300 DPI · teks tetap tajam</span>
-        </span>
-      </button>
-      <button type="button" class="option-card border border-slate-200 rounded-2xl p-4 flex items-start gap-3 text-left hover:border-indigo-300 transition" data-dpi="450">
-        <span class="option-icon w-9 h-9 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500 shrink-0">ST</span>
-        <span>
-          <span class="block text-sm font-bold text-slate-800">Sangat Tinggi</span>
-          <span class="block text-xs text-slate-400">450 DPI · detail maksimal</span>
-        </span>
-      </button>
-    </div>
-  </section>
-
-  <!-- ============ DATA COVER ============ -->
-  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-bold text-slate-800">Data Cover</h2>
-      <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Untuk mengisi halaman sampul</span>
-    </div>
-
-    <div class="space-y-4">
+  <!-- Main Container -->
+  <div class="w-full md:h-full mx-auto bg-white rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-200">
+    
+    <!-- ================= SIDEBAR NAV (KIRI) ================= -->
+    <aside class="w-full md:w-64 bg-[#5B58CA] text-white p-6 flex flex-col justify-between shrink-0">
       <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1" for="jenisDinasan">Jenis Dinasan</label>
-        <select id="jenisDinasan" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
-          <option value="" disabled selected>Pilih jenis dinasan</option>
-          <option value="PPKA">PPKA</option>
-          <option value="PLR">PLR</option>
-          <option value="PRS">PRS</option>
-          <option value="PJL">PJL</option>
-        </select>
+        <!-- Logo -->
+        <div class="flex items-center gap-2 mb-10">
+          <span class="text-2xl font-extrabold tracking-tight">IMO Tools</span>
+        </div>
+
+        <!-- Menu Utama -->
+        <nav class="space-y-2">
+          <button onclick="selectTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-semibold bg-white/20 text-white shadow-inner backdrop-blur-md">
+            <i class="fa-solid fa-table-cells-large w-5 text-center"></i>
+            <span>Dashboard</span>
+          </button>
+          <button onclick="selectTab('imo')" id="nav-imo" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+            <i class="fa-solid fa-book-open w-5 text-center"></i>
+            <span>IMO</span>
+          </button>
+          <button onclick="selectTab('serah-terima-pdf')" id="nav-serah-terima-pdf" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+            <i class="fa-solid fa-file-pdf w-5 text-center"></i>
+            <span>Serah Terima PDF</span>
+          </button>
+          <button onclick="selectTab('pdf-to-a4')" id="nav-pdf-to-a4" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+            <i class="fa-solid fa-file-export w-5 text-center"></i>
+            <span>PDF to A4</span>
+          </button>
+        </nav>
       </div>
 
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1" for="namaStasiun">Masukkan Nama Stasiun (gunakan huruf kapital/huruf besar)</label>
-        <input type="text" id="namaStasiun" placeholder="CONTOH: JEMBER" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm uppercase focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
+      <!-- Menu Bawah -->
+      <div class="space-y-2 pt-8 border-t border-indigo-400/30 mt-6 md:mt-0">
+        <button onclick="selectTab('settings')" id="nav-settings" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
+          <i class="fa-solid fa-gear w-5 text-center"></i>
+          <span>Settings</span>
+        </button>
+        <button onclick="selectTab('directory')" id="nav-directory" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-indigo-100/70 hover:bg-white/10 hover:text-white transition-all text-sm font-medium">
+          <i class="fa-regular fa-folder-open w-5 text-center"></i>
+          <span>Directory</span>
+        </button>
       </div>
+    </aside>
 
-      <div>
-        <label class="block text-xs font-semibold text-slate-600 mb-1">Pilih Bulan - Tahun</label>
-        <div class="grid grid-cols-2 gap-3">
-          <select id="bulanSelect" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
-            <option value="" disabled selected>Bulan</option>
-          </select>
-          <select id="tahunSelect" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
-            <option value="" disabled selected>Tahun</option>
-          </select>
+    <!-- ================= MAIN CONTENT (TENGAH) ================= -->
+    <main class="flex-1 bg-slate-50/50 p-6 md:p-8 md:overflow-y-auto flex flex-col min-h-0">
+      <!-- Top Bar Header (tetap tampil di semua menu) -->
+      <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 shrink-0">
+        <h1 id="pageTitle" class="text-3xl font-bold text-slate-800 tracking-tight">Tools</h1>
+
+        <!-- Search & Actions (hanya relevan di Dashboard) -->
+        <div id="headerActions" class="flex items-center gap-4 w-full sm:w-auto">
+          <div class="relative flex-1 sm:flex-none">
+            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input
+              type="text"
+              id="searchInput"
+              oninput="handleSearch()"
+              placeholder="Cari tools..."
+              class="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-full text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 w-full sm:w-64 shadow-sm transition"
+            />
+          </div>
+          <button onclick="showToast('Tidak ada notifikasi baru.')" class="relative p-2.5 bg-white border border-slate-200 rounded-full text-slate-600 hover:bg-slate-50 transition shadow-sm">
+            <i class="fa-regular fa-bell"></i>
+            <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ================= DASHBOARD VIEW ================= -->
+      <div id="dashboardView">
+        <!-- Course Cards Container -->
+        <div id="courseListContainer" class="space-y-6">
+          <!-- Rendered dynamically via JavaScript -->
         </div>
       </div>
+
+      <!-- ================= TOOL VIEW (IMO / Serah Terima PDF / PDF to A4) =================
+           Dimuat via iframe di dalam shell yang sama supaya sidebar & info user login
+           tetap terlihat saat berpindah menu — tidak pernah reload halaman penuh. -->
+      <div id="toolView" class="hidden flex-1 min-h-[80vh] md:min-h-0 flex-col">
+        <iframe id="toolFrame" title="Tool" class="w-full flex-1 min-h-[80vh] md:min-h-0 border-0 rounded-3xl bg-white shadow-inner"></iframe>
+      </div>
+    </main>
+
+    <!-- ================= RIGHT WIDGET BAR ================= -->
+    <aside class="w-full md:w-80 bg-white border-l border-slate-100 p-6 flex flex-col justify-start shrink-0">
+      <!-- Tombol Login / Info User Container (Pojok Kanan Atas Widget) -->
+      <div id="loginBtnContainer" class="flex items-center justify-end mb-6">
+        <button 
+          onclick="openLoginModal()" 
+          id="loginBtn" 
+          class="w-full flex items-center justify-center gap-2.5 px-5 py-2.5 bg-[#5B58CA] hover:bg-[#4a47b5] active:scale-95 text-white rounded-full font-semibold text-sm shadow-md shadow-indigo-200 transition-all duration-200">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Masuk / Login</span>
+        </button>
+      </div>
+
+      <!-- ===== Widget khusus menu DASHBOARD: Kalender + Informasi Akun =====
+           Menggantikan widget "PDF Tersimpan" HANYA di menu Dashboard.
+           Di menu tool lain (IMO / Serah Terima PDF / PDF to A4), widget
+           "PDF Tersimpan" di bawah tetap tampil seperti semula. -->
+      <div id="dashboardRightWidgets" class="hidden flex-col">
+        <!-- Calendar Widget Realtime -->
+        <div class="bg-slate-50/70 p-4 rounded-3xl border border-slate-100 shadow-sm">
+          <!-- Month Header -->
+          <div class="flex items-center justify-between mb-4 px-1">
+            <h3 id="calendarMonthYear" class="font-bold text-slate-700 text-base">-</h3>
+            <div class="flex items-center gap-1">
+              <button onclick="prevMonth()" class="p-1 hover:bg-slate-200 rounded-full transition text-slate-500">
+                <i class="fa-solid fa-chevron-left text-xs"></i>
+              </button>
+              <button onclick="nextMonth()" class="p-1 hover:bg-slate-200 rounded-full transition text-slate-500">
+                <i class="fa-solid fa-chevron-right text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Days Header -->
+          <div class="grid grid-cols-7 gap-1 text-center text-xs text-slate-400 font-medium mb-2">
+            <span>Sen</span>
+            <span>Sel</span>
+            <span>Rab</span>
+            <span>Kam</span>
+            <span>Jum</span>
+            <span>Sab</span>
+            <span>Min</span>
+          </div>
+
+          <!-- Dates Grid -->
+          <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center text-xs font-semibold">
+            <!-- Rendered via JavaScript -->
+          </div>
+        </div>
+
+        <!-- User Profile Widget (Muncul Di Bawah Kalender Setelah Login) -->
+        <div id="userProfileWidget" class="hidden flex-col gap-3 mt-6 p-5 bg-gradient-to-br from-indigo-50/90 to-slate-50 rounded-3xl border border-indigo-100 shadow-sm transition-all duration-300">
+          <div class="flex items-center justify-between pb-3 border-b border-indigo-100">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="text-xs font-bold text-slate-700 tracking-wider uppercase">Informasi Akun</span>
+            </div>
+            <span class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">Aktif</span>
+          </div>
+
+          <div class="space-y-2.5 text-xs text-slate-700 pt-1">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-slate-400 font-medium shrink-0">Nama</span>
+              <span id="profileName" class="font-bold text-slate-800 text-right">-</span>
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-slate-400 font-medium shrink-0">NIPP</span>
+              <span id="profileNipp" class="font-bold text-indigo-600 font-mono text-right">-</span>
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-slate-400 font-medium shrink-0">Jabatan</span>
+              <span id="profileJabatan" class="font-semibold text-slate-700 text-right">-</span>
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-slate-400 font-medium shrink-0">Stasiun</span>
+              <span id="profileStasiun" class="font-semibold text-slate-700 text-right">-</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Belum login: ajakan singkat di bawah kalender. -->
+        <div id="profileLoggedOutHint" class="mt-6 p-5 bg-slate-50/70 rounded-3xl border border-dashed border-slate-200 text-center">
+          <i class="fa-solid fa-user text-slate-300 text-xl mb-2"></i>
+          <p class="text-xs text-slate-400">Login untuk melihat informasi akun Anda.</p>
+        </div>
+      </div>
+
+      <!-- ===== Widget khusus menu TOOL (IMO / Serah Terima PDF / PDF to A4):
+           PDF Tersimpan — muncul otomatis begitu user login, berisi daftar
+           seluruh PDF serah terima milik user tersebut, terurut tanggal
+           termuda dulu lalu Dinas Pagi -> Siang -> Malam dalam tanggal
+           yang sama. ===== -->
+      <div id="toolRightWidgets" class="flex-1 min-h-0 flex flex-col">
+        <div id="savedPdfWidget" class="hidden flex-col gap-3 p-5 bg-gradient-to-br from-indigo-50/90 to-slate-50 rounded-3xl border border-indigo-100 shadow-sm transition-all duration-300 flex-1 min-h-0">
+          <div class="flex items-center justify-between pb-3 border-b border-indigo-100 shrink-0">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-file-pdf text-indigo-500 text-sm"></i>
+              <span class="text-xs font-bold text-slate-700 tracking-wider uppercase">PDF Tersimpan</span>
+            </div>
+            <span id="savedPdfCount" class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">0</span>
+          </div>
+
+          <div id="savedPdfListWrap" class="flex flex-col gap-2 overflow-y-auto pr-1 max-h-[440px]">
+            <div class="text-center py-6 text-xs text-slate-400">Belum ada PDF tersimpan.</div>
+          </div>
+        </div>
+
+        <!-- Belum login: ajakan singkat menggantikan slot widget di atas. -->
+        <div id="savedPdfLoggedOutHint" class="p-5 bg-slate-50/70 rounded-3xl border border-dashed border-slate-200 text-center">
+          <i class="fa-solid fa-file-pdf text-slate-300 text-xl mb-2"></i>
+          <p class="text-xs text-slate-400">Login untuk melihat daftar PDF serah terima yang sudah tersimpan.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ================= LOGIN MODAL (NIPP-first, tersambung ke sheet Pegawai) ================= -->
+  <div id="loginModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 md:p-8 shadow-2xl border border-slate-100 transform scale-95 transition-transform duration-300" id="loginModalCard">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h3 class="text-xl font-bold text-slate-800">Masuk ke IMO Tools</h3>
+          <p class="text-xs text-slate-500 mt-0.5" id="loginModalSubtitle">Masukkan NIPP untuk mencari data pegawai</p>
+        </div>
+        <button onclick="closeLoginModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-full transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="loginError" class="hidden mb-3 text-xs font-semibold text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2"></div>
+
+      <!-- ---- TAHAP 1: CEK NIPP ---- -->
+      <form id="loginStageNipp" onsubmit="handleCekNippSubmit(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">NIPP</label>
+          <input type="text" id="loginNippInput" inputmode="numeric" placeholder="Contoh: 1094881999" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition font-mono" />
+        </div>
+        <button type="submit" id="btnCekNipp" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
+          Cek NIPP
+        </button>
+      </form>
+
+      <!-- ---- TAHAP 2A: NIPP DITEMUKAN ---- -->
+      <div id="loginStageFound" class="hidden space-y-3.5">
+        <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 space-y-2">
+          <p class="text-xs font-bold text-emerald-700 mb-1">Data Pegawai Ditemukan</p>
+          <div class="flex items-start justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium shrink-0">Nama</span>
+            <span id="foundNama" class="font-bold text-slate-800 text-right">-</span>
+          </div>
+          <div class="flex items-start justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium shrink-0">NIPP</span>
+            <span id="foundNipp" class="font-bold text-indigo-600 font-mono text-right">-</span>
+          </div>
+          <div class="flex items-start justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium shrink-0">Jabatan</span>
+            <span id="foundJabatan" class="font-semibold text-slate-700 text-right">-</span>
+          </div>
+          <div class="flex items-start justify-between gap-2 text-xs">
+            <span class="text-slate-400 font-medium shrink-0">Stasiun</span>
+            <span id="foundStasiun" class="font-semibold text-slate-700 text-right">-</span>
+          </div>
+        </div>
+        <button type="button" onclick="handleLoginConfirmed()" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200">
+          LOGIN
+        </button>
+        <button type="button" onclick="backToNippStage()" class="w-full py-2 text-slate-500 hover:text-slate-700 font-semibold text-xs transition">
+          ← Ganti NIPP
+        </button>
+      </div>
+
+      <!-- ---- TAHAP 2B: NIPP BELUM TERDAFTAR -> FORM PENDAFTARAN ---- -->
+      <form id="loginStageDaftar" onsubmit="handleDaftarDanLogin(event)" class="hidden space-y-3.5">
+        <p class="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl px-3 py-2">
+          NIPP belum terdaftar. Silakan melakukan pendaftaran terlebih dahulu.
+        </p>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap</label>
+          <input type="text" id="loginNameInput" placeholder="Contoh: Christine Eva" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">NIPP</label>
+          <input type="text" id="loginNippReadonly" readonly class="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 font-mono cursor-not-allowed" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Jabatan</label>
+          <input type="text" id="loginJabatanInput" placeholder="Contoh: PPKA Utama" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Stasiun / Dipo</label>
+          <input type="text" id="loginStasiunInput" placeholder="Contoh: Stasiun Gambir (GMR)" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+        </div>
+
+        <button type="submit" id="btnDaftarDanLogin" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
+          Daftar dan Login
+        </button>
+        <button type="button" onclick="backToNippStage()" class="w-full py-2 text-slate-500 hover:text-slate-700 font-semibold text-xs transition">
+          ← Ganti NIPP
+        </button>
+      </form>
     </div>
-  </section>
+  </div>
 
-  <!-- ============ DAFTAR HADIR / DAFTAR DINASAN ============ -->
-  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="flex items-center justify-between p-6 pb-4">
-      <h2 class="text-lg font-bold text-slate-800">Daftar Hadir / Daftar Dinasan</h2>
-      <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Opsional · jadi halaman ke-2</span>
-    </div>
+  <!-- ================= TOAST NOTIFICATION ================= -->
+  <div id="toastNotification" class="fixed bottom-6 right-6 bg-slate-800 text-white text-xs font-medium px-4 py-3 rounded-2xl shadow-xl transition-all duration-300 opacity-0 translate-y-4 pointer-events-none z-50 flex items-center gap-2">
+    <i class="fa-solid fa-circle-info text-indigo-400"></i>
+    <span id="toastMessage">Pesan Notifikasi</span>
+  </div>
 
-    <label id="attendanceDrop" class="dropzone block px-6 py-8 text-center cursor-pointer transition border-y border-slate-200" tabindex="0">
-      <input type="file" id="attendanceInput" accept="image/*" class="hidden">
-      <div class="text-2xl text-slate-400 mb-2"><i class="fa-solid fa-image"></i></div>
-      <p class="text-sm font-medium text-slate-600">Tarik foto Daftar Hadir / Daftar Dinasan ke sini, atau klik untuk pilih</p>
-    </label>
+  <!-- ================= LOGIC JAVASCRIPT ================= -->
+  <script>
+    // Data Kursus
+    const coursesData = [
+      {
+        id: 1,
+        title: "IMO",
+        description: "Buat Data IMO disini, Simpan data IMO harian, dan buat seluruhnya diakhir bulan.",
+        bgColor: "bg-white",
+        borderColor: "border-purple-100",
+        accentColor: "bg-indigo-600",
+        bgGradient: "from-blue-50 to-indigo-50",
+        tab: "imo"
+      },
+      {
+        id: 2,
+        title: "Serah Terima PDF",
+        description: "Download Serah Terima Satu Bulan di Rolink format ZIP, upload beberapa ZIP dari dinasan PPKA/PLR/PRS/PJL, dan jadikan satu dalam format PDF.",
+        bgColor: "bg-purple-50/70",
+        borderColor: "border-purple-200",
+        accentColor: "bg-purple-600",
+        bgGradient: "from-purple-50 to-pink-50",
+        tab: "serah-terima-pdf"
+      },
+      {
+        id: 3,
+        title: "PDF to A4",
+        description: "Rubah serah terima harian PDF dari Rolink jadi satu dalam format JPG/Gambar.",
+        bgColor: "bg-rose-50/60",
+        borderColor: "border-rose-200",
+        accentColor: "bg-rose-500",
+        bgGradient: "from-rose-50 to-orange-50",
+        tab: "pdf-to-a4"
+      }
+    ];
 
-    <div id="attendanceList" class="flex flex-wrap gap-3 px-6 py-4 empty:hidden"></div>
+    // Peta tab menu -> halaman tools (dimuat via iframe, bukan pindah halaman)
+    const tabRoutes = {
+      imo: "imo/index.html",
+      "serah-terima-pdf": "serah-terima-pdf/index.html",
+      "pdf-to-a4": "pdf-to-a4/index.html"
+    };
 
-    <p class="text-xs text-amber-700 bg-amber-50 px-6 py-3">⚠️ Pastikan Daftar Hadir Orientasi Halaman Landscape. Foto yang diunggah dalam posisi potret akan otomatis dirotasi menjadi landscape.</p>
-  </section>
+    // Judul header per tab
+    const tabTitles = {
+      dashboard: "Tools",
+      imo: "IMO",
+      "serah-terima-pdf": "Serah Terima PDF",
+      "pdf-to-a4": "PDF to A4",
+      settings: "Settings",
+      directory: "Directory"
+    };
 
-  <!-- ============ UNGGAH BERKAS ZIP ============ -->
-  <section class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-    <div class="flex items-center justify-between p-6 pb-4">
-      <h2 class="text-lg font-bold text-slate-800">Unggah Berkas ZIP</h2>
-      <span class="text-[11px] font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Bisa lebih dari 1 ZIP</span>
-    </div>
+    const LOGIN_STORAGE_KEY = "imoUser";
+    const TAB_STORAGE_KEY = "imoActiveTab";
 
-    <label id="drop" class="dropzone block px-6 py-10 text-center cursor-pointer transition border-y border-slate-200" tabindex="0">
-      <input type="file" id="zipInput" accept=".zip" multiple class="hidden">
-      <div class="text-3xl text-slate-400 mb-2"><i class="fa-solid fa-file-zipper"></i></div>
-      <p class="text-sm font-medium text-slate-600">Tarik beberapa file ZIP ke sini, atau klik untuk pilih</p>
-      <p class="text-xs text-slate-400 mt-1">Setiap ZIP berisi PDF bernama "Serah Terima ... DD-MM-YYYY(ID)"</p>
-    </label>
+    // URL Web App Google Apps Script (Code.gs) — sama dengan CONFIG.APPS_SCRIPT_URL
+    // yang dipakai di imo/assets/js/config.js, sheet "Pegawai" yang sama juga
+    // dipakai sebagai database identitas Login (lihat Code.gs).
+    const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyPd0fyxJpy8vWpzj9GBg1-1nENo9Nqq-SfjH3rpm55c1Iy23HiduSNzwYJSt-ikwY4/exec";
 
-    <div id="zipList" class="flex flex-wrap gap-2 px-6 py-4 empty:hidden"></div>
+    // Data pegawai hasil "Cek NIPP" yang sedang menunggu konfirmasi LOGIN.
+    let pendingNipp = "";
+    let pendingUser = null;
 
-    <div class="flex items-center justify-end gap-3 p-6 pt-2">
-      <button type="button" id="resetBtn" style="display:none" class="px-5 py-2.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-600 font-semibold rounded-2xl text-sm transition">Reset</button>
-      <button type="button" id="processBtn" disabled class="px-6 py-2.5 bg-[#5B58CA] hover:bg-[#4a47b5] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition">Mulai Proses</button>
-    </div>
-  </section>
+    // Helper pemanggilan backend Code.gs. Melempar Error jika backend
+    // membalas { ok:false }, supaya pesan errornya bisa ditampilkan ke user.
+    async function callBackend(body) {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.message || "Terjadi kesalahan pada server.");
+      return json.data;
+    }
 
-  <!-- ============ PROGRESS ============ -->
-  <section id="progressPanel" class="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-    <div class="flex items-center justify-between flex-wrap gap-2">
-      <span id="statusPill" class="text-xs font-bold px-3 py-1.5 rounded-full bg-slate-100 text-slate-600">
-        <span id="statusLabel">Menunggu</span>
-      </span>
-      <span id="statusMsg" class="text-xs text-slate-400"></span>
-    </div>
-    <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-      <div id="progressFill" class="h-full bg-[#5B58CA] transition-all duration-300" style="width:0%"></div>
-    </div>
-    <div id="log" class="max-h-52 overflow-y-auto text-xs text-slate-500 space-y-1.5"></div>
+    // ---------------------------------------------------------------------
+    // Widget "PDF Tersimpan" (sidebar kanan) — daftar riwayat PDF serah
+    // terima milik user yang sedang login, dibaca dari sheet SerahTerima
+    // lewat action "cekPdfTersimpan" (sama seperti dipakai imo/imo).
+    // ---------------------------------------------------------------------
+    const DINAS_ORDER = { "Pagi": 0, "Siang": 1, "Malam": 2 };
 
-    <div id="summary" style="display:none"></div>
-    <div id="downloadRow" class="flex justify-end" style="display:none">
-      <button type="button" id="downloadBtn" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-2xl text-sm shadow-md shadow-emerald-200 transition">
-        <i class="fa-solid fa-download"></i> Unduh PDF Gabungan
-      </button>
-    </div>
-  </section>
+    // Format tanggal dari backend selalu "dd-mm-yyyy" (lihat formatTanggal_
+    // di Code.gs) — di-parse ke timestamp supaya bisa diurutkan.
+    function parseTanggalDDMMYYYY(str) {
+      const parts = String(str || '').split('-').map(Number);
+      const dd = parts[0] || 1, mm = parts[1] || 1, yyyy = parts[2] || 1970;
+      return new Date(yyyy, mm - 1, dd).getTime();
+    }
 
-  <p class="text-xs text-slate-400 px-1 leading-relaxed">Semua proses berjalan di browser Anda — file ZIP dan PDF tidak diunggah ke server mana pun. Nama file harus diawali "Serah Terima" dan mengandung tanggal DD-MM-YYYY serta ID dalam kurung, misal "Serah Terima PPKA 01-08-2026(367891).pdf" — bagian tengah bebas apa saja.</p>
+    // Urutkan tanggal termuda (paling awal) dulu, lalu dalam tanggal yang
+    // sama dimulai dari Dinas Pagi -> Siang -> Malam.
+    function sortSavedPdfList(list) {
+      return list.slice().sort((a, b) => {
+        const ta = parseTanggalDDMMYYYY(a.tanggal);
+        const tb = parseTanggalDDMMYYYY(b.tanggal);
+        if (ta !== tb) return ta - tb;
+        const da = DINAS_ORDER.hasOwnProperty(a.dinas) ? DINAS_ORDER[a.dinas] : 99;
+        const db = DINAS_ORDER.hasOwnProperty(b.dinas) ? DINAS_ORDER[b.dinas] : 99;
+        return da - db;
+      });
+    }
 
-</main>
+    function renderSavedPdfList(list) {
+      const wrap = document.getElementById('savedPdfListWrap');
+      document.getElementById('savedPdfCount').innerText = list.length;
 
-<!-- LIBRARIES -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+      if (!list.length) {
+        wrap.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">Belum ada PDF tersimpan.</div>`;
+        return;
+      }
 
-<script>
-  // Klik dropzone untuk buka dialog file (app.js hanya menangani drag & drop + change).
-  document.getElementById('drop').addEventListener('click', () => document.getElementById('zipInput').click());
-  document.getElementById('attendanceDrop').addEventListener('click', () => document.getElementById('attendanceInput').click());
-</script>
-<script src="assets/js/app.js"></script>
+      wrap.innerHTML = list.map((item) => `
+        <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm">
+          <div class="min-w-0">
+            <p class="text-[11px] font-bold text-slate-700 font-mono truncate">${item.tanggal}</p>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full shrink-0">${item.dinas}</span>
+              <span class="text-[10px] text-slate-500 truncate">${item.jenisSerahTerima}</span>
+            </div>
+          </div>
+          ${item.fileUrl
+            ? `<a href="${item.fileUrl}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-[10px] font-semibold text-white bg-[#5B58CA] hover:bg-[#4a47b5] px-3 py-1.5 rounded-full transition">Lihat PDF</a>`
+            : `<span class="shrink-0 text-[10px] text-slate-300">Tidak ada</span>`}
+        </div>
+      `).join('');
+    }
+
+    async function loadSavedPdfWidget(user) {
+      if (!user || !user.nipp) return;
+
+      document.getElementById('savedPdfLoggedOutHint').classList.add('hidden');
+      const widget = document.getElementById('savedPdfWidget');
+      widget.classList.remove('hidden');
+      widget.classList.add('flex');
+
+      const wrap = document.getElementById('savedPdfListWrap');
+      wrap.innerHTML = `<div class="text-center py-6 text-xs text-slate-400">Memuat…</div>`;
+
+      try {
+        const data = await callBackend({ action: 'cekPdfTersimpan', nipp: user.nipp });
+        renderSavedPdfList(sortSavedPdfList((data && data.list) || []));
+      } catch (err) {
+        wrap.innerHTML = `<div class="text-center py-6 text-xs text-rose-400">Gagal memuat riwayat PDF: ${err.message}</div>`;
+      }
+    }
+
+    // Dipanggil dari luar (mis. iframe imo/imo setelah berhasil simpan PDF
+    // baru) supaya daftar di widget langsung ter-update tanpa perlu reload.
+    window.refreshSavedPdfWidget = function () {
+      try {
+        const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+        if (savedUser && savedUser.nipp) loadSavedPdfWidget(savedUser);
+      } catch (err) { /* abaikan data sesi yang rusak */ }
+    };
+
+    // ---------------------------------------------------------------------
+    // Widget "Tanggal (Kalender) & User Aktif" — HANYA tampil di menu
+    // Dashboard, menggantikan slot "PDF Tersimpan" di menu lain.
+    // ---------------------------------------------------------------------
+    let calendarDate = new Date();
+    let selectedCalendarDay = calendarDate.getDate();
+
+    const monthNames = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+    ];
+
+    function renderCalendar() {
+      const year = calendarDate.getFullYear();
+      const month = calendarDate.getMonth();
+
+      document.getElementById('calendarMonthYear').innerText = `${monthNames[month].slice(0, 3)} ${year}`;
+
+      const calendarGrid = document.getElementById('calendarGrid');
+      calendarGrid.innerHTML = '';
+
+      // Hari pertama pada bulan (dimulai dari Senin=0 hingga Minggu=6)
+      const firstDay = new Date(year, month, 1);
+      const startingDayIndex = (firstDay.getDay() + 6) % 7;
+      const totalDaysInMonth = new Date(year, month + 1, 0).getDate();
+
+      const today = new Date();
+      const isCurrentRealMonth = today.getFullYear() === year && today.getMonth() === month;
+
+      for (let i = 0; i < startingDayIndex; i++) {
+        const emptyCell = document.createElement('div');
+        emptyCell.className = 'h-8 w-8';
+        calendarGrid.appendChild(emptyCell);
+      }
+
+      for (let day = 1; day <= totalDaysInMonth; day++) {
+        const isToday = isCurrentRealMonth && today.getDate() === day;
+        const isSelected = selectedCalendarDay === day && isCurrentRealMonth;
+
+        let activeClasses = 'text-slate-600 hover:bg-slate-200/60';
+        if (isToday) {
+          activeClasses = 'bg-[#5B58CA] text-white shadow-md font-bold ring-2 ring-indigo-300';
+        } else if (isSelected) {
+          activeClasses = 'bg-indigo-100 text-indigo-700 font-bold';
+        }
+
+        const button = document.createElement('button');
+        button.className = `h-8 w-8 mx-auto flex items-center justify-center rounded-full transition text-xs ${activeClasses}`;
+        button.innerText = day;
+        button.onclick = () => {
+          selectedCalendarDay = day;
+          renderCalendar();
+          showToast(`Tanggal ${day} ${monthNames[month]} ${year} dipilih`);
+        };
+
+        calendarGrid.appendChild(button);
+      }
+    }
+
+    function prevMonth() {
+      calendarDate.setMonth(calendarDate.getMonth() - 1);
+      renderCalendar();
+    }
+
+    function nextMonth() {
+      calendarDate.setMonth(calendarDate.getMonth() + 1);
+      renderCalendar();
+    }
+
+    // Tampilkan/sembunyikan widget Informasi Akun (di bawah kalender) sesuai status login.
+    function applyProfileWidgetUI(user) {
+      const profileWidget = document.getElementById('userProfileWidget');
+      const loggedOutHint = document.getElementById('profileLoggedOutHint');
+
+      if (user) {
+        document.getElementById('profileName').innerText = user.nama || '-';
+        document.getElementById('profileNipp').innerText = user.nipp || '-';
+        document.getElementById('profileJabatan').innerText = user.jabatan || '-';
+        document.getElementById('profileStasiun').innerText = user.stasiun || '-';
+        profileWidget.classList.remove('hidden');
+        profileWidget.classList.add('flex');
+        loggedOutHint.classList.add('hidden');
+      } else {
+        profileWidget.classList.add('hidden');
+        profileWidget.classList.remove('flex');
+        loggedOutHint.classList.remove('hidden');
+      }
+    }
+
+    // Tampilkan hanya salah satu: widget Dashboard (Kalender & Akun) atau
+    // widget menu Tool (PDF Tersimpan), tergantung menu yang sedang aktif.
+    function updateRightWidgetsVisibility(tabId) {
+      const dashboardWidgets = document.getElementById('dashboardRightWidgets');
+      const toolWidgets = document.getElementById('toolRightWidgets');
+      const isDashboard = tabId === 'dashboard';
+
+      dashboardWidgets.classList.toggle('hidden', !isDashboard);
+      dashboardWidgets.classList.toggle('flex', isDashboard);
+      toolWidgets.classList.toggle('hidden', isDashboard);
+      toolWidgets.classList.toggle('flex', !isDashboard);
+    }
+
+    // Render Kartu Kursus
+    function renderCourses(courses) {
+      const container = document.getElementById('courseListContainer');
+      container.innerHTML = '';
+
+      if (courses.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-16 bg-white rounded-3xl border border-dashed border-slate-300">
+            <p class="text-slate-400 font-medium text-sm">Tidak ada tools yang ditemukan.</p>
+          </div>
+        `;
+        return;
+      }
+
+      courses.forEach(course => {
+        const card = document.createElement('div');
+        card.className = `relative p-6 rounded-3xl border ${course.borderColor} ${course.bgColor} shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer group flex flex-col md:flex-row items-center justify-between gap-6`;
+        card.onclick = () => { selectTab(course.tab); };
+
+        card.innerHTML = `
+          <!-- Left Vector Illustration Mockup -->
+          <div class="w-full md:w-48 h-32 rounded-2xl bg-gradient-to-br ${course.bgGradient} flex items-center justify-center p-4 relative overflow-hidden shrink-0">
+            <div class="w-28 h-20 bg-white rounded-lg shadow-md p-2 border border-slate-100 flex flex-col justify-between">
+              <div class="flex items-center gap-1.5">
+                <div class="w-2 h-2 rounded-full bg-red-400"></div>
+                <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                <div class="w-2 h-2 rounded-full bg-green-400"></div>
+              </div>
+              <div class="space-y-1 my-auto">
+                <div class="h-2 w-3/4 bg-slate-200 rounded"></div>
+                <div class="h-2 w-1/2 bg-slate-200 rounded"></div>
+              </div>
+              <div class="h-1.5 w-full bg-slate-100 rounded"></div>
+            </div>
+            <div class="absolute bottom-2 right-4 w-12 h-10 bg-white/90 rounded-md shadow-lg border border-slate-100 p-1 flex items-center justify-center">
+              <div class="w-full h-full bg-indigo-100/50 rounded flex items-center justify-center">
+                <div class="w-3 h-3 border-2 border-indigo-400 rounded-full"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Middle Course Content -->
+          <div class="flex-1 space-y-2 text-left w-full">
+            <h2 class="text-xl font-bold text-slate-800 group-hover:text-indigo-600 transition">
+              ${course.title}
+            </h2>
+            <p class="text-xs md:text-sm text-slate-600 leading-relaxed">
+              ${course.description}
+            </p>
+          </div>
+
+          <!-- Right Action Button -->
+          <div class="self-end md:self-center">
+            <button class="w-11 h-11 rounded-full ${course.accentColor} text-white flex items-center justify-center shadow-lg transform group-hover:scale-110 transition duration-300">
+              <i class="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+    }
+
+    // Search Logic
+    function handleSearch() {
+      const searchVal = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = coursesData.filter(course => 
+        course.title.toLowerCase().includes(searchVal) || 
+        course.description.toLowerCase().includes(searchVal)
+      );
+      renderCourses(filtered);
+    }
+
+    // Modal Login Logic
+    function openLoginModal() {
+      const modal = document.getElementById('loginModal');
+      const card = document.getElementById('loginModalCard');
+      document.getElementById('loginNippInput').value = '';
+      pendingNipp = '';
+      pendingUser = null;
+      showLoginStage('nipp');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }
+
+    function closeLoginModal() {
+      const modal = document.getElementById('loginModal');
+      const card = document.getElementById('loginModalCard');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+    }
+
+    // Helper membuat inisial nama
+    function getInitials(name) {
+      if (!name) return 'U';
+      const parts = name.trim().split(' ');
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return parts[0].substring(0, 2).toUpperCase();
+    }
+
+    // Terapkan data user ke UI (widget profil + badge pojok kanan atas).
+    // Dipakai baik saat login baru maupun saat memulihkan sesi dari localStorage,
+    // sehingga status login tetap tampil konsisten di semua menu (dashboard & 3 tool).
+    function applyLoggedInUI(user) {
+      loadSavedPdfWidget(user);
+      applyProfileWidgetUI(user);
+
+      const initials = getInitials(user.nama);
+      const loginBtnContainer = document.getElementById('loginBtnContainer');
+      loginBtnContainer.innerHTML = `
+        <div class="flex items-center justify-between w-full bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-2.5 shadow-sm">
+          <div class="flex items-center gap-2.5 overflow-hidden">
+            <div class="w-9 h-9 rounded-xl bg-[#5B58CA] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-sm">
+              ${initials}
+            </div>
+            <div class="truncate">
+              <p class="text-xs font-bold text-slate-800 truncate">${user.nama}</p>
+              <p class="text-[10px] text-indigo-600 font-semibold font-mono truncate">NIPP: ${user.nipp}</p>
+            </div>
+          </div>
+          <button 
+            onclick="handleLogout()" 
+            title="Keluar / Logout"
+            class="p-2 text-rose-500 hover:bg-rose-100/70 active:scale-95 rounded-xl transition shrink-0 ml-1">
+            <i class="fa-solid fa-right-from-bracket text-sm"></i>
+          </button>
+        </div>
+      `;
+    }
+
+    // ---- Tahap 1: Cek NIPP ke sheet Pegawai (via Code.gs action "cekNipp") ----
+    function handleCekNippSubmit(e) {
+      e.preventDefault();
+      handleCekNipp();
+    }
+
+    async function handleCekNipp() {
+      const nipp = document.getElementById('loginNippInput').value.trim();
+      if (!nipp) { showLoginError('NIPP wajib diisi.'); return; }
+
+      setLoginBusy(true);
+      try {
+        const result = await callBackend({ action: 'cekNipp', nipp: nipp });
+        pendingNipp = nipp;
+
+        if (result.found) {
+          // NIPP terdaftar -> tampilkan data yang ditemukan + tombol LOGIN.
+          pendingUser = {
+            nama: result.data.nama,
+            nipp: result.data.nipp || nipp,
+            jabatan: result.data.jabatan,
+            stasiun: result.data.stasiun,
+          };
+          document.getElementById('foundNama').innerText = pendingUser.nama;
+          document.getElementById('foundNipp').innerText = pendingUser.nipp;
+          document.getElementById('foundJabatan').innerText = pendingUser.jabatan;
+          document.getElementById('foundStasiun').innerText = pendingUser.stasiun;
+          showLoginStage('found');
+        } else {
+          // NIPP belum terdaftar -> tampilkan form pendaftaran, NIPP sudah terisi otomatis.
+          document.getElementById('loginNippReadonly').value = nipp;
+          document.getElementById('loginNameInput').value = '';
+          document.getElementById('loginJabatanInput').value = '';
+          document.getElementById('loginStasiunInput').value = '';
+          showLoginStage('daftar');
+        }
+      } catch (err) {
+        showLoginError('Gagal memeriksa NIPP: ' + err.message);
+      } finally {
+        setLoginBusy(false);
+      }
+    }
+
+    // ---- Tahap 2A: NIPP ditemukan -> user menekan LOGIN ----
+    function handleLoginConfirmed() {
+      if (!pendingUser) return;
+      applyLoggedInUI(pendingUser);
+      localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(pendingUser));
+      closeLoginModal();
+      showToast(`Selamat datang, ${pendingUser.nama}!`);
+    }
+
+    // ---- Tahap 2B: NIPP belum terdaftar -> submit form pendaftaran ----
+    // (via Code.gs action "daftarPegawai", menyimpan ke sheet Pegawai yang sama)
+    async function handleDaftarDanLogin(e) {
+      e.preventDefault();
+
+      const nama = document.getElementById('loginNameInput').value.trim();
+      const jabatan = document.getElementById('loginJabatanInput').value.trim();
+      const stasiun = document.getElementById('loginStasiunInput').value.trim();
+
+      if (!nama || !jabatan || !stasiun) {
+        showLoginError('Lengkapi Nama Lengkap, Jabatan, dan Stasiun terlebih dahulu.');
+        return;
+      }
+
+      setLoginBusy(true);
+      try {
+        const data = await callBackend({
+          action: 'daftarPegawai',
+          payload: { nama: nama, nipp: pendingNipp, jabatan: jabatan, stasiun: stasiun },
+        });
+        // Backend mengembalikan nama yang SUDAH dinormalisasi (Title Case) —
+        // pakai persis nilai balikan ini sebagai identitas user aktif.
+        const user = { nama: data.nama, nipp: data.nipp, jabatan: data.jabatan, stasiun: data.stasiun };
+
+        applyLoggedInUI(user);
+        localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(user));
+        closeLoginModal();
+        showToast(`Pendaftaran berhasil. Selamat datang, ${user.nama}!`);
+      } catch (err) {
+        showLoginError('Gagal mendaftar: ' + err.message);
+      } finally {
+        setLoginBusy(false);
+      }
+    }
+
+    function backToNippStage() {
+      showLoginStage('nipp');
+    }
+
+    function showLoginStage(stage) {
+      document.getElementById('loginStageNipp').classList.toggle('hidden', stage !== 'nipp');
+      document.getElementById('loginStageFound').classList.toggle('hidden', stage !== 'found');
+      document.getElementById('loginStageDaftar').classList.toggle('hidden', stage !== 'daftar');
+      document.getElementById('loginModalSubtitle').textContent =
+        stage === 'nipp' ? 'Masukkan NIPP untuk mencari data pegawai' :
+        stage === 'found' ? 'Periksa data pegawai di bawah ini' :
+        'Lengkapi data untuk mendaftar';
+      document.getElementById('loginError').classList.add('hidden');
+    }
+
+    function showLoginError(msg) {
+      const el = document.getElementById('loginError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    function setLoginBusy(busy) {
+      document.getElementById('btnCekNipp').disabled = busy;
+      document.getElementById('btnDaftarDanLogin').disabled = busy;
+    }
+
+    function handleLogout() {
+      // Sembunyikan widget "PDF Tersimpan", tampilkan lagi ajakan login.
+      const savedPdfWidget = document.getElementById('savedPdfWidget');
+      savedPdfWidget.classList.add('hidden');
+      savedPdfWidget.classList.remove('flex');
+      document.getElementById('savedPdfListWrap').innerHTML =
+        `<div class="text-center py-6 text-xs text-slate-400">Belum ada PDF tersimpan.</div>`;
+      document.getElementById('savedPdfCount').innerText = '0';
+      document.getElementById('savedPdfLoggedOutHint').classList.remove('hidden');
+
+      // Sembunyikan juga widget Informasi Akun di bawah kalender.
+      applyProfileWidgetUI(null);
+
+      // Kembalikan tombol di pojok kanan atas ke "Masuk / Login"
+      const loginBtnContainer = document.getElementById('loginBtnContainer');
+      loginBtnContainer.innerHTML = `
+        <button 
+          onclick="openLoginModal()" 
+          id="loginBtn" 
+          class="w-full flex items-center justify-center gap-2.5 px-5 py-2.5 bg-[#5B58CA] hover:bg-[#4a47b5] active:scale-95 text-white rounded-full font-semibold text-sm shadow-md shadow-indigo-200 transition-all duration-200">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Masuk / Login</span>
+        </button>
+      `;
+
+      localStorage.removeItem(LOGIN_STORAGE_KEY);
+      showToast('Anda telah keluar dari akun.');
+    }
+
+    // Tab Navigation
+    // Dashboard & 3 menu tools tetap berada di satu shell yang sama (sidebar kiri +
+    // panel kanan tidak pernah ikut hilang/reload) — menu tools dimuat ke dalam
+    // #toolFrame, hanya area kontennya saja yang berganti.
+    function selectTab(tabId) {
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.classList.remove('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md');
+        btn.classList.add('text-indigo-100/70', 'font-medium');
+      });
+
+      const activeBtn = document.getElementById(`nav-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md');
+        activeBtn.classList.remove('text-indigo-100/70', 'font-medium');
+      }
+
+      const dashboardView = document.getElementById('dashboardView');
+      const toolView = document.getElementById('toolView');
+      const toolFrame = document.getElementById('toolFrame');
+      const headerActions = document.getElementById('headerActions');
+      const pageTitle = document.getElementById('pageTitle');
+
+      pageTitle.textContent = tabTitles[tabId] || 'Tools';
+      updateRightWidgetsVisibility(tabId);
+
+      if (tabRoutes[tabId]) {
+        // Tampilkan tool di dalam frame pada shell yang sama.
+        dashboardView.classList.add('hidden');
+        toolView.classList.remove('hidden');
+        toolView.classList.add('flex');
+        headerActions.classList.add('hidden');
+
+        // Muat ulang iframe hanya jika berpindah ke tool yang berbeda.
+        if (toolFrame.dataset.loaded !== tabId) {
+          toolFrame.src = tabRoutes[tabId];
+          toolFrame.dataset.loaded = tabId;
+        }
+      } else {
+        toolView.classList.add('hidden');
+        toolView.classList.remove('flex');
+        dashboardView.classList.remove('hidden');
+        headerActions.classList.remove('hidden');
+
+        if (tabId === 'settings' || tabId === 'directory') {
+          showToast(`Halaman "${tabId}" belum tersedia.`);
+        }
+      }
+
+      localStorage.setItem(TAB_STORAGE_KEY, tabId);
+    }
+
+    // Toast Notification Helper
+    let toastTimeout;
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      const toastMsg = document.getElementById('toastMessage');
+      toastMsg.innerText = msg;
+
+      toast.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none');
+      }, 3000);
+    }
+
+    // Initial Load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderCourses(coursesData);
+      renderCalendar();
+
+      // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap
+      // terlihat login di semua menu, termasuk setelah refresh halaman.
+      try {
+        const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+        if (savedUser && savedUser.nama) {
+          applyLoggedInUI(savedUser);
+        }
+      } catch (err) { /* abaikan data sesi yang rusak */ }
+
+      // Pulihkan menu terakhir yang aktif.
+      const savedTab = localStorage.getItem(TAB_STORAGE_KEY) || 'dashboard';
+      selectTab(savedTab);
+    });
+  </script>
 </body>
 </html>
