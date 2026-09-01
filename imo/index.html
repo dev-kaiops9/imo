@@ -108,6 +108,13 @@
         </div>
       </div>
 
+      <!-- Muncul hanya saat Dinas = "Lainnya" -->
+      <div class="field hidden" id="fieldDinasLainnya">
+        <label class="field__label" for="dinasLainnya">Isi Dinas/Kegiatan <span class="req">*</span></label>
+        <input type="text" id="dinasLainnya" class="input" placeholder="Wakilan PPKA Stasiun ABC/Sertifikasi/CUTI" />
+        <div class="field__error" id="err-dinasLainnya">Isi Dinas/Kegiatan wajib diisi.</div>
+      </div>
+
       <div class="field">
         <label class="field__label" for="jenisSerahTerima">Jenis Serah Terima <span class="req">*</span></label>
         <select id="jenisSerahTerima" class="select">
@@ -132,7 +139,7 @@
       </div>
       <p class="panel__hint">Unggah bukti serah terima dan dokumentasi kegiatan.</p>
 
-      <div class="field">
+      <div class="field" id="fieldFotoSerahTerima">
         <label class="field__label" id="labelFotoSerahTerima">Foto Serah Terima <span class="req">*</span></label>
         <div class="dropzone" id="dzSerahTerima" tabindex="0" role="button" aria-describedby="dzSerahTerimaHint">
           <div class="dropzone__icon">↑</div>
@@ -144,7 +151,7 @@
         <div class="field__error" id="err-fotoSerahTerima">Foto serah terima wajib diunggah.</div>
       </div>
 
-      <div class="field">
+      <div class="field" id="fieldFotoDokumentasi">
         <label class="field__label">Foto Dokumentasi Kegiatan <span class="req">*</span></label>
         <div class="dropzone" id="dzDokumentasi" tabindex="0" role="button">
           <div class="dropzone__icon">↑</div>
@@ -155,6 +162,9 @@
         <div class="thumb-row" id="thumbDokumentasi"></div>
         <div class="field__error" id="err-fotoDokumentasi">Foto dokumentasi wajib diunggah.</div>
       </div>
+
+      <!-- Muncul hanya saat Dinas = "LIBUR" (tidak ada foto sama sekali) -->
+      <p class="panel__hint hidden" id="hintLiburNoUpload">Dinas LIBUR — tidak perlu unggah foto. Langsung lanjut ke Preview.</p>
 
       <div class="btn-row">
         <button type="button" class="btn btn--ghost" data-back="1">← Kembali</button>

@@ -61,15 +61,27 @@ const Pdf = {
     const bodyTop = tableTop + rowHeaderH;
     columns.forEach((c) => doc.rect(c.x, bodyTop, c.width, rowBodyH));
 
+    const isLibur = data.dinas === CONFIG.DINAS_KHUSUS.LIBUR;
+    const LIBUR_COLOR = [239, 68, 68]; // sama dengan --signal-red (#ef4444)
+
     const tanggalLabel = this._formatTanggalPanjang(data.tanggal);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(14);
+    doc.setTextColor(0, 0, 0);
     columns.forEach((c) => {
       if (c.key === "hari") {
         this._drawCenteredText(doc, tanggalLabel, c, bodyTop, rowBodyH);
       }
       if (c.key === "kegiatan") {
+        if (isLibur) {
+          doc.setFont("helvetica", "bold");
+          doc.setTextColor(...LIBUR_COLOR);
+        }
         this._drawCenteredText(doc, data.kegiatan || "", c, bodyTop, rowBodyH);
+        if (isLibur) {
+          doc.setFont("helvetica", "normal");
+          doc.setTextColor(0, 0, 0);
+        }
       }
     });
 
@@ -77,11 +89,23 @@ const Pdf = {
     const targetCol = columns.find((c) => c.key === targetKey);
     const dokCol = columns.find((c) => c.key === "dok");
 
-    const croppedSerahTerima = await this._withCroppedDataUrl(photos.fotoSerahTerima);
-    const croppedDokumentasi = await this._withCroppedDataUrl(photos.fotoDokumentasi);
+    if (isLibur) {
+      // LIBUR: tidak ada foto sama sekali (Serah Terima Dinasan tetap
+      // kosong) — kolom Dokumentasi Kegiatan diisi teks "LIBUR" bold merah.
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...LIBUR_COLOR);
+      this._drawCenteredText(doc, "LIBUR", dokCol, bodyTop, rowBodyH);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(0, 0, 0);
+    } else {
+      // Pagi/Siang/Malam & Lainnya: alur foto existing (foto Serah Terima
+      // kosong/null untuk Lainnya otomatis membuat kolom "gabung" kosong).
+      const croppedSerahTerima = await this._withCroppedDataUrl(photos.fotoSerahTerima);
+      const croppedDokumentasi = await this._withCroppedDataUrl(photos.fotoDokumentasi);
 
-    this._placeImageInCell(doc, croppedSerahTerima, targetCol, bodyTop, rowBodyH);
-    this._placeImageInCell(doc, croppedDokumentasi, dokCol, bodyTop, rowBodyH);
+      this._placeImageInCell(doc, croppedSerahTerima, targetCol, bodyTop, rowBodyH);
+      this._placeImageInCell(doc, croppedDokumentasi, dokCol, bodyTop, rowBodyH);
+    }
 
     const fileName = CONFIG.buildPdfFileName(data.tanggal, data.dinas);
     const blob = doc.output("blob");

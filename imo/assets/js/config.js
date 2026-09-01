@@ -19,8 +19,21 @@ const CONFIG = {
   // Daftar pilihan dropdown. Ubah di sini jika ada penambahan/pengurangan opsi.
   OPTIONS: {
     jabatan: ["PPKA", "PLR", "PRS", "PJL"],
-    dinas: ["Pagi", "Siang", "Malam"],
+    // "LIBUR" & "Lainnya" ditambahkan SETELAH 3 pilihan dinas existing
+    // (Pagi/Siang/Malam) — jangan hapus/ubah/reorder 3 pilihan pertama,
+    // sejumlah logika (lihat DINAS_KHUSUS di bawah, form.js, preview.js,
+    // pdf.js) mengasumsikan Pagi/Siang/Malam tetap berjalan seperti semula.
+    dinas: ["Pagi", "Siang", "Malam", "LIBUR", "Lainnya"],
     jenisSerahTerima: ["Awal Dinas", "Akhir Dinas", "Serah Terima Dinasan"],
+  },
+
+  // Pilihan dinas dengan alur khusus (bukan Pagi/Siang/Malam biasa).
+  // Dipakai oleh form.js untuk mengunci Jenis Serah Terima & menyembunyikan
+  // upload foto yang tidak relevan, dan oleh preview.js/pdf.js untuk
+  // menampilkan teks "LIBUR" bergaya bold-merah alih-alih foto.
+  DINAS_KHUSUS: {
+    LIBUR: "LIBUR",
+    LAINNYA: "Lainnya",
   },
 
   // Aturan inti: jenis serah terima -> tabel yang dipakai & kolom foto.
@@ -54,7 +67,11 @@ const CONFIG = {
 
   // Isi kolom "Kegiatan" otomatis mengikuti dropdown Dinas
   // (Pagi -> "Dinas Pagi", Siang -> "Dinas Siang", Malam -> "Dinas Malam").
-  buildKegiatan(dinas) {
+  // Untuk LIBUR -> selalu "LIBUR". Untuk Lainnya -> pakai teks manual yang
+  // diketik user (parameter kedua, isi input "Isi Dinas/Kegiatan").
+  buildKegiatan(dinas, manualKegiatan) {
+    if (dinas === this.DINAS_KHUSUS.LIBUR) return "LIBUR";
+    if (dinas === this.DINAS_KHUSUS.LAINNYA) return manualKegiatan || "";
     return dinas ? `Dinas ${dinas}` : "";
   },
 
@@ -108,3 +125,4 @@ const CONFIG = {
 // Dibekukan supaya tidak sengaja termodifikasi saat runtime.
 Object.freeze(CONFIG.OPTIONS);
 Object.freeze(CONFIG.MAPPING);
+Object.freeze(CONFIG.DINAS_KHUSUS);

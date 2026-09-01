@@ -28,12 +28,14 @@ const Preview = {
       dok: photos.fotoDokumentasi,
     };
 
+    const isLibur = data.dinas === CONFIG.DINAS_KHUSUS.LIBUR;
+
     const wrap = document.getElementById("pvTableWrap");
     wrap.innerHTML = "";
-    wrap.appendChild(this._buildTable(columns, data.kegiatan, tanggalLabel, photoByKey));
+    wrap.appendChild(this._buildTable(columns, data.kegiatan, tanggalLabel, photoByKey, isLibur));
   },
 
-  _buildTable(columns, kegiatan, tanggalLabel, photoByKey) {
+  _buildTable(columns, kegiatan, tanggalLabel, photoByKey, isLibur) {
     const table = document.createElement("table");
     table.className = "pv-table";
 
@@ -63,6 +65,11 @@ const Preview = {
         td.textContent = tanggalLabel;
       } else if (c.key === "kegiatan") {
         td.textContent = kegiatan || "";
+        if (isLibur) td.classList.add("pv-table__libur");
+      } else if (isLibur && c.key === "dok") {
+        // LIBUR: tidak ada foto dokumentasi — tampilkan teks "LIBUR" (bold, merah).
+        td.textContent = "LIBUR";
+        td.classList.add("pv-table__libur");
       } else if (photoByKey[c.key]) {
         const img = document.createElement("img");
         img.src = photoByKey[c.key].dataUrl;

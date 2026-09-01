@@ -847,6 +847,9 @@ input[type="date"]:focus {
   font-size: 12px;
   color: var(--emerald-900);
 }
+/* Sel "LIBUR" (Kegiatan & Dokumentasi Kegiatan) saat Dinas = LIBUR */
+.pv-table__libur { font-weight: 700; color: var(--signal-red); }
+
 .pv-table__photo-cell { padding: 4px; height: 300px; background: #fff; }
 .pv-table__photo-cell img {
   display: block;
