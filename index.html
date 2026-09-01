@@ -53,10 +53,26 @@
             <i class="fa-solid fa-table-cells-large w-5 text-center"></i>
             <span>Dashboard</span>
           </button>
-          <button onclick="selectTab('imo')" id="nav-imo" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
-            <i class="fa-solid fa-book-open w-5 text-center"></i>
-            <span>IMO</span>
-          </button>
+
+          <!-- Menu IMO + Sub-menu (Per Hari / Per Bulan) -->
+          <div>
+            <button onclick="selectTab('imo-per-hari')" id="nav-imo" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+              <i class="fa-solid fa-book-open w-5 text-center"></i>
+              <span class="flex-1 text-left">IMO</span>
+              <i id="imoChevron" class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200"></i>
+            </button>
+            <div id="imoSubmenu" class="hidden flex-col gap-1 mt-1 pl-9 pr-1">
+              <button onclick="selectTab('imo-per-hari')" id="nav-imo-per-hari" class="nav-subitem w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 text-xs font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+                <i class="fa-solid fa-circle text-[5px]"></i>
+                <span>Per Hari</span>
+              </button>
+              <button onclick="selectTab('imo-per-bulan')" id="nav-imo-per-bulan" class="nav-subitem w-full flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-200 text-xs font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+                <i class="fa-solid fa-circle text-[5px]"></i>
+                <span>Per Bulan</span>
+              </button>
+            </div>
+          </div>
+
           <button onclick="selectTab('serah-terima-pdf')" id="nav-serah-terima-pdf" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
             <i class="fa-solid fa-file-pdf w-5 text-center"></i>
             <span>Serah Terima PDF</span>
@@ -369,7 +385,8 @@
 
     // Peta tab menu -> halaman tools (dimuat via iframe, bukan pindah halaman)
     const tabRoutes = {
-      imo: "imo/index.html",
+      "imo-per-hari": "imo/index.html",
+      "imo-per-bulan": "imo/per-bulan.html",
       "serah-terima-pdf": "serah-terima-pdf/index.html",
       "pdf-to-a4": "pdf-to-a4/index.html"
     };
@@ -377,7 +394,8 @@
     // Judul header per tab
     const tabTitles = {
       dashboard: "Tools",
-      imo: "IMO",
+      "imo-per-hari": "IMO - Per Hari",
+      "imo-per-bulan": "IMO - Per Bulan",
       "serah-terima-pdf": "Serah Terima PDF",
       "pdf-to-a4": "PDF to A4",
       settings: "Settings",
@@ -872,16 +890,48 @@
     // Dashboard & 3 menu tools tetap berada di satu shell yang sama (sidebar kiri +
     // panel kanan tidak pernah ikut hilang/reload) — menu tools dimuat ke dalam
     // #toolFrame, hanya area kontennya saja yang berganti.
+    //
+    // Menu "IMO" punya 2 sub-menu: "imo-per-hari" (default) dan "imo-per-bulan".
+    // Saat salah satu sub-menu aktif, tombol utama "IMO" tetap ter-highlight
+    // dan sub-menu di bawahnya otomatis terbuka.
+    function isImoGroupTab(tabId) {
+      return tabId === 'imo-per-hari' || tabId === 'imo-per-bulan';
+    }
+
     function selectTab(tabId) {
-      document.querySelectorAll('.nav-item').forEach(btn => {
-        btn.classList.remove('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md');
+      // Kompatibilitas: sesi lama yang tersimpan di localStorage dengan tab "imo"
+      // diarahkan otomatis ke sub-menu default "Per Hari".
+      if (tabId === 'imo') tabId = 'imo-per-hari';
+
+      document.querySelectorAll('.nav-item, .nav-subitem').forEach(btn => {
+        btn.classList.remove('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md', 'bg-white/10');
         btn.classList.add('text-indigo-100/70', 'font-medium');
       });
 
-      const activeBtn = document.getElementById(`nav-${tabId}`);
+      const activeMainId = isImoGroupTab(tabId) ? 'nav-imo' : `nav-${tabId}`;
+      const activeBtn = document.getElementById(activeMainId);
       if (activeBtn) {
         activeBtn.classList.add('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md');
         activeBtn.classList.remove('text-indigo-100/70', 'font-medium');
+      }
+
+      // Buka/tutup sub-menu IMO + highlight sub-menu yang aktif.
+      const imoSubmenu = document.getElementById('imoSubmenu');
+      const imoChevron = document.getElementById('imoChevron');
+      if (isImoGroupTab(tabId)) {
+        imoSubmenu.classList.remove('hidden');
+        imoSubmenu.classList.add('flex');
+        imoChevron.classList.add('rotate-180');
+
+        const subBtn = document.getElementById(`nav-${tabId}`);
+        if (subBtn) {
+          subBtn.classList.add('bg-white/10', 'text-white', 'font-semibold');
+          subBtn.classList.remove('text-indigo-100/70', 'font-medium');
+        }
+      } else {
+        imoSubmenu.classList.add('hidden');
+        imoSubmenu.classList.remove('flex');
+        imoChevron.classList.remove('rotate-180');
       }
 
       const dashboardView = document.getElementById('dashboardView');
