@@ -240,6 +240,15 @@
             <span id="savedPdfCount" class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">0</span>
           </div>
 
+          <div class="flex items-center gap-2 shrink-0">
+            <select id="savedPdfFilterBulan" class="flex-1 min-w-0 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-[11px] font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
+              <option value="">Semua Bulan</option>
+            </select>
+            <select id="savedPdfFilterTahun" class="w-24 shrink-0 px-2.5 py-1.5 bg-white border border-slate-200 rounded-xl text-[11px] font-medium text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
+              <option value="">Semua Tahun</option>
+            </select>
+          </div>
+
           <div id="savedPdfListWrap" class="flex flex-col gap-2 overflow-y-auto pr-1 max-h-[440px]">
             <div class="text-center py-6 text-xs text-slate-400">Belum ada PDF tersimpan.</div>
           </div>
@@ -433,6 +442,10 @@
     // lewat action "cekPdfTersimpan" (sama seperti dipakai imo/imo).
     // ---------------------------------------------------------------------
     const DINAS_ORDER = { "Pagi": 0, "Siang": 1, "Malam": 2 };
+    const SAVED_PDF_BULAN_LIST = [
+      "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+      "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+    ];
 
     // Format tanggal dari backend selalu "dd-mm-yyyy" (lihat formatTanggal_
     // di Code.gs) — di-parse ke timestamp supaya bisa diurutkan.
@@ -440,6 +453,11 @@
       const parts = String(str || '').split('-').map(Number);
       const dd = parts[0] || 1, mm = parts[1] || 1, yyyy = parts[2] || 1970;
       return new Date(yyyy, mm - 1, dd).getTime();
+    }
+
+    function tanggalParts(str) {
+      const parts = String(str || '').split('-').map(Number);
+      return { dd: parts[0] || 1, mm: parts[1] || 1, yyyy: parts[2] || 1970 };
     }
 
     // Urutkan tanggal termuda (paling awal) dulu, lalu dalam tanggal yang
@@ -453,6 +471,43 @@
         const db = DINAS_ORDER.hasOwnProperty(b.dinas) ? DINAS_ORDER[b.dinas] : 99;
         return da - db;
       });
+    }
+
+    // ---------------------------------------------------------------------
+    // Filter Bulan/Tahun widget "PDF Tersimpan" — murni filter di sisi
+    // client dari data yang sudah dimuat sekali (tidak fetch ulang ke
+    // server tiap kali dropdown berubah).
+    // ---------------------------------------------------------------------
+    let savedPdfAllList = [];
+
+    function populateSavedPdfYearFilter(list) {
+      const sel = document.getElementById('savedPdfFilterTahun');
+      const prevValue = sel.value;
+      const years = Array.from(new Set(list.map((item) => String(tanggalParts(item.tanggal).yyyy))))
+        .sort((a, b) => Number(b) - Number(a));
+      sel.innerHTML = '<option value="">Semua Tahun</option>' +
+        years.map((y) => `<option value="${y}">${y}</option>`).join('');
+      if (years.includes(prevValue)) sel.value = prevValue;
+    }
+
+    function applySavedPdfFilter() {
+      const bulanVal = document.getElementById('savedPdfFilterBulan').value;
+      const tahunVal = document.getElementById('savedPdfFilterTahun').value;
+      const filtered = savedPdfAllList.filter((item) => {
+        const t = tanggalParts(item.tanggal);
+        if (bulanVal && String(t.mm) !== bulanVal) return false;
+        if (tahunVal && String(t.yyyy) !== tahunVal) return false;
+        return true;
+      });
+      renderSavedPdfList(sortSavedPdfList(filtered));
+    }
+
+    function initSavedPdfFilters() {
+      const selBulan = document.getElementById('savedPdfFilterBulan');
+      selBulan.innerHTML = '<option value="">Semua Bulan</option>' +
+        SAVED_PDF_BULAN_LIST.map((nama, idx) => `<option value="${idx + 1}">${nama}</option>`).join('');
+      selBulan.addEventListener('change', applySavedPdfFilter);
+      document.getElementById('savedPdfFilterTahun').addEventListener('change', applySavedPdfFilter);
     }
 
     function renderSavedPdfList(list) {
@@ -493,7 +548,9 @@
 
       try {
         const data = await callBackend({ action: 'cekPdfTersimpan', nipp: user.nipp });
-        renderSavedPdfList(sortSavedPdfList((data && data.list) || []));
+        savedPdfAllList = (data && data.list) || [];
+        populateSavedPdfYearFilter(savedPdfAllList);
+        applySavedPdfFilter();
       } catch (err) {
         wrap.innerHTML = `<div class="text-center py-6 text-xs text-rose-400">Gagal memuat riwayat PDF: ${err.message}</div>`;
       }
@@ -990,6 +1047,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       renderCourses(coursesData);
       renderCalendar();
+      initSavedPdfFilters();
 
       // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap
       // terlihat login di semua menu, termasuk setelah refresh halaman.
