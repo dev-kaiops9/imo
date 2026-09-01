@@ -124,6 +124,41 @@
 
       <!-- ================= DASHBOARD VIEW ================= -->
       <div id="dashboardView">
+
+        <!-- ===== Banner Sambutan (di atas daftar menu / kartu IMO) ===== -->
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#4a47b5] via-[#5B58CA] to-purple-600 mb-6 shadow-lg shadow-indigo-200/60">
+          <!-- Dekorasi lingkaran -->
+          <div class="absolute -top-10 -right-10 w-56 h-56 bg-white/10 rounded-full"></div>
+          <div class="absolute -bottom-16 right-24 w-40 h-40 bg-white/10 rounded-full"></div>
+          <div class="absolute top-8 right-40 w-6 h-6 bg-white/20 rounded-full hidden md:block"></div>
+
+          <div class="relative flex items-stretch min-h-[180px] sm:min-h-[200px]">
+            <!-- Teks Sambutan -->
+            <div class="flex-1 flex flex-col justify-center px-6 sm:px-10 py-8 pr-28 sm:pr-10 md:max-w-[62%]">
+              <span class="inline-flex items-center gap-1.5 self-start text-[11px] font-bold text-white/90 bg-white/15 px-3 py-1 rounded-full mb-3 tracking-wide uppercase backdrop-blur-sm">
+                <i class="fa-solid fa-hand-sparkles text-amber-300"></i>
+                Selamat Datang
+              </span>
+              <h2 class="text-xl sm:text-2xl md:text-[26px] font-extrabold text-white leading-snug tracking-tight">
+                Selamat datang di Dashboard IMO Tools
+              </h2>
+              <p class="text-indigo-100 text-sm sm:text-[15px] mt-2 leading-relaxed">
+                Kelola Data IMO dalam satu tools yang lebih cepat, akurat, dan rapi.
+              </p>
+            </div>
+
+            <!-- Karakter Petugas -->
+            <div class="absolute right-2 sm:right-6 md:right-10 bottom-0 flex items-end pointer-events-none">
+              <img
+                src="assets/img/petugas-imo.png"
+                alt="Petugas KAI menyambut Anda"
+                class="h-[190px] sm:h-[220px] md:h-[240px] w-auto object-contain drop-shadow-2xl select-none"
+                draggable="false"
+              />
+            </div>
+          </div>
+        </div>
+
         <!-- Course Cards Container -->
         <div id="courseListContainer" class="space-y-6">
           <!-- Rendered dynamically via JavaScript -->
