@@ -981,6 +981,10 @@
       try {
         const result = await callBackend({ action: 'cekNipp', nipp: nipp });
         pendingNipp = nipp;
+        // "cekNipp" sudah menambah Counter di backend (lihat doPost di Code.gs)
+        // — sinkronkan widget "Telah Digunakan" sekarang juga, jangan tunggu
+        // polling berikutnya (bisa sampai 10 detik).
+        loadUsageCounter();
 
         if (result.found) {
           // NIPP terdaftar -> tampilkan data yang ditemukan + tombol LOGIN.
@@ -1017,6 +1021,15 @@
       localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(pendingUser));
       closeLoginModal();
       showToast(`Selamat datang, ${pendingUser.nama}!`);
+
+      // Klik LOGIN ini murni proses di browser (tidak memanggil backend sama
+      // sekali), jadi Counter di sheet TIDAK akan bertambah dengan sendirinya
+      // seperti action lain. Laporkan pemakaian lewat action ringan
+      // "catatPemakaian" (lihat Code.gs) supaya tetap ikut ke-counter, lalu
+      // sinkronkan widget "Telah Digunakan" begitu selesai.
+      callBackend({ action: 'catatPemakaian' })
+        .then(loadUsageCounter)
+        .catch((err) => console.warn('Gagal mencatat pemakaian (login):', err.message));
     }
 
     // ---- Tahap 2B: NIPP belum terdaftar -> submit form pendaftaran ----
@@ -1047,6 +1060,9 @@
         localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(user));
         closeLoginModal();
         showToast(`Pendaftaran berhasil. Selamat datang, ${user.nama}!`);
+        // "daftarPegawai" sudah menambah Counter di backend — sinkronkan
+        // widget sekarang juga.
+        loadUsageCounter();
       } catch (err) {
         showLoginError('Gagal mendaftar: ' + err.message);
       } finally {
