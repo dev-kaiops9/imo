@@ -88,12 +88,12 @@
       <div class="pt-8 border-t border-indigo-400/30 mt-6 md:mt-0">
         <!-- Widget "Telah Digunakan" — total pemakaian tools dari sheet Counter -->
         <div id="usageCounterWidget" class="mb-3 px-4 py-3 rounded-2xl bg-white/10 border border-white/10">
-          <p class="text-xs text-indigo-100/80 leading-snug">
-            Telah Digunakan :
-            <span id="usageCounterValue" class="font-bold text-white">-</span>
-            kali Oleh Pengguna
+          <p class="text-[11px] text-indigo-100/80 leading-snug mb-1">Telah Digunakan</p>
+          <p class="flex items-baseline gap-1.5">
+            <span id="usageCounterValue" class="font-extrabold text-white text-3xl leading-none tracking-tight inline-block transition-transform duration-300">-</span>
+            <span class="text-xs font-medium text-indigo-100/70">kali</span>
           </p>
-          <p id="usageCounterDate" class="text-[11px] text-indigo-100/50 mt-1">per -</p>
+          <p id="usageCounterDate" class="text-[11px] text-indigo-100/50 mt-1.5">per -</p>
         </div>
 
         <div class="space-y-2">
@@ -1184,6 +1184,9 @@
         if (toolFrame.dataset.loaded !== tabId) {
           toolFrame.src = tabRoutes[tabId];
           toolFrame.dataset.loaded = tabId;
+          // Beri jeda sedikit lalu sinkronkan widget "Telah Digunakan", karena
+          // pembukaan tool inilah yang biasanya menambah counter di backend.
+          setTimeout(loadUsageCounter, 1500);
         }
       } else if (tabId === 'about') {
         aboutView.classList.remove('hidden');
@@ -1220,6 +1223,42 @@
     // Angka counter-nya sendiri bertambah di sisi backend setiap kali menu/
     // proses apapun dipakai user (lihat Code.gs — belum diupload).
     // ---------------------------------------------------------------------
+    // Nilai counter yang sedang tampil di layar (dipakai untuk animasi count-up
+    // dan untuk mendeteksi apakah angka bertambah dibanding polling sebelumnya).
+    let usageCounterCurrent = null;
+    let usageCounterPollTimer = null;
+
+    // Animasikan perubahan angka lama -> angka baru (count-up), lalu beri efek
+    // "pulse" sekilas supaya user langsung sadar counter baru saja bertambah.
+    function animateUsageCounter(fromValue, toValue) {
+      const valueEl = document.getElementById('usageCounterValue');
+      if (!valueEl) return;
+
+      const start = Number.isFinite(fromValue) ? fromValue : toValue;
+      const diff = toValue - start;
+      const duration = diff === 0 ? 0 : Math.min(900, Math.max(300, Math.abs(diff) * 60));
+      const startTime = performance.now();
+
+      function step(now) {
+        const progress = duration === 0 ? 1 : Math.min(1, (now - startTime) / duration);
+        // easeOutCubic biar animasinya halus melambat di akhir.
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(start + diff * eased);
+        valueEl.innerText = current.toLocaleString('id-ID');
+
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else if (diff > 0) {
+          // Efek pulse singkat saat counter bertambah.
+          valueEl.classList.add('scale-125', 'text-amber-300');
+          setTimeout(() => {
+            valueEl.classList.remove('scale-125', 'text-amber-300');
+          }, 350);
+        }
+      }
+      requestAnimationFrame(step);
+    }
+
     async function loadUsageCounter() {
       const valueEl = document.getElementById('usageCounterValue');
       const dateEl = document.getElementById('usageCounterDate');
@@ -1235,13 +1274,40 @@
       try {
         const data = await callBackend({ action: 'getCounter' });
         const jumlah = Number(data && data.jumlah) || 0;
-        if (valueEl) valueEl.innerText = jumlah.toLocaleString('id-ID');
+        animateUsageCounter(usageCounterCurrent, jumlah);
+        usageCounterCurrent = jumlah;
       } catch (err) {
         // Action "getCounter" di Code.gs belum tersedia / gagal diakses.
-        if (valueEl) valueEl.innerText = '-';
+        if (usageCounterCurrent === null && valueEl) valueEl.innerText = '-';
         console.warn('Gagal memuat usage counter:', err.message);
       }
     }
+
+    // Polling berkala supaya widget "Telah Digunakan" ter-update real-time
+    // setiap kali counter bertambah di backend (mis. dipakai dari tab/perangkat
+    // lain), tanpa perlu reload halaman.
+    function startUsageCounterPolling(intervalMs = 10000) {
+      if (usageCounterPollTimer) clearInterval(usageCounterPollTimer);
+      usageCounterPollTimer = setInterval(() => {
+        // Jangan polling saat tab browser sedang tidak aktif, hemat request.
+        if (document.visibilityState === 'visible') loadUsageCounter();
+      }, intervalMs);
+    }
+
+    // Saat user kembali ke tab ini, langsung sinkronkan counter (kalau ada
+    // penambahan yang terjadi selama tab tidak aktif / dari perangkat lain).
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') loadUsageCounter();
+    });
+
+    // Jalur tambahan real-time: jika halaman tool di dalam iframe mengirim
+    // window.parent.postMessage({ type: 'usageCounterUpdated' }, '*') setelah
+    // sebuah proses selesai, widget langsung sinkron tanpa menunggu polling.
+    window.addEventListener('message', (event) => {
+      if (event && event.data && event.data.type === 'usageCounterUpdated') {
+        loadUsageCounter();
+      }
+    });
 
     // Toast Notification Helper
     let toastTimeout;
@@ -1266,6 +1332,7 @@
       renderCalendar();
       initSavedPdfFilters();
       loadUsageCounter();
+      startUsageCounterPolling();
 
       // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap
       // terlihat login di semua menu, termasuk setelah refresh halaman.
