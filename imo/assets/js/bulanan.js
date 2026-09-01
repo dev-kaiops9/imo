@@ -85,9 +85,17 @@ const Toast = {
 };
 
 const Busy = {
-  show(text) {
+  show(text, opts) {
     document.getElementById("busyText").textContent = text || "MEMPROSES…";
     document.getElementById("busyOverlay").classList.add("is-open");
+    const showProgress = !!(opts && opts.progress);
+    document.getElementById("busyProgressWrap").classList.toggle("hidden", !showProgress);
+    if (showProgress) this.setProgress(0);
+  },
+  setProgress(pct) {
+    const clamped = Math.max(0, Math.min(100, Math.round(pct)));
+    document.getElementById("busyProgressFill").style.width = clamped + "%";
+    document.getElementById("busyProgressPct").textContent = clamped + "%";
   },
   hide() { document.getElementById("busyOverlay").classList.remove("is-open"); },
 };
@@ -414,7 +422,9 @@ const SavedPdfList = {
 //   Hal 4-selesai: gabungan PDF harian (urutan sudah difilter+diurutkan)
 // ---------------------------------------------------------------------
 const PdfBulanan = {
-  async build({ user, bulanNama, tahun, smartcard, daftarHadir, savedList }) {
+  async build({ user, bulanNama, tahun, smartcard, daftarHadir, savedList, onProgress }) {
+    const report = typeof onProgress === "function" ? onProgress : () => {};
+
     const { PDFDocument, StandardFonts, rgb } = PDFLib;
     const out = await PDFDocument.create();
     const fontBold = await out.embedFont(StandardFonts.HelveticaBold);
@@ -425,12 +435,14 @@ const PdfBulanan = {
     // ---- Halaman 1: Cover ----
     const cover = out.addPage(A4_LANDSCAPE);
     await this._drawCoverPage(out, cover, { fontBold, fontRegular, bulanNama, tahun, user });
+    report(5);
 
     // ---- Halaman 2: Foto SmartCard (landscape) ----
     if (smartcard) {
       const page = out.addPage(A4_LANDSCAPE);
       await this._drawHeaderedPhotoPage(out, page, { fontBold, title: "SMARTCARD", photo: smartcard });
     }
+    report(10);
 
     // ---- Halaman 3: Foto Daftar Hadir ----
     if (daftarHadir) {
@@ -438,27 +450,35 @@ const PdfBulanan = {
       const title = `DAFTAR HADIR BULAN ${String(bulanNama).toUpperCase()} ${tahun}`;
       await this._drawHeaderedPhotoPage(out, page, { fontBold, title, photo: daftarHadir });
     }
+    report(15);
 
     // ---- Halaman 4-selesai: gabungan PDF harian tersimpan ----
     // Diambil LEWAT BACKEND (Api.ambilPdfBase64), bukan fetch langsung ke
     // drive.google.com — lihat komentar di Api.ambilPdfBase64 kenapa fetch
     // langsung selalu gagal (CORS + URL yang diambil bukan file mentah).
-    for (const item of savedList) {
-      if (!item.fileUrl) continue;
-      try {
-        const fileId = extractDriveFileId_(item.fileUrl);
-        if (!fileId) throw new Error("ID file tidak ditemukan pada URL tersimpan.");
-        const base64 = await Api.ambilPdfBase64(fileId);
-        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-        const srcDoc = await PDFDocument.load(bytes);
-        const copied = await out.copyPages(srcDoc, srcDoc.getPageIndices());
-        copied.forEach((p) => out.addPage(p));
-      } catch (err) {
-        Toast.show(`Gagal memuat PDF ${item.tanggal} (${item.dinas}), dilewati. (${err.message})`, "warn");
+    // Rentang progres 15% - 85% dibagi rata ke tiap PDF harian yang digabung.
+    const total = savedList.length;
+    for (let i = 0; i < total; i++) {
+      const item = savedList[i];
+      if (item.fileUrl) {
+        try {
+          const fileId = extractDriveFileId_(item.fileUrl);
+          if (!fileId) throw new Error("ID file tidak ditemukan pada URL tersimpan.");
+          const base64 = await Api.ambilPdfBase64(fileId);
+          const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+          const srcDoc = await PDFDocument.load(bytes);
+          const copied = await out.copyPages(srcDoc, srcDoc.getPageIndices());
+          copied.forEach((p) => out.addPage(p));
+        } catch (err) {
+          Toast.show(`Gagal memuat PDF ${item.tanggal} (${item.dinas}), dilewati. (${err.message})`, "warn");
+        }
       }
+      report(15 + Math.round(((i + 1) / Math.max(total, 1)) * 70));
     }
 
+    report(88);
     const bytes = await out.save();
+    report(92);
     const base64 = this._toBase64(bytes);
     // Format: (BULAN)_STA (STASIUN)_(NAMA)_(JABATAN)_(NIPP).pdf
     // Contoh: AGUSTUS_STA GLENMORE_BUDI SANTOSO_PPKA_69123.pdf
@@ -739,7 +759,8 @@ function wireUnduhImo() {
     }
 
     try {
-      Busy.show("MEMBUAT PDF…");
+      // Tahap 1 (0% - 92%): menyusun & menggabungkan seluruh halaman PDF.
+      Busy.show("MEMBUAT PDF…", { progress: true });
       const pdf = await PdfBulanan.build({
         user: Session.current,
         bulanNama,
@@ -747,13 +768,20 @@ function wireUnduhImo() {
         smartcard: UploadSingle.state.smartcard,
         daftarHadir: UploadSingle.state.daftarHadir,
         savedList,
+        onProgress: (pct) => Busy.setProgress(pct),
       });
 
-      Busy.show("MENDOWNLOAD PDF…");
+      // Tahap 2 (92% - 97%): mengunggah/menyimpan PDF akhir ke Google Drive.
+      Busy.show("MENYIMPAN PDF KE DRIVE…", { progress: true });
+      Busy.setProgress(92);
       await Api.simpanImoBulanan({ user: Session.current, bulanNama, tahun, pdfFileName: pdf.fileName, pdfBase64: pdf.base64 });
+      Busy.setProgress(97);
 
-      // Selain tersimpan ke Google Drive, PDF juga langsung diunduh ke perangkat.
+      // Tahap 3 (97% - 100%): mengunduh PDF ke perangkat.
+      Busy.show("MENDOWNLOAD PDF…", { progress: true });
+      Busy.setProgress(97);
       downloadBase64Pdf_(pdf.base64, pdf.fileName);
+      Busy.setProgress(100);
 
       Busy.hide();
       Toast.show(`Tersimpan sebagai "${pdf.fileName}" di ${CONFIG.DRIVE_ROOT_FOLDER}/${Session.current.stasiun}/${Session.current.jabatan}/${Session.current.nipp}/${tahun}/${bulanNama}/ dan sudah diunduh.`, "success");
