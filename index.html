@@ -370,6 +370,7 @@
         borderColor: "border-purple-100",
         accentColor: "bg-indigo-600",
         bgGradient: "from-blue-50 to-indigo-50",
+        icon: "fa-solid fa-book-open",
         tab: "imo"
       },
       {
@@ -380,6 +381,7 @@
         borderColor: "border-purple-200",
         accentColor: "bg-purple-600",
         bgGradient: "from-purple-50 to-pink-50",
+        icon: "fa-solid fa-file-pdf",
         tab: "serah-terima-pdf"
       },
       {
@@ -390,6 +392,7 @@
         borderColor: "border-rose-200",
         accentColor: "bg-rose-500",
         bgGradient: "from-rose-50 to-orange-50",
+        icon: "fa-solid fa-file-export",
         tab: "pdf-to-a4"
       }
     ];
@@ -694,24 +697,12 @@
         card.onclick = () => { selectTab(course.tab); };
 
         card.innerHTML = `
-          <!-- Left Vector Illustration Mockup -->
+          <!-- Left Icon Illustration -->
           <div class="w-full md:w-48 h-32 rounded-2xl bg-gradient-to-br ${course.bgGradient} flex items-center justify-center p-4 relative overflow-hidden shrink-0">
-            <div class="w-28 h-20 bg-white rounded-lg shadow-md p-2 border border-slate-100 flex flex-col justify-between">
-              <div class="flex items-center gap-1.5">
-                <div class="w-2 h-2 rounded-full bg-red-400"></div>
-                <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
-                <div class="w-2 h-2 rounded-full bg-green-400"></div>
-              </div>
-              <div class="space-y-1 my-auto">
-                <div class="h-2 w-3/4 bg-slate-200 rounded"></div>
-                <div class="h-2 w-1/2 bg-slate-200 rounded"></div>
-              </div>
-              <div class="h-1.5 w-full bg-slate-100 rounded"></div>
-            </div>
-            <div class="absolute bottom-2 right-4 w-12 h-10 bg-white/90 rounded-md shadow-lg border border-slate-100 p-1 flex items-center justify-center">
-              <div class="w-full h-full bg-indigo-100/50 rounded flex items-center justify-center">
-                <div class="w-3 h-3 border-2 border-indigo-400 rounded-full"></div>
-              </div>
+            <div class="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/40"></div>
+            <div class="absolute -bottom-8 -left-4 w-20 h-20 rounded-full bg-white/30"></div>
+            <div class="relative w-16 h-16 rounded-2xl ${course.accentColor} shadow-lg flex items-center justify-center">
+              <i class="${course.icon} text-white text-2xl"></i>
             </div>
           </div>
 
