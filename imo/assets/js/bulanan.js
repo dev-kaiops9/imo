@@ -749,7 +749,7 @@ function wireUnduhImo() {
         savedList,
       });
 
-      Busy.show("MENYIMPAN KE GOOGLE DRIVE…");
+      Busy.show("MENDOWNLOAD PDF…");
       await Api.simpanImoBulanan({ user: Session.current, bulanNama, tahun, pdfFileName: pdf.fileName, pdfBase64: pdf.base64 });
 
       // Selain tersimpan ke Google Drive, PDF juga langsung diunduh ke perangkat.
