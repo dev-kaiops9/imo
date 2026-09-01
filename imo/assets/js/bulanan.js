@@ -369,7 +369,7 @@ const SavedPdfList = {
 
 // ---------------------------------------------------------------------
 // Membangun PDF akhir dengan pdf-lib:
-//   Hal 1: Cover (placeholder — desain final menyusul)
+//   Hal 1: Cover (sesuai desain — logo Danantara/KAI + foto kereta di kanan)
 //   Hal 2: Foto SmartCard (landscape)
 //   Hal 3: Foto Daftar Hadir
 //   Hal 4-selesai: gabungan PDF harian (urutan sudah difilter+diurutkan)
@@ -381,29 +381,11 @@ const PdfBulanan = {
     const fontBold = await out.embedFont(StandardFonts.HelveticaBold);
     const fontRegular = await out.embedFont(StandardFonts.Helvetica);
 
-    // ---- Halaman 1: Cover (portrait A4) ----
-    // Desain final cover akan menyusul — untuk sekarang berisi info inti saja.
-    const A4_PORTRAIT = [595.28, 841.89];
     const A4_LANDSCAPE = [841.89, 595.28];
 
-    const cover = out.addPage(A4_PORTRAIT);
-    const { width: cw, height: ch } = cover.getSize();
-    const centerText = (text, y, size, font, color) => {
-      const w = font.widthOfTextAtSize(text, size);
-      cover.drawText(text, { x: (cw - w) / 2, y, size, font, color: color || rgb(0.1, 0.1, 0.15) });
-    };
-    centerText("IKHTISAR MINGGUAN OPERASI (IMO)", ch - 160, 20, fontBold);
-    centerText(`${bulanNama.toUpperCase()} ${tahun}`, ch - 190, 15, fontRegular);
-
-    const idLines = [
-      `Nama    : ${user.nama || "-"}`,
-      `NIPP    : ${user.nipp || "-"}`,
-      `Jabatan : ${user.jabatan || "-"}`,
-      `Stasiun : ${user.stasiun || "-"}`,
-    ];
-    idLines.forEach((line, i) => {
-      cover.drawText(line, { x: cw / 2 - 100, y: ch / 2 - i * 20, size: 12, font: fontRegular, color: rgb(0.2, 0.2, 0.25) });
-    });
+    // ---- Halaman 1: Cover ----
+    const cover = out.addPage(A4_LANDSCAPE);
+    await this._drawCoverPage(out, cover, { fontBold, fontRegular, bulanNama, tahun, user });
 
     // ---- Halaman 2: Foto SmartCard (landscape) ----
     if (smartcard) {
@@ -413,7 +395,7 @@ const PdfBulanan = {
 
     // ---- Halaman 3: Foto Daftar Hadir ----
     if (daftarHadir) {
-      const page = out.addPage(A4_PORTRAIT);
+      const page = out.addPage(A4_LANDSCAPE);
       await this._drawImageFitted(out, page, daftarHadir);
     }
 
@@ -436,6 +418,138 @@ const PdfBulanan = {
     // Contoh: AGUSTUS_STA GLENMORE_BUDI SANTOSO_PPKA_69123.pdf
     const fileName = buildNamaFileBulanan_(bulanNama, user);
     return { base64, fileName };
+  },
+
+  /**
+   * Menggambar Halaman 1 (Cover) sesuai desain:
+   *  - Panel putih di kiri: logo Danantara Indonesia, garis aksen, judul
+   *    "Laporan Kegiatan Pengoperasian Bulan {Bulan} {Tahun}", lalu daftar
+   *    identitas (Nama/NIPP/Jabatan/Unit Kerja/DAOP).
+   *  - Panel foto di kanan (full-bleed): foto kereta yang sudah menyertakan
+   *    logo KAI (kanan atas) & caption "PT. Kereta Api Indonesia (Persero)"
+   *    (kanan bawah) — dipakai apa adanya dari assets/img/cover-photo-panel.jpg
+   *    supaya logo & caption tidak terpotong di berbagai ukuran halaman.
+   * Kedua aset gambar (logo Danantara & panel foto) dipotong dari mockup
+   * desain (cover_imo.jpg) dan disimpan statis di assets/img/.
+   */
+  async _drawCoverPage(pdfDoc, page, { fontBold, fontRegular, bulanNama, tahun, user }) {
+    const { rgb } = PDFLib;
+    const { width: pw, height: ph } = page.getSize();
+
+    const INK = rgb(0.07, 0.08, 0.11);
+    const INK_SOFT = rgb(0.18, 0.19, 0.22);
+    const ACCENT = rgb(0.85, 0.16, 0.16);
+
+    // ---- Panel putih (kiri) + panel foto (kanan, full-bleed) ----
+    const panelW = pw * 0.38;
+    page.drawRectangle({ x: 0, y: 0, width: pw, height: ph, color: rgb(1, 1, 1) });
+
+    const photoBytes = await this._fetchArrayBuffer("assets/img/cover-photo-panel.jpg");
+    const photoImg = await pdfDoc.embedJpg(photoBytes);
+    page.drawImage(photoImg, { x: panelW, y: 0, width: pw - panelW, height: ph });
+
+    // ---- Logo Danantara Indonesia ----
+    const marginX = 42;
+    const logoBytes = await this._fetchArrayBuffer("assets/img/cover-logo-danantara.png");
+    const logoImg = await pdfDoc.embedPng(logoBytes);
+    const logoW = 118;
+    const logoH = logoW * (logoImg.height / logoImg.width);
+    const logoTop = 40;
+    page.drawImage(logoImg, { x: marginX, y: ph - logoTop - logoH, width: logoW, height: logoH });
+
+    // ---- Garis aksen kecil di bawah logo ----
+    const accentTop = logoTop + logoH + 22;
+    page.drawRectangle({ x: marginX, y: ph - accentTop - 3, width: 22, height: 3, color: ACCENT });
+
+    // ---- Judul (auto-shrink kalau kepanjangan untuk lebar panel) ----
+    const titleMaxWidth = panelW - marginX * 2;
+    const titleLines = ["Laporan Kegiatan", "Pengoperasian", `Bulan ${bulanNama} ${tahun}`];
+    let titleSize = 23;
+    titleLines.forEach((line) => {
+      while (titleSize > 14 && fontBold.widthOfTextAtSize(line, titleSize) > titleMaxWidth) {
+        titleSize -= 0.5;
+      }
+    });
+    const titleLineH = titleSize * 1.22;
+    let titleTop = accentTop + 34;
+    titleLines.forEach((line) => {
+      page.drawText(line, { x: marginX, y: ph - titleTop, size: titleSize, font: fontBold, color: INK });
+      titleTop += titleLineH;
+    });
+
+    // ---- Daftar identitas (Nama / NIPP / Jabatan / Unit Kerja / DAOP) ----
+    const rows = [
+      ["Nama", user.nama || "-"],
+      ["NIPP", user.nipp || "-"],
+      ["Jabatan", user.jabatan || "-"],
+      ["Unit Kerja", user.stasiun || "-"],
+      ["DAOP", "9 Jember"],
+    ];
+    const fieldSize = 12.5;
+    const fieldMinSize = 10.5; // di bawah ini, teks dibungkus ke baris ke-2 alih-alih terus mengecil
+    const labelColW = 92;
+    const valueX = marginX + labelColW;
+    const valueMaxWidth = panelW - valueX;
+    const rowGap = 18; // jarak antar baris field (di luar tinggi teks value itu sendiri)
+    let fieldTop = titleTop + 30;
+
+    rows.forEach(([label, rawValue]) => {
+      page.drawText(label, { x: marginX, y: ph - fieldTop, size: fieldSize, font: fontBold, color: INK });
+      page.drawText(":", { x: valueX - 10, y: ph - fieldTop, size: fieldSize, font: fontRegular, color: INK_SOFT });
+
+      const value = String(rawValue);
+      let valueSize = fieldSize;
+      // Coba muat dalam 1 baris dengan mengecilkan font sampai batas minimum dulu.
+      while (valueSize > fieldMinSize && fontRegular.widthOfTextAtSize(value, valueSize) > valueMaxWidth) {
+        valueSize -= 0.5;
+      }
+
+      let valueLines = [value];
+      if (fontRegular.widthOfTextAtSize(value, valueSize) > valueMaxWidth) {
+        // Masih kepanjangan di ukuran minimum -> bungkus jadi maks. 2 baris.
+        valueLines = this._wrapTextToLines(fontRegular, value, valueSize, valueMaxWidth, 2);
+      }
+
+      const valueLineH = valueSize * 1.2;
+      valueLines.forEach((line, i) => {
+        page.drawText(line, { x: valueX, y: ph - fieldTop - i * valueLineH, size: valueSize, font: fontRegular, color: INK_SOFT });
+      });
+
+      fieldTop += rowGap + (valueLines.length - 1) * valueLineH + 12;
+    });
+  },
+
+  /**
+   * Membungkus teks jadi beberapa baris berdasarkan lebar maksimum, mirip
+   * doc.splitTextToSize() di jsPDF (dipakai di pdf.js) tapi versi pdf-lib.
+   * Baris terakhir yang masih kepanjangan akan dipotong + diberi "…".
+   */
+  _wrapTextToLines(font, text, size, maxWidth, maxLines) {
+    const words = text.split(/\s+/).filter(Boolean);
+    const lines = [];
+    let current = "";
+
+    words.forEach((word) => {
+      const candidate = current ? `${current} ${word}` : word;
+      if (!current || font.widthOfTextAtSize(candidate, size) <= maxWidth) {
+        current = candidate;
+      } else {
+        lines.push(current);
+        current = word;
+      }
+    });
+    if (current) lines.push(current);
+
+    if (lines.length > maxLines) {
+      const kept = lines.slice(0, maxLines);
+      let last = kept[maxLines - 1];
+      while (last.length > 1 && font.widthOfTextAtSize(`${last}…`, size) > maxWidth) {
+        last = last.slice(0, -1);
+      }
+      kept[maxLines - 1] = `${last}…`;
+      return kept;
+    }
+    return lines;
   },
 
   async _drawImageFitted(pdfDoc, page, photo) {
