@@ -152,7 +152,7 @@
                 <i class="fa-solid fa-hand-sparkles text-amber-300"></i>
                 Selamat Datang
               </span>
-              <h2 class="text-xl sm:text-2xl md:text-[26px] font-extrabold text-white leading-snug tracking-tight">
+              <h2 id="dashboardWelcomeText" class="text-xl sm:text-2xl md:text-[26px] font-extrabold text-white leading-snug tracking-tight">
                 Selamat datang di Dashboard IMO Tools
               </h2>
               <p class="text-indigo-100 text-sm sm:text-[15px] mt-2 leading-relaxed">
@@ -937,12 +937,31 @@
       return parts[0].substring(0, 2).toUpperCase();
     }
 
+    // Ambil nama depan saja dari nama lengkap, mis. "Bagus Dwi Sulaksono" -> "Bagus".
+    function getFirstName(fullName) {
+      if (!fullName) return '';
+      return fullName.trim().split(/\s+/)[0];
+    }
+
+    // Perbarui teks sambutan di banner Dashboard.
+    // Jika user sudah login -> "Halo (nama depan), Selamat datang di Dashboard IMO Tools".
+    // Jika belum login -> "Selamat datang di Dashboard IMO Tools" saja.
+    function updateDashboardWelcome(user) {
+      const el = document.getElementById('dashboardWelcomeText');
+      if (!el) return;
+      const firstName = user ? getFirstName(user.nama) : '';
+      el.textContent = firstName
+        ? `Halo ${firstName}, Selamat datang di Dashboard IMO Tools`
+        : 'Selamat datang di Dashboard IMO Tools';
+    }
+
     // Terapkan data user ke UI (widget profil + badge pojok kanan atas).
     // Dipakai baik saat login baru maupun saat memulihkan sesi dari localStorage,
     // sehingga status login tetap tampil konsisten di semua menu (dashboard & 3 tool).
     function applyLoggedInUI(user) {
       loadSavedPdfWidget(user);
       applyProfileWidgetUI(user);
+      updateDashboardWelcome(user);
 
       const initials = getInitials(user.nama);
       const loginBtnContainer = document.getElementById('loginBtnContainer');
@@ -1108,6 +1127,7 @@
 
       // Sembunyikan juga widget Informasi Akun di bawah kalender.
       applyProfileWidgetUI(null);
+      updateDashboardWelcome(null);
 
       // Kembalikan tombol di pojok kanan atas ke "Masuk / Login"
       const loginBtnContainer = document.getElementById('loginBtnContainer');
