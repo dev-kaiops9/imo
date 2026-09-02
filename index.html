@@ -43,8 +43,14 @@
     <aside class="w-full md:w-64 bg-[#5B58CA] text-white p-6 flex flex-col justify-between shrink-0">
       <div>
         <!-- Logo -->
-        <div class="flex items-center gap-2 mb-10">
+        <div class="mb-10 flex flex-col items-center text-center">
           <span class="text-2xl font-extrabold tracking-tight">IMO Tools</span>
+          <!-- Tombol "Update : dd/mm/yyyy" — desain samar, tanggalnya otomatis
+               mengikuti entri paling atas di CHANGELOG (lihat renderChangelogBadge()).
+               Klik untuk membuka popup "Catatan Update". -->
+          <button type="button" onclick="openChangelogModal()" id="btnChangelog" class="mt-1.5 text-[10.5px] font-medium text-indigo-100/40 hover:text-indigo-100/75 active:scale-95 transition-all duration-200">
+            Update : <span id="changelogBadgeDate">-</span>
+          </button>
         </div>
 
         <!-- Menu Utama -->
@@ -80,6 +86,13 @@
           <button onclick="selectTab('pdf-to-a4')" id="nav-pdf-to-a4" class="nav-item w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
             <i class="fa-solid fa-file-export w-5 text-center"></i>
             <span>PDF to A4</span>
+          </button>
+
+          <!-- Menu "Profil" — HANYA muncul setelah user login (lihat applyLoggedInUI /
+               handleLogout: keduanya toggle class "hidden" pada tombol ini). -->
+          <button onclick="selectTab('profil')" id="nav-profil" class="nav-item hidden w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-sm font-medium text-indigo-100/70 hover:bg-white/10 hover:text-white">
+            <i class="fa-solid fa-id-card w-5 text-center"></i>
+            <span>Profil</span>
           </button>
         </nav>
       </div>
@@ -313,6 +326,72 @@
 
         </div>
       </div>
+
+      <!-- ================= PROFIL VIEW =================
+           Muncul lewat menu "Profil" di sidebar (hanya tampil setelah login).
+           Default: MODE LIHAT (semua field terkunci). Tombol "Edit" mengubah
+           ke MODE EDIT (Nama/Jabatan/Stasiun bisa diketik) — NIPP TETAP
+           terkunci di kedua mode, tidak pernah bisa diedit. Setelah "Simpan
+           Perubahan" berhasil, otomatis kembali ke MODE LIHAT. -->
+      <div id="profilView" class="hidden flex-1 flex-col min-h-0 md:overflow-y-auto">
+        <div class="max-w-xl w-full mx-auto space-y-6 pb-4">
+
+          <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 sm:p-8">
+            <div class="flex items-center justify-between gap-3 mb-6">
+              <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-[#5B58CA] flex items-center justify-center shrink-0">
+                  <i class="fa-solid fa-id-card text-lg"></i>
+                </div>
+                <div>
+                  <h2 class="text-lg sm:text-xl font-bold text-slate-800">Profil Saya</h2>
+                  <p class="text-xs text-slate-400 mt-0.5" id="profilSubtitle">Data Nama, Jabatan, dan Stasiun Anda.</p>
+                </div>
+              </div>
+
+              <!-- Tombol "Edit" — hanya tampil di MODE LIHAT. -->
+              <button type="button" id="btnEditProfil" onclick="setProfilEditMode(true)" class="shrink-0 flex items-center gap-2 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-[#5B58CA] rounded-2xl font-semibold text-xs active:scale-95 transition">
+                <i class="fa-solid fa-pen"></i> Edit
+              </button>
+            </div>
+
+            <form id="profilForm" class="space-y-4" onsubmit="handleSaveProfil(event)">
+              <!-- NIPP: hanya ditampilkan, TIDAK BISA diedit di mode apa pun -->
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">NIPP</label>
+                <input type="text" id="profilNippInput" class="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm font-mono font-bold text-slate-500 cursor-not-allowed" disabled readonly />
+                <p class="text-[11px] text-slate-400 mt-1">NIPP tidak dapat diubah dari menu ini.</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1" for="profilNamaInput">Nama</label>
+                <input type="text" id="profilNamaInput" placeholder="Nama Lengkap" disabled class="profil-field w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1" for="profilJabatanInput">Jabatan</label>
+                <input type="text" id="profilJabatanInput" placeholder="Jabatan" disabled class="profil-field w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1" for="profilStasiunInput">Stasiun</label>
+                <input type="text" id="profilStasiunInput" placeholder="Stasiun" disabled class="profil-field w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+              </div>
+
+              <p id="profilError" class="hidden text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2"></p>
+
+              <!-- Tombol "Batal" & "Simpan Perubahan" — hanya tampil di MODE EDIT. -->
+              <div id="profilEditActions" class="hidden items-center justify-end gap-2 pt-2">
+                <button type="button" id="btnCancelProfil" onclick="cancelProfilEdit()" class="px-4 py-2.5 text-xs font-semibold text-slate-500 hover:text-slate-700 rounded-2xl transition">Batal</button>
+                <button type="submit" id="btnSaveProfil" class="px-6 py-2.5 bg-[#5B58CA] hover:bg-[#4a47b5] disabled:opacity-60 disabled:cursor-not-allowed active:scale-95 text-white rounded-2xl font-semibold text-sm shadow-md shadow-indigo-200 transition-all duration-200">
+                  <span id="profilSaveLabel">Simpan Perubahan</span>
+                  <i id="profilSaveSpinner" class="fa-solid fa-circle-notch fa-spin hidden ml-1"></i>
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </div>
     </main>
 
     <!-- ================= RIGHT WIDGET BAR ================= -->
@@ -440,6 +519,62 @@
         </div>
       </div>
     </aside>
+  </div>
+
+  <!-- ================= POPUP KONFIRMASI HAPUS PDF TERSIMPAN (sidebar dashboard) =================
+       Ganti browser confirm() bawaan khusus untuk tombol hapus (🗑) di widget
+       "PDF Tersimpan" sidebar. Detail item diisi lewat JS ke elemen ber-id
+       hapusSavedPdf* sebelum modal dibuka — lihat wireSavedPdfDeleteButtons(). -->
+  <div id="hapusSavedPdfModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-slate-100 transform scale-95 transition-transform duration-300 text-center" id="hapusSavedPdfModalCard">
+      <div class="w-14 h-14 mx-auto rounded-full bg-rose-50 text-rose-500 flex items-center justify-center text-xl mb-4">
+        <i class="fa-solid fa-trash-can"></i>
+      </div>
+      <h3 class="text-lg font-bold text-slate-800">Hapus data ini?</h3>
+      <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+        Data PDF tanggal <strong id="hapusSavedPdfTanggal" class="text-slate-700 font-mono">-</strong>
+        (<span id="hapusSavedPdfDinas">-</span>) akan dihapus.
+      </p>
+      <div class="mt-3 flex items-start gap-2 text-left text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl px-3 py-2">
+        <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
+        <span>File PDF di Google Drive dipindah ke Trash &amp; barisnya di sheet ikut terhapus. Tindakan ini tidak bisa dibatalkan dari sini.</span>
+      </div>
+      <div class="mt-5 flex items-center justify-center gap-2">
+        <button type="button" id="btnBatalHapusSavedPdf" class="px-4 py-2.5 text-xs font-semibold text-slate-500 hover:text-slate-700 rounded-2xl transition">Batal</button>
+        <button type="button" id="btnKonfirmasiHapusSavedPdf" class="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-70 disabled:cursor-not-allowed text-white font-semibold rounded-2xl text-xs shadow-md shadow-rose-200 transition">
+          <span id="hapusSavedPdfLabel">Ya, Hapus</span>
+          <i id="hapusSavedPdfSpinner" class="fa-solid fa-circle-notch fa-spin hidden"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= CATATAN UPDATE (CHANGELOG) MODAL =================
+       Dibuka lewat tombol "Update : dd/mm/yyyy" di bawah logo sidebar.
+       Isinya dirender dinamis dari array CHANGELOG di <script> — SATU
+       sumber data untuk badge tanggal & isi popup ini (lihat
+       renderChangelogBadge() / renderChangelogModal()). -->
+  <div id="changelogModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-300" onclick="if (event.target === this) closeChangelogModal()">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-6 md:p-7 shadow-2xl border border-slate-100 transform scale-95 transition-transform duration-300 max-h-[80vh] flex flex-col" id="changelogModalCard">
+      <div class="flex items-center justify-between gap-3 shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-[#5B58CA] flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-800">Catatan Update</h3>
+            <p class="text-xs text-slate-400">Riwayat perubahan &amp; fitur baru IMO Tools</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeChangelogModal()" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition shrink-0">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div id="changelogList" class="mt-5 space-y-5 overflow-y-auto pr-1 flex-1 min-h-0">
+        <!-- Diisi dinamis oleh renderChangelogModal() dari array CHANGELOG -->
+      </div>
+    </div>
   </div>
 
   <!-- ================= LOGIN MODAL (NIPP-first, tersambung ke sheet Pegawai) ================= -->
@@ -589,11 +724,33 @@
       "imo-per-bulan": "IMO - Per Bulan",
       "serah-terima-pdf": "Serah Terima PDF",
       "pdf-to-a4": "PDF to A4",
-      about: "About | Data Backup"
+      about: "About | Data Backup",
+      profil: "Profil Saya"
     };
 
     const LOGIN_STORAGE_KEY = "imoUser";
     const TAB_STORAGE_KEY = "imoActiveTab";
+
+    // -----------------------------------------------------------------------
+    // CATATAN UPDATE (Changelog) — SATU-SATUNYA sumber data untuk badge
+    // "Update : dd/mm/yyyy" di bawah logo sidebar DAN isi popup "Catatan
+    // Update" (lihat renderChangelogBadge() / renderChangelogModal()).
+    //
+    // CARA PAKAI: setiap kali fitur/perbaikan baru selesai di-deploy ke
+    // website, tambahkan SATU entri baru di PALING ATAS array ini (urutan
+    // wajib terbaru -> terlama). Badge tanggal di sidebar otomatis mengikuti
+    // entri paling atas (CHANGELOG[0]) — tidak perlu mengubah tempat lain.
+    // -----------------------------------------------------------------------
+    const CHANGELOG = [
+      {
+        tanggal: "02/09/2026",
+        items: [
+          "Menu baru \"Profil\" di sidebar (muncul setelah login) — lihat & ubah Nama, Jabatan, Stasiun.",
+          "Menu \"Profil\" memakai mode Lihat/Edit: tekan tombol \"Edit\" dulu sebelum data bisa diubah, NIPP tidak pernah bisa diedit.",
+          "Popup \"Catatan Update\" ini ditambahkan di sidebar.",
+        ],
+      },
+    ];
 
     // URL Web App Google Apps Script (Code.gs) — sama dengan CONFIG.APPS_SCRIPT_URL
     // yang dipakai di imo/assets/js/config.js, sheet "Pegawai" yang sama juga
@@ -734,11 +891,14 @@
 
     /** Wire tombol hapus (🗑) di tiap kartu widget "PDF Tersimpan" — dipanggil
      *  ulang tiap kali renderSavedPdfList() (innerHTML diganti total, jadi
-     *  listener lama otomatis ikut hilang bersama elemennya). */
+     *  listener lama otomatis ikut hilang bersama elemennya). Klik tombol
+     *  hanya membuka popup konfirmasi custom (bukan langsung hapus) — proses
+     *  hapus sebenarnya baru jalan di confirmHapusSavedPdf() saat user
+     *  menekan "Ya, Hapus" pada popup. */
     function wireSavedPdfDeleteButtons() {
       const wrap = document.getElementById('savedPdfListWrap');
       wrap.querySelectorAll('.btn-hapus-saved-pdf').forEach((btn) => {
-        btn.addEventListener('click', async (e) => {
+        btn.addEventListener('click', (e) => {
           if (!savedPdfCurrentUser || !savedPdfCurrentUser.nipp) return;
           const card = e.currentTarget.closest('[data-file-url]');
           const fileUrl = card && card.getAttribute('data-file-url');
@@ -746,29 +906,81 @@
           const item = savedPdfAllList.find((it) => it.fileUrl === fileUrl);
           if (!item) return;
 
-          const konfirmasi = confirm(
-            `Hapus data PDF tanggal ${item.tanggal} (${item.dinas})?\n\n` +
-            `File PDF-nya di Google Drive akan dipindah ke Trash, dan barisnya di sheet akan dihapus. Tindakan ini tidak bisa dibatalkan dari sini.`
-          );
-          if (!konfirmasi) return;
-
-          const btn = e.currentTarget;
-          btn.disabled = true;
-          btn.classList.add('opacity-50');
-          try {
-            await callBackend({ action: 'hapusPdfTersimpan', payload: { nipp: savedPdfCurrentUser.nipp, fileUrl } });
-            savedPdfAllList = savedPdfAllList.filter((it) => it.fileUrl !== fileUrl);
-            populateSavedPdfYearFilter(savedPdfAllList);
-            applySavedPdfFilter();
-            showToast('Data berhasil dihapus.');
-          } catch (err) {
-            btn.disabled = false;
-            btn.classList.remove('opacity-50');
-            showToast('Gagal menghapus data: ' + err.message);
-          }
+          openHapusSavedPdfModal(item, e.currentTarget);
         });
       });
     }
+
+    // State popup konfirmasi hapus PDF Tersimpan (sidebar) — item yang lagi
+    // menunggu konfirmasi user, plus referensi tombol 🗑 di kartunya (biar
+    // bisa dikembalikan ke kondisi normal kalau user batal/ada error).
+    let pendingHapusSavedPdf = null;
+
+    function openHapusSavedPdfModal(item, btn) {
+      pendingHapusSavedPdf = { item, btn };
+      document.getElementById('hapusSavedPdfTanggal').innerText = item.tanggal;
+      document.getElementById('hapusSavedPdfDinas').innerText = item.dinas;
+
+      const modal = document.getElementById('hapusSavedPdfModal');
+      const card = document.getElementById('hapusSavedPdfModalCard');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }
+
+    function closeHapusSavedPdfModal() {
+      const modal = document.getElementById('hapusSavedPdfModal');
+      const card = document.getElementById('hapusSavedPdfModalCard');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+      pendingHapusSavedPdf = null;
+      setHapusSavedPdfLoading(false);
+    }
+
+    function setHapusSavedPdfLoading(isLoading) {
+      document.getElementById('btnKonfirmasiHapusSavedPdf').disabled = isLoading;
+      document.getElementById('btnBatalHapusSavedPdf').disabled = isLoading;
+      document.getElementById('hapusSavedPdfLabel').classList.toggle('hidden', isLoading);
+      document.getElementById('hapusSavedPdfSpinner').classList.toggle('hidden', !isLoading);
+    }
+
+    async function confirmHapusSavedPdf() {
+      if (!pendingHapusSavedPdf) return;
+      const { item, btn } = pendingHapusSavedPdf;
+      setHapusSavedPdfLoading(true);
+      try {
+        await callBackend({ action: 'hapusPdfTersimpan', payload: { nipp: savedPdfCurrentUser.nipp, fileUrl: item.fileUrl } });
+        savedPdfAllList = savedPdfAllList.filter((it) => it.fileUrl !== item.fileUrl);
+        populateSavedPdfYearFilter(savedPdfAllList);
+        applySavedPdfFilter();
+        closeHapusSavedPdfModal();
+        showToast('Data berhasil dihapus.');
+      } catch (err) {
+        setHapusSavedPdfLoading(false);
+        closeHapusSavedPdfModal();
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-50');
+        }
+        showToast('Gagal menghapus data: ' + err.message);
+      }
+    }
+
+    (function wireHapusSavedPdfModal() {
+      const modal = document.getElementById('hapusSavedPdfModal');
+      const btnBatal = document.getElementById('btnBatalHapusSavedPdf');
+      const btnKonfirmasi = document.getElementById('btnKonfirmasiHapusSavedPdf');
+      if (!modal || !btnBatal || !btnKonfirmasi) return;
+
+      btnBatal.addEventListener('click', closeHapusSavedPdfModal);
+      // Klik di area gelap luar kartu = sama seperti Batal (kecuali lagi
+      // proses menghapus, supaya tidak ke-cancel di tengah request).
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal && !btnKonfirmasi.disabled) closeHapusSavedPdfModal();
+      });
+      btnKonfirmasi.addEventListener('click', confirmHapusSavedPdf);
+    })();
 
     async function loadSavedPdfWidget(user) {
       if (!user || !user.nipp) return;
@@ -1026,6 +1238,19 @@
       applyProfileWidgetUI(user);
       updateDashboardWelcome(user);
 
+      // Menu "Profil" di sidebar hanya muncul setelah login.
+      const navProfil = document.getElementById('nav-profil');
+      if (navProfil) navProfil.classList.remove('hidden');
+
+      // Jika halaman "Profil" sedang aktif (mis. baru saja login lalu langsung
+      // membuka menu ini, atau sesi dipulihkan saat halaman itu tersimpan
+      // sebagai tab terakhir), isi ulang form dengan data user terbaru dan
+      // pastikan kembali ke MODE LIHAT (bukan mode edit).
+      if (document.getElementById('nav-profil') && !document.getElementById('profilView').classList.contains('hidden')) {
+        populateProfilForm(user);
+        setProfilEditMode(false);
+      }
+
       const initials = getInitials(user.nama);
       const loginBtnContainer = document.getElementById('loginBtnContainer');
       loginBtnContainer.innerHTML = `
@@ -1156,6 +1381,118 @@
       showLoginStage('nipp');
     }
 
+    // -----------------------------------------------------------------------
+    // Menu "Profil" — lihat/ubah Nama, Jabatan, Stasiun milik user yang
+    // sedang login. NIPP hanya ditampilkan (read-only), dipakai backend
+    // sebagai kunci pencarian baris di sheet Pegawai (action "updateProfil").
+    // -----------------------------------------------------------------------
+
+    // Isi form Profil dari data user aktif (localStorage "imoUser").
+    function populateProfilForm(user) {
+      document.getElementById('profilNippInput').value = user && user.nipp ? user.nipp : '';
+      document.getElementById('profilNamaInput').value = user && user.nama ? user.nama : '';
+      document.getElementById('profilJabatanInput').value = user && user.jabatan ? user.jabatan : '';
+      document.getElementById('profilStasiunInput').value = user && user.stasiun ? user.stasiun : '';
+      document.getElementById('profilError').classList.add('hidden');
+    }
+
+    // Toggle antara MODE LIHAT (field terkunci, tombol "Edit" tampil) dan
+    // MODE EDIT (field Nama/Jabatan/Stasiun bisa diketik, tombol "Batal" +
+    // "Simpan Perubahan" tampil). NIPP selalu tetap terkunci di kedua mode.
+    function setProfilEditMode(isEdit) {
+      document.querySelectorAll('#profilForm .profil-field').forEach((el) => {
+        el.disabled = !isEdit;
+        el.classList.toggle('bg-slate-100', !isEdit);
+        el.classList.toggle('text-slate-500', !isEdit);
+        el.classList.toggle('cursor-not-allowed', !isEdit);
+        el.classList.toggle('bg-slate-50', isEdit);
+        el.classList.toggle('text-slate-800', isEdit);
+      });
+
+      document.getElementById('btnEditProfil').classList.toggle('hidden', isEdit);
+      const editActions = document.getElementById('profilEditActions');
+      editActions.classList.toggle('hidden', !isEdit);
+      editActions.classList.toggle('flex', isEdit);
+
+      document.getElementById('profilSubtitle').textContent = isEdit
+        ? 'Ubah data di bawah ini, lalu simpan perubahan.'
+        : 'Data Nama, Jabatan, dan Stasiun Anda.';
+
+      document.getElementById('profilError').classList.add('hidden');
+
+      if (isEdit) document.getElementById('profilNamaInput').focus();
+    }
+
+    // Tombol "Batal" — buang perubahan yang belum disimpan (kembalikan nilai
+    // field ke data user yang sedang login), lalu kembali ke MODE LIHAT.
+    function cancelProfilEdit() {
+      try {
+        const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+        populateProfilForm(savedUser);
+      } catch (err) {
+        populateProfilForm(null);
+      }
+      setProfilEditMode(false);
+    }
+
+    function setProfilBusy(busy) {
+      document.getElementById('btnSaveProfil').disabled = busy;
+      document.getElementById('profilSaveSpinner').classList.toggle('hidden', !busy);
+    }
+
+    function showProfilError(msg) {
+      const el = document.getElementById('profilError');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+
+    // Simpan perubahan Nama/Jabatan/Stasiun ke sheet Pegawai (dicari
+    // berdasarkan NIPP user yang sedang login), lalu sinkronkan sesi login
+    // (localStorage + badge pojok kanan atas + widget Informasi Akun) supaya
+    // perubahan langsung terlihat di semua menu tanpa perlu login ulang.
+    async function handleSaveProfil(e) {
+      e.preventDefault();
+
+      const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY) || 'null');
+      if (!savedUser || !savedUser.nipp) {
+        showProfilError('Sesi login tidak ditemukan. Silakan login ulang.');
+        return;
+      }
+
+      const nama = document.getElementById('profilNamaInput').value.trim();
+      const jabatan = document.getElementById('profilJabatanInput').value.trim();
+      const stasiun = document.getElementById('profilStasiunInput').value.trim();
+
+      if (!nama || !jabatan || !stasiun) {
+        showProfilError('Lengkapi Nama, Jabatan, dan Stasiun terlebih dahulu.');
+        return;
+      }
+
+      document.getElementById('profilError').classList.add('hidden');
+      setProfilBusy(true);
+      try {
+        const data = await callBackend({
+          action: 'updateProfil',
+          payload: { nipp: savedUser.nipp, nama: nama, jabatan: jabatan, stasiun: stasiun },
+        });
+
+        // Backend mengembalikan nama yang sudah dinormalisasi (Title Case) —
+        // pakai persis nilai balikan ini sebagai identitas user aktif, sama
+        // seperti alur pendaftaran.
+        const updatedUser = { nama: data.nama, nipp: data.nipp, jabatan: data.jabatan, stasiun: data.stasiun };
+
+        localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(updatedUser));
+        applyLoggedInUI(updatedUser);
+        populateProfilForm(updatedUser);
+        setProfilEditMode(false);
+        showToast('Profil berhasil diperbarui.');
+      } catch (err) {
+        showProfilError('Gagal menyimpan profil: ' + err.message);
+      } finally {
+        setProfilBusy(false);
+      }
+    }
+
     function showLoginStage(stage) {
       document.getElementById('loginStageNipp').classList.toggle('hidden', stage !== 'nipp');
       document.getElementById('loginStageFound').classList.toggle('hidden', stage !== 'found');
@@ -1179,6 +1516,16 @@
     }
 
     function handleLogout() {
+      // Sembunyikan menu "Profil" dari sidebar (hanya boleh terlihat saat login).
+      const navProfil = document.getElementById('nav-profil');
+      if (navProfil) navProfil.classList.add('hidden');
+
+      // Kalau menu "Profil" sedang aktif saat logout, jangan biarkan halaman
+      // kosong tanpa akses — pindahkan ke Dashboard.
+      if (document.getElementById('profilView') && !document.getElementById('profilView').classList.contains('hidden')) {
+        selectTab('dashboard');
+      }
+
       // Sembunyikan widget "PDF Tersimpan", tampilkan lagi ajakan login.
       const savedPdfWidget = document.getElementById('savedPdfWidget');
       savedPdfWidget.classList.add('hidden');
@@ -1225,6 +1572,18 @@
       // diarahkan otomatis ke sub-menu default "Per Hari".
       if (tabId === 'imo') tabId = 'imo-per-hari';
 
+      // Menu "Profil" hanya boleh diakses saat login (mis. tab tersimpan di
+      // localStorage dari sesi yang sudah logout) — jika belum login,
+      // alihkan ke Dashboard saja.
+      if (tabId === 'profil') {
+        let hasSession = false;
+        try {
+          const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+          hasSession = !!(savedUser && savedUser.nipp);
+        } catch (err) { /* abaikan data sesi yang rusak */ }
+        if (!hasSession) tabId = 'dashboard';
+      }
+
       document.querySelectorAll('.nav-item, .nav-subitem').forEach(btn => {
         btn.classList.remove('bg-white/20', 'text-white', 'font-semibold', 'shadow-inner', 'backdrop-blur-md', 'bg-white/10');
         btn.classList.add('text-indigo-100/70', 'font-medium');
@@ -1260,18 +1619,21 @@
       const toolView = document.getElementById('toolView');
       const toolFrame = document.getElementById('toolFrame');
       const aboutView = document.getElementById('aboutView');
+      const profilView = document.getElementById('profilView');
       const headerActions = document.getElementById('headerActions');
       const pageTitle = document.getElementById('pageTitle');
 
       pageTitle.textContent = tabTitles[tabId] || 'Tools';
       updateRightWidgetsVisibility(tabId);
 
-      // Sembunyikan ketiga view dulu, lalu tampilkan yang sesuai tab aktif.
+      // Sembunyikan semua view dulu, lalu tampilkan yang sesuai tab aktif.
       dashboardView.classList.add('hidden');
       toolView.classList.add('hidden');
       toolView.classList.remove('flex');
       aboutView.classList.add('hidden');
       aboutView.classList.remove('flex');
+      profilView.classList.add('hidden');
+      profilView.classList.remove('flex');
 
       if (tabRoutes[tabId]) {
         // Tampilkan tool di dalam frame pada shell yang sama.
@@ -1291,6 +1653,20 @@
         aboutView.classList.remove('hidden');
         aboutView.classList.add('flex');
         headerActions.classList.add('hidden');
+      } else if (tabId === 'profil') {
+        profilView.classList.remove('hidden');
+        profilView.classList.add('flex');
+        headerActions.classList.add('hidden');
+
+        // Selalu isi ulang form dengan data user AKTIF (bukan cache lama)
+        // dan mulai dari MODE LIHAT setiap kali menu ini dibuka.
+        try {
+          const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+          populateProfilForm(savedUser);
+        } catch (err) {
+          populateProfilForm(null);
+        }
+        setProfilEditMode(false);
       } else {
         dashboardView.classList.remove('hidden');
         headerActions.classList.remove('hidden');
@@ -1425,8 +1801,68 @@
       }, 3000);
     }
 
+    // ---------------------------------------------------------------------
+    // Popup "Catatan Update" (Changelog) — badge tanggal di sidebar & isi
+    // popup ini sama-sama dirender dari array CHANGELOG di atas.
+    // ---------------------------------------------------------------------
+
+    // Set teks badge "Update : dd/mm/yyyy" di bawah logo sidebar, mengikuti
+    // entri PALING ATAS (paling baru) di CHANGELOG.
+    function renderChangelogBadge() {
+      const el = document.getElementById('changelogBadgeDate');
+      if (!el) return;
+      el.textContent = (CHANGELOG[0] && CHANGELOG[0].tanggal) || '-';
+    }
+
+    // Render seluruh isi popup: dikelompokkan per tanggal, entri terbaru di
+    // paling atas, ditandai badge "Terbaru".
+    function renderChangelogModal() {
+      const wrap = document.getElementById('changelogList');
+      if (!wrap) return;
+
+      if (!CHANGELOG.length) {
+        wrap.innerHTML = `<p class="text-sm text-slate-400 text-center py-6">Belum ada catatan update.</p>`;
+        return;
+      }
+
+      wrap.innerHTML = CHANGELOG.map((entry, idx) => `
+        <div class="${idx !== CHANGELOG.length - 1 ? 'pb-5 border-b border-slate-100' : ''}">
+          <div class="flex items-center gap-2 mb-2.5">
+            <span class="text-xs font-bold text-[#5B58CA] font-mono bg-indigo-50 px-2.5 py-1 rounded-full">${entry.tanggal}</span>
+            ${idx === 0 ? '<span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-wide">Terbaru</span>' : ''}
+          </div>
+          <ul class="space-y-1.5">
+            ${entry.items.map((item) => `
+              <li class="flex items-start gap-2 text-sm text-slate-600 leading-relaxed">
+                <i class="fa-solid fa-circle-check text-emerald-500 text-[10px] mt-1.5 shrink-0"></i>
+                <span>${item}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      `).join('');
+    }
+
+    function openChangelogModal() {
+      renderChangelogModal();
+      const modal = document.getElementById('changelogModal');
+      const card = document.getElementById('changelogModalCard');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-95');
+      card.classList.add('scale-100');
+    }
+
+    function closeChangelogModal() {
+      const modal = document.getElementById('changelogModal');
+      const card = document.getElementById('changelogModalCard');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+      card.classList.remove('scale-100');
+      card.classList.add('scale-95');
+    }
+
     // Initial Load
     window.addEventListener('DOMContentLoaded', () => {
+      renderChangelogBadge();
       renderCourses(coursesData);
       renderCalendar();
       initSavedPdfFilters();

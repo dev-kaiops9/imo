@@ -265,10 +265,10 @@
         <label class="field__label" id="labelFotoSerahTerima">Foto Serah Terima <span class="req">*</span></label>
         <div class="dropzone" id="dzSerahTerima" tabindex="0" role="button" aria-describedby="dzSerahTerimaHint">
           <div class="dropzone__icon">↑</div>
-          <div class="dropzone__text">Tarik &amp; lepas foto di sini, atau klik untuk pilih</div>
-          <div class="dropzone__hint" id="dzSerahTerimaHint">JPG / PNG, maks. 8MB</div>
+          <div class="dropzone__text">Tarik &amp; lepas foto/PDF di sini, atau klik untuk pilih</div>
+          <div class="dropzone__hint" id="dzSerahTerimaHint">JPG / PNG, atau PDF 2 halaman (otomatis dikonversi jadi JPG 450 DPI), maks. 15MB</div>
         </div>
-        <input type="file" id="fileSerahTerima" accept="image/*" class="hidden" />
+        <input type="file" id="fileSerahTerima" accept="image/*,application/pdf" class="hidden" />
         <div class="thumb-row" id="thumbSerahTerima"></div>
         <div class="field__error" id="err-fotoSerahTerima">Foto serah terima wajib diunggah.</div>
       </div>
@@ -357,6 +357,9 @@
 
 <!-- ==================== LIBRARIES ==================== -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<!-- pdf.js — dipakai upload.js untuk membaca PDF 2 halaman yang diunggah
+     di kolom "Foto Serah Terima" lalu mengonversinya jadi JPG 450 DPI. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
 <!-- ==================== APP SCRIPTS ==================== -->
 <script src="assets/js/config.js"></script>

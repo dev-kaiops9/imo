@@ -222,6 +222,39 @@
 </div>
 <input type="file" id="fileSmartcardUpdate" accept="image/*" class="hidden" />
 
+<!-- ==================== POPUP KONFIRMASI HAPUS PDF TERSIMPAN ====================
+     Popup konfirmasi custom (ganti browser confirm() bawaan) khusus untuk
+     tombol hapus (🗑) di tiap kartu widget "PDF Tersimpan". Detail item yang
+     mau dihapus (tanggal/dinas/jenis) diisi lewat JS ke elemen ber-id
+     hapusPdf* sebelum overlay dibuka — lihat _wireDeleteButtons() di
+     bulanan.js. -->
+<div class="overlay overlay--danger" id="hapusPdfOverlay" aria-hidden="true">
+  <div class="doc doc--danger" style="max-width: 440px;">
+    <div class="doc--danger__icon">
+      <i class="fa-solid fa-trash-can"></i>
+    </div>
+    <div class="doc__body" style="padding-top: 8px; text-align: center;">
+      <h2 class="doc--danger__title">Hapus data ini?</h2>
+      <p class="doc--danger__desc">
+        Data PDF tanggal <strong id="hapusPdfTanggal">-</strong>
+        (<span id="hapusPdfDinas">-</span> &middot; <span id="hapusPdfJenis">-</span>)
+        akan dihapus.
+      </p>
+      <div class="doc--danger__warn">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>File PDF di Google Drive dipindah ke Trash &amp; barisnya di sheet ikut terhapus. Tindakan ini tidak bisa dibatalkan dari sini.</span>
+      </div>
+    </div>
+    <div class="doc__foot" style="border-top: none; justify-content: center; padding-top: 4px;">
+      <button type="button" class="btn btn--ghost" id="btnBatalHapusPdf">Batal</button>
+      <button type="button" class="btn btn--danger" id="btnKonfirmasiHapusPdf">
+        <span class="btn--danger__label">Ya, Hapus</span>
+        <span class="btn--danger__spinner hidden"><i class="fa-solid fa-circle-notch fa-spin"></i></span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== LIBRARIES ==================== -->
 <!-- pdf-lib: dipakai untuk membuat halaman Cover/SmartCard/Daftar Hadir DAN
      menggabungkan (merge) halaman dari PDF-PDF harian yang sudah tersimpan

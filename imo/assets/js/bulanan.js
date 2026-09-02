@@ -601,6 +601,83 @@ function extractDriveFileId_(url) {
 const SavedPdfList = {
   all: [],
 
+  /** State popup konfirmasi hapus — item yang lagi menunggu konfirmasi
+   *  user, plus referensi tombol 🗑 di kartunya (biar bisa dikembalikan
+   *  ke kondisi normal kalau user batal/ada error). Diisi saat kartu
+   *  tombol hapus diklik, dikosongkan lagi setelah popup ditutup. */
+  _pendingDelete: null,
+
+  /** Wire popup konfirmasi hapus (dipanggil SEKALI saat halaman dimuat —
+   *  beda dengan _wireDeleteButtons() yang dipanggil ulang tiap render()
+   *  karena tombol 🗑 di tiap kartu memang dibuat ulang, sementara popup
+   *  sendiri elemennya tetap/statis di HTML). */
+  initModal() {
+    this.els = {
+      overlay: document.getElementById("hapusPdfOverlay"),
+      tanggal: document.getElementById("hapusPdfTanggal"),
+      dinas: document.getElementById("hapusPdfDinas"),
+      jenis: document.getElementById("hapusPdfJenis"),
+      btnBatal: document.getElementById("btnBatalHapusPdf"),
+      btnKonfirmasi: document.getElementById("btnKonfirmasiHapusPdf"),
+    };
+    const { overlay, btnBatal, btnKonfirmasi } = this.els;
+    if (!overlay || !btnBatal || !btnKonfirmasi) return;
+
+    btnBatal.addEventListener("click", () => this._closeModal());
+    // Klik di area gelap luar kartu = sama seperti Batal (kecuali lagi
+    // proses menghapus, supaya tidak ke-cancel di tengah request).
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay && !btnKonfirmasi.disabled) this._closeModal();
+    });
+    btnKonfirmasi.addEventListener("click", () => this._confirmDelete());
+  },
+
+  _openModal(item, btn) {
+    this._pendingDelete = { item, btn };
+    this.els.tanggal.textContent = item.tanggal;
+    this.els.dinas.textContent = item.dinas;
+    this.els.jenis.textContent = item.jenisSerahTerima;
+    this.els.overlay.classList.add("is-open");
+    this.els.overlay.setAttribute("aria-hidden", "false");
+  },
+
+  _closeModal() {
+    this.els.overlay.classList.remove("is-open");
+    this.els.overlay.setAttribute("aria-hidden", "true");
+    this._pendingDelete = null;
+    this._setConfirmLoading(false);
+  },
+
+  _setConfirmLoading(isLoading) {
+    const { btnKonfirmasi, btnBatal } = this.els;
+    btnKonfirmasi.disabled = isLoading;
+    btnBatal.disabled = isLoading;
+    btnKonfirmasi.querySelector(".btn--danger__label").classList.toggle("hidden", isLoading);
+    btnKonfirmasi.querySelector(".btn--danger__spinner").classList.toggle("hidden", !isLoading);
+  },
+
+  async _confirmDelete() {
+    if (!this._pendingDelete) return;
+    const { item, btn } = this._pendingDelete;
+    this._setConfirmLoading(true);
+    try {
+      await Api.hapusPdfTersimpan(Session.current, item.fileUrl);
+      this.all = this.all.filter((it) => it.fileUrl !== item.fileUrl);
+      const { bulanIdx, tahun } = MonthYear.get();
+      this._closeModal();
+      this.render(bulanIdx, tahun);
+      Toast.show("Data berhasil dihapus.", "success");
+    } catch (err) {
+      this._setConfirmLoading(false);
+      this._closeModal();
+      if (btn) {
+        btn.disabled = false;
+        btn.classList.remove("opacity-50");
+      }
+      Toast.show("Gagal menghapus data: " + err.message, "error");
+    }
+  },
+
   async loadForUser(nipp) {
     document.getElementById("bulanPdfListWrap").innerHTML =
       `<div class="text-center py-6 text-xs text-slate-400">Memuat…</div>`;
@@ -684,33 +761,18 @@ const SavedPdfList = {
   _wireDeleteButtons() {
     const wrap = document.getElementById("bulanPdfListWrap");
     wrap.querySelectorAll(".btn-hapus-pdf").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", (e) => {
         const card = e.currentTarget.closest("[data-file-url]");
         const fileUrl = card && card.getAttribute("data-file-url");
         if (!fileUrl) return;
         const item = this.all.find((it) => it.fileUrl === fileUrl);
         if (!item) return;
 
-        const konfirmasi = confirm(
-          `Hapus data PDF tanggal ${item.tanggal} (${item.dinas})?\n\n` +
-          `File PDF-nya di Google Drive akan dipindah ke Trash, dan barisnya di sheet akan dihapus. Tindakan ini tidak bisa dibatalkan dari sini.`
-        );
-        if (!konfirmasi) return;
-
-        const btn = e.currentTarget;
-        btn.disabled = true;
-        btn.classList.add("opacity-50");
-        try {
-          await Api.hapusPdfTersimpan(Session.current, fileUrl);
-          this.all = this.all.filter((it) => it.fileUrl !== fileUrl);
-          const { bulanIdx, tahun } = MonthYear.get();
-          this.render(bulanIdx, tahun);
-          Toast.show("Data berhasil dihapus.", "success");
-        } catch (err) {
-          btn.disabled = false;
-          btn.classList.remove("opacity-50");
-          Toast.show("Gagal menghapus data: " + err.message, "error");
-        }
+        // Tombolnya sendiri dibuat "menekan" secara visual (bukan langsung
+        // di-disable) sementara popup konfirmasi custom terbuka — proses
+        // hapus yang sebenarnya baru jalan setelah user menekan "Ya, Hapus"
+        // di dalam popup (lihat _openModal/_confirmDelete).
+        this._openModal(item, e.currentTarget);
       });
     });
   },
@@ -1191,6 +1253,7 @@ document.addEventListener("DOMContentLoaded", () => {
   wireLoginGate();
   UploadSingle.init();
   SmartcardWidget.init();
+  SavedPdfList.initModal();
   wireUnduhImo();
 
   const loggedIn = Session.load();

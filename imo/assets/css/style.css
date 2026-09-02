@@ -668,6 +668,17 @@ input[type="date"]:focus {
   background: var(--mint-100);
 }
 .dropzone.is-invalid { border-color: var(--signal-red); }
+.dropzone.is-loading { cursor: wait; opacity: 0.75; pointer-events: none; }
+
+.dropzone__spinner {
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 10px;
+  border-radius: 50%;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--mint-600);
+  animation: spin 0.7s linear infinite;
+}
 
 .dropzone__icon {
   width: 40px;
@@ -869,6 +880,89 @@ input[type="date"]:focus {
   gap: 12px;
   border-top: 1px solid var(--border);
 }
+
+/* ---------------------------------------------------------------------
+   Popup konfirmasi hapus (danger) — dipakai widget "PDF Tersimpan"
+   sebagai pengganti browser confirm() bawaan. Backdrop merah pudar +
+   kartu bulat dengan ikon tempat sampah yang "berdenyut" pelan supaya
+   terasa lebih tegas/serius dibanding modal preview biasa, tanpa terasa
+   norak.
+   --------------------------------------------------------------------- */
+
+.overlay--danger { background: rgba(127, 29, 29, 0.35); }
+
+.doc--danger {
+  padding: 32px 28px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.doc--danger__icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--signal-red-tint);
+  color: var(--signal-red);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  margin-bottom: 18px;
+  animation: danger-pop 0.4s var(--ease), danger-pulse 2.2s ease-in-out 0.4s infinite;
+}
+
+@keyframes danger-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes danger-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.28); }
+  50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+}
+
+.doc--danger__title {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--emerald-900);
+  margin-bottom: 8px;
+}
+
+.doc--danger__desc {
+  font-size: 13.5px;
+  color: var(--ink-600);
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.doc--danger__desc strong { color: var(--emerald-900); font-family: var(--font-mono); }
+
+.doc--danger__warn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  text-align: left;
+  background: var(--signal-red-tint);
+  color: #9f1d1d;
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.doc--danger__warn i { margin-top: 2px; }
+
+.btn--danger {
+  background: var(--signal-red);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.28);
+  min-width: 118px;
+  justify-content: center;
+}
+.btn--danger:hover { background: #dc2626; }
+.btn--danger:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn--danger__spinner.hidden { display: none; }
 
 /* ---------------------------------------------------------------------
    Toast notifications
