@@ -161,11 +161,11 @@
             </div>
 
             <!-- Karakter Petugas (sengaja melebihi tepi atas banner, tidak ikut ke-clip) -->
-            <!-- Video melambai, loop mulus (seamless) tanpa tersendat saat kembali ke awal -->
+            <!-- Video transparan (di-key dari green screen) + loop ping-pong (maju lalu mundur)
+                 supaya sambungan akhir->awal mulus tanpa tersendat, tanpa perlu crossfade. -->
             <div class="absolute right-2 sm:right-6 md:right-10 bottom-0 -top-8 sm:-top-10 flex items-end pointer-events-none">
               <video
-                src="assets/video/petugas-imo-loop.mp4"
-                poster="assets/img/petugas-imo.png"
+                poster="assets/img/petugas-imo-poster.png"
                 class="h-[220px] sm:h-[250px] md:h-[270px] w-auto object-contain drop-shadow-2xl select-none"
                 autoplay
                 loop
@@ -173,7 +173,9 @@
                 playsinline
                 disablePictureInPicture
                 aria-label="Petugas KAI menyambut Anda"
-              ></video>
+              >
+                <source src="assets/video/petugas-imo-pingpong.webm" type="video/webm">
+              </video>
             </div>
           </div>
         </div>
