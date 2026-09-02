@@ -89,9 +89,15 @@
           <h2 class="panel__title">Upload SmartCard</h2>
         </div>
       </div>
-      <p class="panel__hint">Foto/scan SmartCard — akan ditempatkan pada halaman 2 (orientasi landscape).</p>
+      <p class="panel__hint">Foto/scan SmartCard — akan ditempatkan pada halaman 2 (orientasi landscape). Foto ini tersimpan otomatis untuk Anda, jadi tidak perlu upload ulang tiap bulan.</p>
 
-      <div class="field">
+      <!-- State A: sedang cek ke server apakah SmartCard sudah pernah tersimpan -->
+      <div class="field" id="smartcardCheckingState">
+        <div class="text-center py-6 text-xs text-slate-400">Memeriksa SmartCard tersimpan…</div>
+      </div>
+
+      <!-- State B: belum pernah ada SmartCard tersimpan -> wajib upload (dropzone, sama seperti sebelumnya) -->
+      <div class="field hidden" id="smartcardUploadState">
         <div class="dropzone" id="dzSmartcard" tabindex="0" role="button">
           <div class="dropzone__icon">↑</div>
           <div class="dropzone__text">Tarik &amp; lepas foto di sini, atau klik untuk pilih</div>
@@ -100,6 +106,19 @@
         <input type="file" id="fileSmartcard" accept="image/*" class="hidden" />
         <div class="thumb-row" id="thumbSmartcard"></div>
         <div class="field__error" id="err-smartcard">Foto SmartCard wajib diunggah.</div>
+      </div>
+
+      <!-- State C: SmartCard sudah ada (baru dicek dari Drive, atau baru saja diupload/diperbarui) -->
+      <div class="field hidden" id="smartcardExistingState">
+        <div class="thumb-row">
+          <div class="thumb">
+            <img id="smartcardExistingThumb" src="" alt="SmartCard tersimpan" />
+          </div>
+        </div>
+        <div class="btn-row">
+          <span class="text-[11px] text-slate-400">SmartCard sudah tersimpan.</span>
+          <button type="button" class="btn btn--ghost" id="btnLihatSmartcard">🔍 Lihat SmartCard</button>
+        </div>
       </div>
     </section>
 
@@ -184,6 +203,24 @@
 
 <!-- ==================== TOASTS ==================== -->
 <div class="toast-stack" id="toastStack"></div>
+
+<!-- ==================== POPUP PREVIEW SMARTCARD ==================== -->
+<div class="overlay" id="smartcardOverlay" aria-hidden="true">
+  <div class="doc" style="max-width: 560px;">
+    <div class="doc__head">
+      <span class="panel__eyebrow">Pastikan foto sudah benar</span>
+      <h2>Preview SmartCard</h2>
+    </div>
+    <div class="doc__body">
+      <img id="smartcardPreviewImg" src="" alt="Preview SmartCard" style="width:100%; border-radius:12px; display:block;" />
+    </div>
+    <div class="doc__foot">
+      <button type="button" class="btn btn--ghost" id="btnKembaliSmartcard">Kembali</button>
+      <button type="button" class="btn btn--primary" id="btnPerbaruiSmartcard">Perbarui SmartCard</button>
+    </div>
+  </div>
+</div>
+<input type="file" id="fileSmartcardUpdate" accept="image/*" class="hidden" />
 
 <!-- ==================== LIBRARIES ==================== -->
 <!-- pdf-lib: dipakai untuk membuat halaman Cover/SmartCard/Daftar Hadir DAN

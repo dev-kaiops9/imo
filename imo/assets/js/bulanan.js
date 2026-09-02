@@ -3,7 +3,18 @@
  * -----------------------------------------------------------------------
  * Logika halaman "IMO - Per Bulan":
  *  1. Dropdown Bulan & Tahun (untuk cover + filter daftar PDF tersimpan).
- *  2. Upload SmartCard & Upload Daftar Hadir (1 foto masing-masing).
+ *  2. Upload SmartCard (lihat SmartcardWidget, poin 2b) & Upload Daftar
+ *     Hadir (UploadSingle) — 1 foto masing-masing.
+ *  2b. SmartCard bersifat 1 file per pegawai, DIPAKAI ULANG lintas bulan
+ *     (beda dengan Daftar Hadir yang wajib upload baru tiap bulan). Saat
+ *     halaman dibuka, SmartcardWidget.checkExisting() cek ke backend
+ *     (action "cekSmartcard") apakah pegawai ini sudah punya SmartCard
+ *     tersimpan di Drive — kalau ada, widget langsung terisi otomatis
+ *     (tanpa perlu upload ulang) dan tombol "Lihat SmartCard" muncul,
+ *     membuka popup preview dengan tombol "Perbarui SmartCard" / "Kembali".
+ *     Foto SmartCard baru/hasil "Perbarui" baru benar-benar dikirim &
+ *     ditimpa ke Drive saat "Unduh IMO" diklik (lihat
+ *     SmartcardWidget.getUploadPayload()).
  *  3. Daftar PDF Tersimpan bulan/tahun terpilih (sumber: action backend
  *     "cekPdfTersimpan", sama seperti dipakai widget "PDF Tersimpan" di
  *     sidebar kanan dashboard) — diurutkan tanggal termuda dulu, lalu
@@ -12,14 +23,15 @@
  *     Daftar Hadir + seluruh PDF tersimpan di atas menjadi SATU file PDF
  *     (pakai pdf-lib), lalu mengirimkannya ke backend untuk disimpan ke
  *     Google Drive dengan struktur folder yang SAMA seperti menu Per Hari:
- *     {DRIVE_ROOT_FOLDER}/{Stasiun}/{Jabatan}/{NIPP}/
+ *     {DRIVE_ROOT_FOLDER}/{Stasiun}/{Jabatan}/{NIPP}/ — SmartCard (kalau
+ *     baru/berubah) ikut disimpan pada request yang sama, tapi ke folder
+ *     TERPISAH: {DRIVE_ROOT_FOLDER}/{Stasiun}/{Jabatan}/{NIPP}/SmartCard/
  *
  * CATATAN PENTING (backend):
- * Pengiriman ke backend memakai action baru "simpanImoBulanan" (lihat
- * fungsi Api.simpanImoBulanan di bawah). Action ini BELUM tentu ada di
- * Google Apps Script (Code.gs) — perlu ditambahkan di sana dengan pola
- * yang sama seperti action "simpanData" (dipakai menu Per Hari), supaya
- * PDF benar-benar tersimpan ke Drive.
+ * Pengiriman ke backend memakai action "simpanImoBulanan" & "cekSmartcard"
+ * (lihat objek Api di bawah) — keduanya HARUS ada di Google Apps Script
+ * (Code.gs), sudah ditambahkan dengan pola yang sama seperti action
+ * "simpanData" (dipakai menu Per Hari).
  * -----------------------------------------------------------------------
  */
 
@@ -144,14 +156,16 @@ const Session = {
 };
 
 // ---------------------------------------------------------------------
-// Upload foto tunggal (SmartCard / Daftar Hadir) — pola sama dengan
-// UploadField di menu Per Hari, tapi masing-masing cuma 1 foto.
+// Upload foto tunggal (Daftar Hadir) — pola sama dengan UploadField di
+// menu Per Hari, tapi cuma 1 foto. SmartCard PUNYA MODUL SENDIRI
+// (SmartcardWidget, di bawah) karena state-nya lebih kompleks: bisa
+// "sudah tersimpan dari Drive" (tidak wajib upload ulang), bukan cuma
+// "sudah dipilih / belum".
 // ---------------------------------------------------------------------
 const UploadSingle = {
-  state: { smartcard: null, daftarHadir: null },
+  state: { daftarHadir: null },
 
   init() {
-    this._wire("dzSmartcard", "fileSmartcard", "thumbSmartcard", "smartcard");
     this._wire("dzDaftarHadir", "fileDaftarHadir", "thumbDaftarHadir", "daftarHadir");
   },
 
@@ -192,8 +206,7 @@ const UploadSingle = {
     this.state[stateKey] = { file, dataUrl, mimeType: file.type, fileName: file.name };
 
     dz.classList.remove("is-invalid");
-    const errId = stateKey === "smartcard" ? "err-smartcard" : "err-daftarHadir";
-    const errEl = document.getElementById(errId);
+    const errEl = document.getElementById("err-daftarHadir");
     if (errEl) errEl.closest(".field").classList.remove("has-error");
 
     thumbWrap.innerHTML = `
@@ -215,6 +228,202 @@ const UploadSingle = {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  },
+};
+
+// ---------------------------------------------------------------------
+// Widget SmartCard — beda dari UploadSingle karena punya 3 kemungkinan
+// tampilan (checking / wajib upload / sudah tersimpan) dan popup preview
+// dengan tombol "Perbarui SmartCard".
+//
+// state.data  : { dataUrl, mimeType, fileName } | null — foto yang aktif
+//               dipakai saat ini (dari Drive ATAU dari pilihan baru user).
+// state.isNew : true kalau state.data ini BARU dipilih user (upload
+//               pertama kali / hasil "Perbarui SmartCard") — dipakai
+//               Api.simpanImoBulanan untuk memutuskan apakah perlu kirim
+//               ulang base64-nya ke backend untuk ditimpa ke Drive, atau
+//               tidak perlu sama sekali kalau user pakai foto lama apa
+//               adanya (sudah ada di Drive, tidak diubah).
+// ---------------------------------------------------------------------
+const SmartcardWidget = {
+  state: { data: null, isNew: false },
+  els: {},
+
+  init() {
+    this.els = {
+      checking: document.getElementById("smartcardCheckingState"),
+      uploadState: document.getElementById("smartcardUploadState"),
+      existingState: document.getElementById("smartcardExistingState"),
+      existingThumb: document.getElementById("smartcardExistingThumb"),
+      dz: document.getElementById("dzSmartcard"),
+      input: document.getElementById("fileSmartcard"),
+      thumbWrap: document.getElementById("thumbSmartcard"),
+      err: document.getElementById("err-smartcard"),
+      btnLihat: document.getElementById("btnLihatSmartcard"),
+      overlay: document.getElementById("smartcardOverlay"),
+      previewImg: document.getElementById("smartcardPreviewImg"),
+      btnKembali: document.getElementById("btnKembaliSmartcard"),
+      btnPerbarui: document.getElementById("btnPerbaruiSmartcard"),
+      inputUpdate: document.getElementById("fileSmartcardUpdate"),
+    };
+    this._wireDropzone();
+    this._wirePopup();
+  },
+
+  showChecking() {
+    this.els.checking.classList.remove("hidden");
+    this.els.uploadState.classList.add("hidden");
+    this.els.existingState.classList.add("hidden");
+  },
+
+  showUploadNeeded() {
+    this.els.checking.classList.add("hidden");
+    this.els.uploadState.classList.remove("hidden");
+    this.els.existingState.classList.add("hidden");
+  },
+
+  showExisting(data) {
+    this.state.data = data;
+    this.els.checking.classList.add("hidden");
+    this.els.uploadState.classList.add("hidden");
+    this.els.existingState.classList.remove("hidden");
+    this.els.existingThumb.src = data.dataUrl;
+    this._clearError();
+  },
+
+  /** Dipanggil sekali saat halaman dimuat (setelah login) — cek ke backend
+   *  apakah pegawai ini sudah punya SmartCard tersimpan di Drive. */
+  async checkExisting(user) {
+    this.showChecking();
+    try {
+      const result = await Api.cekSmartcard(user);
+      if (result && result.found) {
+        this.state.isNew = false; // berasal dari Drive, BUKAN pilihan baru
+        this.showExisting({
+          dataUrl: `data:${result.mimeType};base64,${result.base64}`,
+          mimeType: result.mimeType,
+          fileName: result.fileName,
+        });
+        return;
+      }
+    } catch (err) {
+      Toast.show("Gagal memeriksa SmartCard tersimpan: " + err.message, "warn");
+    }
+    this.showUploadNeeded();
+  },
+
+  _wireDropzone() {
+    const { dz, input, thumbWrap } = this.els;
+    if (!dz || !input) return;
+
+    const openPicker = () => input.click();
+    dz.addEventListener("click", openPicker);
+    dz.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPicker(); }
+    });
+
+    input.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) this._applyNewFile(file, thumbWrap, dz);
+      input.value = "";
+    });
+
+    ["dragenter", "dragover"].forEach((evt) => {
+      dz.addEventListener(evt, (e) => { e.preventDefault(); dz.classList.add("is-dragover"); });
+    });
+    ["dragleave", "drop"].forEach((evt) => {
+      dz.addEventListener(evt, (e) => { e.preventDefault(); dz.classList.remove("is-dragover"); });
+    });
+    dz.addEventListener("drop", (e) => {
+      const file = e.dataTransfer.files[0];
+      if (file) this._applyNewFile(file, thumbWrap, dz);
+    });
+  },
+
+  _wirePopup() {
+    const { btnLihat, overlay, previewImg, btnKembali, btnPerbarui, inputUpdate } = this.els;
+    if (!btnLihat || !overlay) return;
+
+    const open = () => {
+      if (!this.state.data) return;
+      previewImg.src = this.state.data.dataUrl;
+      overlay.classList.add("is-open");
+      overlay.setAttribute("aria-hidden", "false");
+    };
+    const close = () => {
+      overlay.classList.remove("is-open");
+      overlay.setAttribute("aria-hidden", "true");
+    };
+
+    btnLihat.addEventListener("click", open);
+    btnKembali.addEventListener("click", close);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+
+    // "Perbarui SmartCard" -> buka file picker tersembunyi. Foto yang
+    // dipilih LANGSUNG menggantikan tampilan widget (state "sudah
+    // tersimpan" dengan foto baru) + popup ditutup. Foto ini baru benar-
+    // benar dikirim & ditimpa ke Drive nanti saat klik "Unduh IMO"
+    // (lihat Api.simpanImoBulanan / getUploadPayload di bawah).
+    btnPerbarui.addEventListener("click", () => inputUpdate.click());
+    inputUpdate.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      inputUpdate.value = "";
+      if (!file) return;
+      const ok = await this._applyNewFile(file, null, null);
+      if (ok) {
+        close();
+        Toast.show('SmartCard diperbarui. Perubahan tersimpan ke Drive saat klik "Unduh IMO".', "info");
+      }
+    });
+  },
+
+  /** Validasi + terapkan foto baru (dari dropzone ATAU popup "Perbarui
+   *  SmartCard") sebagai state aktif, lalu tampilkan widget dalam kondisi
+   *  "sudah tersimpan" (foto baru ini). Return true kalau berhasil. */
+  async _applyNewFile(file, thumbWrap, dz) {
+    if (!file.type.startsWith("image/")) { Toast.show("File yang dipilih bukan gambar.", "error"); return false; }
+    if (file.size > 8 * 1024 * 1024) { Toast.show("Ukuran foto maksimal 8MB.", "error"); return false; }
+
+    const dataUrl = await this._readAsDataURL(file);
+    this.state.isNew = true; // wajib dikirim & ditimpa ke Drive saat "Unduh IMO"
+
+    if (dz) dz.classList.remove("is-invalid");
+    if (thumbWrap) thumbWrap.innerHTML = "";
+
+    this.showExisting({ dataUrl, mimeType: file.type, fileName: file.name });
+    return true;
+  },
+
+  _clearError() {
+    const field = this.els.err && this.els.err.closest(".field");
+    if (field) field.classList.remove("has-error");
+    if (this.els.dz) this.els.dz.classList.remove("is-invalid");
+  },
+
+  _readAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  },
+
+  /** Payload tambahan untuk action "simpanImoBulanan" — base64 HANYA
+   *  disertakan kalau foto SmartCard aktif ini baru/berubah (isNew).
+   *  Kalau user memakai foto lama dari Drive apa adanya, return null
+   *  (tidak perlu kirim ulang & tidak perlu ditimpa di backend). */
+  getUploadPayload() {
+    if (!this.state.data || !this.state.isNew) return null;
+    const base64 = this.state.data.dataUrl.split(",")[1];
+    return { smartcardBase64: base64, smartcardMimeType: this.state.data.mimeType };
+  },
+
+  /** Dipanggil setelah "Unduh IMO" berhasil menyimpan — foto aktif saat
+   *  ini sudah tercatat di Drive, jadi tidak "baru" lagi kalau user
+   *  langsung mengulang proses tanpa mengubah apa pun. */
+  markSaved() {
+    this.state.isNew = false;
   },
 };
 
@@ -278,14 +487,38 @@ const Api = {
   },
 
   /**
+   * Cek apakah pegawai aktif sudah punya foto SmartCard tersimpan di
+   * Drive (folder {DRIVE_ROOT_FOLDER}/{Stasiun}/{Jabatan}/{NIPP}/SmartCard/).
+   * @param {object} user { nipp, jabatan, stasiun }
+   * @returns {Promise<{found: boolean, base64?: string, mimeType?: string, fileName?: string}>}
+   */
+  async cekSmartcard(user) {
+    const json = await this._post({
+      action: "cekSmartcard",
+      payload: {
+        nipp: user.nipp,
+        jabatan: user.jabatan,
+        stasiun: user.stasiun,
+        driveRootFolder: CONFIG.DRIVE_ROOT_FOLDER,
+      },
+    });
+    return json.data || { found: false };
+  },
+
+  /**
    * Kirim PDF gabungan (Cover + SmartCard + Daftar Hadir + PDF harian) ke
    * backend untuk disimpan ke Drive — folder SAMA persis dengan menu Per
    * Hari ({DRIVE_ROOT_FOLDER}/{Stasiun}/{Jabatan}/{NIPP}/).
    *
    * PERLU DITAMBAHKAN di Code.gs: action "simpanImoBulanan" (lihat
    * catatan di kepala file ini).
+   *
+   * @param {object|null} smartcardPayload hasil SmartcardWidget.getUploadPayload()
+   *   — { smartcardBase64, smartcardMimeType } kalau SmartCard baru/berubah,
+   *   atau null kalau user memakai SmartCard lama dari Drive apa adanya
+   *   (tidak perlu kirim ulang/ditimpa).
    */
-  async simpanImoBulanan({ user, bulanNama, tahun, pdfFileName, pdfBase64 }) {
+  async simpanImoBulanan({ user, bulanNama, tahun, pdfFileName, pdfBase64, smartcardPayload }) {
     const json = await this._post({
       action: "simpanImoBulanan",
       payload: {
@@ -298,6 +531,7 @@ const Api = {
         driveRootFolder: CONFIG.DRIVE_ROOT_FOLDER,
         pdfFileName,
         pdfBase64,
+        ...(smartcardPayload || {}),
       },
     });
     return json.data || {};
@@ -733,11 +967,18 @@ const PdfBulanan = {
 function validateBeforeDownload() {
   let ok = true;
 
-  const hasSmartcard = !!UploadSingle.state.smartcard;
+  // SmartCard valid kalau state-nya terisi — baik dari upload baru MAUPUN
+  // dari hasil "sudah ada di Drive" yang otomatis ke-load (lihat
+  // SmartcardWidget.checkExisting). Error/highlight cuma relevan kalau
+  // tampilannya sedang di state "wajib upload" (dzSmartcard).
+  const hasSmartcard = !!SmartcardWidget.state.data;
   const hasDaftarHadir = !!UploadSingle.state.daftarHadir;
 
-  document.getElementById("err-smartcard").closest(".field").classList.toggle("has-error", !hasSmartcard);
-  document.getElementById("dzSmartcard").classList.toggle("is-invalid", !hasSmartcard);
+  const smartcardErrField = document.getElementById("err-smartcard").closest(".field");
+  const dzSmartcard = document.getElementById("dzSmartcard");
+  if (smartcardErrField) smartcardErrField.classList.toggle("has-error", !hasSmartcard);
+  if (dzSmartcard) dzSmartcard.classList.toggle("is-invalid", !hasSmartcard);
+
   document.getElementById("err-daftarHadir").closest(".field").classList.toggle("has-error", !hasDaftarHadir);
   document.getElementById("dzDaftarHadir").classList.toggle("is-invalid", !hasDaftarHadir);
 
@@ -765,16 +1006,23 @@ function wireUnduhImo() {
         user: Session.current,
         bulanNama,
         tahun,
-        smartcard: UploadSingle.state.smartcard,
+        smartcard: SmartcardWidget.state.data,
         daftarHadir: UploadSingle.state.daftarHadir,
         savedList,
         onProgress: (pct) => Busy.setProgress(pct),
       });
 
       // Tahap 2 (92% - 97%): mengunggah/menyimpan PDF akhir ke Google Drive.
+      // smartcardPayload cuma terisi (dan dikirim) kalau foto SmartCard-nya
+      // baru/berubah — lihat SmartcardWidget.getUploadPayload().
       Busy.show("MENYIMPAN PDF…", { progress: true });
       Busy.setProgress(92);
-      await Api.simpanImoBulanan({ user: Session.current, bulanNama, tahun, pdfFileName: pdf.fileName, pdfBase64: pdf.base64 });
+      await Api.simpanImoBulanan({
+        user: Session.current, bulanNama, tahun,
+        pdfFileName: pdf.fileName, pdfBase64: pdf.base64,
+        smartcardPayload: SmartcardWidget.getUploadPayload(),
+      });
+      SmartcardWidget.markSaved();
       Busy.setProgress(97);
 
       // Tahap 3 (97% - 100%): mengunduh PDF ke perangkat.
@@ -818,6 +1066,7 @@ document.addEventListener("DOMContentLoaded", () => {
   Toast.init();
   wireLoginGate();
   UploadSingle.init();
+  SmartcardWidget.init();
   wireUnduhImo();
 
   const loggedIn = Session.load();
@@ -831,6 +1080,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (loggedIn) {
     SavedPdfList.loadForUser(Session.current.nipp).then(refreshList);
+    SmartcardWidget.checkExisting(Session.current);
   } else {
     Toast.show("Silakan login terlebih dahulu untuk membuat rekap IMO bulanan.", "warn");
   }
