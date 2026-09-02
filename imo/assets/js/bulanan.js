@@ -560,6 +560,23 @@ const Api = {
     }
     return json.data.base64;
   },
+
+  /**
+   * Hapus 1 data PDF tersimpan — dipakai widget "PDF Tersimpan" saat user
+   * salah upload dan ingin membetulkan sendiri. Backend menghapus BAIK
+   * baris di sheet SerahTerima MAUPUN file PDF-nya di Google Drive
+   * (dipindah ke Trash, lihat catatan di Code.gs -> hapusPdfTersimpan).
+   * @param {object} user { nipp }
+   * @param {string} fileUrl fileUrl item yang mau dihapus (dipakai backend
+   *   untuk mencari baris yang tepat, dikombinasikan dengan NIPP).
+   */
+  async hapusPdfTersimpan(user, fileUrl) {
+    const json = await this._post({
+      action: "hapusPdfTersimpan",
+      payload: { nipp: user.nipp, fileUrl },
+    });
+    return json.data || {};
+  },
 };
 
 /**
@@ -630,7 +647,7 @@ const SavedPdfList = {
     }
 
     wrap.innerHTML = list.map((item) => `
-      <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm">
+      <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm" data-file-url="${item.fileUrl ? this._escapeAttr(item.fileUrl) : ""}">
         <div class="min-w-0">
           <p class="text-[11px] font-bold text-slate-700 font-mono truncate">${item.tanggal}</p>
           <div class="flex items-center gap-1.5 mt-0.5">
@@ -638,13 +655,64 @@ const SavedPdfList = {
             <span class="text-[10px] text-slate-500 truncate">${item.jenisSerahTerima}</span>
           </div>
         </div>
-        ${item.fileUrl
-          ? `<a href="${item.fileUrl}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-[10px] font-semibold text-white bg-[#5B58CA] hover:bg-[#4a47b5] px-3 py-1.5 rounded-full transition">Lihat PDF</a>`
-          : `<span class="shrink-0 text-[10px] text-slate-300">Tidak ada</span>`}
+        <div class="flex items-center gap-1.5 shrink-0">
+          ${item.fileUrl
+            ? `<a href="${item.fileUrl}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-semibold text-white bg-[#5B58CA] hover:bg-[#4a47b5] px-3 py-1.5 rounded-full transition">Lihat PDF</a>
+               <button type="button" class="btn-hapus-pdf w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 transition" title="Hapus data ini (file di Drive &amp; baris di sheet)" aria-label="Hapus data ini">
+                 <i class="fa-solid fa-trash-can text-[11px]"></i>
+               </button>`
+            : `<span class="text-[10px] text-slate-300">Tidak ada</span>`}
+        </div>
       </div>
     `).join("");
 
+    this._wireDeleteButtons();
     return list;
+  },
+
+  /** Escape karakter yang bisa merusak atribut HTML (fileUrl ditaruh di
+   *  atribut data-file-url supaya handler klik tombol hapus tahu item mana
+   *  yang dipilih, tanpa perlu nyimpan index array yang gampang basi kalau
+   *  list-nya berubah). */
+  _escapeAttr(str) {
+    return String(str).replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  },
+
+  /** Wire tombol hapus (🗑) di tiap kartu — dipanggil ulang tiap kali
+   *  render() (innerHTML diganti total, jadi listener lama otomatis ikut
+   *  hilang bersama elemennya; tidak perlu unwire manual). */
+  _wireDeleteButtons() {
+    const wrap = document.getElementById("bulanPdfListWrap");
+    wrap.querySelectorAll(".btn-hapus-pdf").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        const card = e.currentTarget.closest("[data-file-url]");
+        const fileUrl = card && card.getAttribute("data-file-url");
+        if (!fileUrl) return;
+        const item = this.all.find((it) => it.fileUrl === fileUrl);
+        if (!item) return;
+
+        const konfirmasi = confirm(
+          `Hapus data PDF tanggal ${item.tanggal} (${item.dinas})?\n\n` +
+          `File PDF-nya di Google Drive akan dipindah ke Trash, dan barisnya di sheet akan dihapus. Tindakan ini tidak bisa dibatalkan dari sini.`
+        );
+        if (!konfirmasi) return;
+
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        btn.classList.add("opacity-50");
+        try {
+          await Api.hapusPdfTersimpan(Session.current, fileUrl);
+          this.all = this.all.filter((it) => it.fileUrl !== fileUrl);
+          const { bulanIdx, tahun } = MonthYear.get();
+          this.render(bulanIdx, tahun);
+          Toast.show("Data berhasil dihapus.", "success");
+        } catch (err) {
+          btn.disabled = false;
+          btn.classList.remove("opacity-50");
+          Toast.show("Gagal menghapus data: " + err.message, "error");
+        }
+      });
+    });
   },
 };
 
@@ -928,9 +996,27 @@ const PdfBulanan = {
     const maxW = areaRight - areaLeft;
     const maxH = areaTop - areaBottom;
 
-    const isPng = photo.mimeType && photo.mimeType.includes("png");
-    const bytes = await (await fetch(photo.dataUrl)).arrayBuffer();
-    const img = isPng ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+    // Foto upload bisa berupa format apapun yang bisa dibuka browser (WEBP,
+    // HEIC di Safari, dll) — sedangkan pdf-lib HANYA bisa embed JPEG/PNG
+    // murni (embedJpg/embedPng melempar error kalau byte-nya bukan persis
+    // format itu). Ini penyebab bug "gagal saat mulai memproses": begitu
+    // sampai di halaman SmartCard/Daftar Hadir (persis di awal, sebelum
+    // sempat menggabung PDF harian), foto non-JPEG/PNG bikin proses
+    // langsung berhenti. Makanya foto SELALU digambar ulang lewat
+    // <canvas> dulu (dikonversi ke PNG/JPEG bersih) sebelum di-embed. Kalau
+    // normalisasi ini sendiri gagal, baru fallback ke bytes asli apa
+    // adanya (perilaku lama).
+    let embedBytes;
+    let embedIsPng;
+    try {
+      const normalized = await this._normalizeImageForEmbed(photo.dataUrl, photo.mimeType);
+      embedBytes = normalized.bytes;
+      embedIsPng = normalized.isPng;
+    } catch (err) {
+      embedIsPng = !!(photo.mimeType && photo.mimeType.includes("png"));
+      embedBytes = await (await fetch(photo.dataUrl)).arrayBuffer();
+    }
+    const img = embedIsPng ? await pdfDoc.embedPng(embedBytes) : await pdfDoc.embedJpg(embedBytes);
 
     // TANPA batas ", 1" — foto selalu diperbesar sampai memenuhi area,
     // berapa pun ukuran aslinya (sesuai permintaan: "buat full 1 halaman").
@@ -942,6 +1028,44 @@ const PdfBulanan = {
       y: areaBottom + (maxH - drawH) / 2,
       width: drawW,
       height: drawH,
+    });
+  },
+
+  /** Gambar ulang foto lewat <canvas> supaya hasil akhirnya SELALU berupa
+   *  PNG/JPEG murni (byte-nya benar-benar valid, bukan cuma nama/ekstensi
+   *  filenya), siap di-embed pdf-lib. Perlu karena foto upload bisa datang
+   *  dari format lain (WEBP, HEIC, dst) yang tidak bisa langsung di-embed
+   *  pdf-lib walau bisa ditampilkan browser. Latar diisi putih dulu supaya
+   *  foto PNG transparan tidak berubah jadi hitam saat dikonversi ke JPEG. */
+  _normalizeImageForEmbed(dataUrl, mimeType) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Canvas 2D context tidak tersedia.");
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+
+          const isPng = !!(mimeType && mimeType.includes("png"));
+          const outType = isPng ? "image/png" : "image/jpeg";
+          const outUrl = canvas.toDataURL(outType, 0.95);
+          if (!outUrl || outUrl === "data:,") throw new Error("Gagal mengonversi foto.");
+
+          fetch(outUrl)
+            .then((res) => res.arrayBuffer())
+            .then((bytes) => resolve({ bytes, isPng }))
+            .catch(reject);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      img.onerror = () => reject(new Error("Gagal memuat foto untuk dikonversi."));
+      img.src = dataUrl;
     });
   },
 

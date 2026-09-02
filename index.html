@@ -660,6 +660,7 @@
     // server tiap kali dropdown berubah).
     // ---------------------------------------------------------------------
     let savedPdfAllList = [];
+    let savedPdfCurrentUser = null; // { nipp, ... } — dipakai tombol hapus
 
     function populateSavedPdfYearFilter(list) {
       const sel = document.getElementById('savedPdfFilterTahun');
@@ -701,7 +702,7 @@
       }
 
       wrap.innerHTML = list.map((item) => `
-        <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm">
+        <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm" data-file-url="${item.fileUrl ? escapeAttr_(item.fileUrl) : ''}">
           <div class="min-w-0">
             <p class="text-[11px] font-bold text-slate-700 font-mono truncate">${item.tanggal}</p>
             <div class="flex items-center gap-1.5 mt-0.5">
@@ -709,15 +710,69 @@
               <span class="text-[10px] text-slate-500 truncate">${item.jenisSerahTerima}</span>
             </div>
           </div>
-          ${item.fileUrl
-            ? `<a href="${item.fileUrl}" target="_blank" rel="noopener noreferrer" class="shrink-0 text-[10px] font-semibold text-white bg-[#5B58CA] hover:bg-[#4a47b5] px-3 py-1.5 rounded-full transition">Lihat PDF</a>`
-            : `<span class="shrink-0 text-[10px] text-slate-300">Tidak ada</span>`}
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${item.fileUrl
+              ? `<a href="${item.fileUrl}" target="_blank" rel="noopener noreferrer" class="text-[10px] font-semibold text-white bg-[#5B58CA] hover:bg-[#4a47b5] px-3 py-1.5 rounded-full transition">Lihat PDF</a>
+                 <button type="button" class="btn-hapus-saved-pdf w-7 h-7 flex items-center justify-center rounded-full bg-rose-50 text-rose-500 hover:bg-rose-100 transition" title="Hapus data ini (file di Drive &amp; baris di sheet)" aria-label="Hapus data ini">
+                   <i class="fa-solid fa-trash-can text-[11px]"></i>
+                 </button>`
+              : `<span class="text-[10px] text-slate-300">Tidak ada</span>`}
+          </div>
         </div>
       `).join('');
+
+      wireSavedPdfDeleteButtons();
+    }
+
+    /** Escape karakter yang bisa merusak atribut HTML (fileUrl ditaruh di
+     *  atribut data-file-url supaya handler klik tombol hapus tahu item
+     *  mana yang dipilih, tanpa perlu simpan index array yang gampang basi
+     *  kalau list-nya difilter ulang). */
+    function escapeAttr_(str) {
+      return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    }
+
+    /** Wire tombol hapus (🗑) di tiap kartu widget "PDF Tersimpan" — dipanggil
+     *  ulang tiap kali renderSavedPdfList() (innerHTML diganti total, jadi
+     *  listener lama otomatis ikut hilang bersama elemennya). */
+    function wireSavedPdfDeleteButtons() {
+      const wrap = document.getElementById('savedPdfListWrap');
+      wrap.querySelectorAll('.btn-hapus-saved-pdf').forEach((btn) => {
+        btn.addEventListener('click', async (e) => {
+          if (!savedPdfCurrentUser || !savedPdfCurrentUser.nipp) return;
+          const card = e.currentTarget.closest('[data-file-url]');
+          const fileUrl = card && card.getAttribute('data-file-url');
+          if (!fileUrl) return;
+          const item = savedPdfAllList.find((it) => it.fileUrl === fileUrl);
+          if (!item) return;
+
+          const konfirmasi = confirm(
+            `Hapus data PDF tanggal ${item.tanggal} (${item.dinas})?\n\n` +
+            `File PDF-nya di Google Drive akan dipindah ke Trash, dan barisnya di sheet akan dihapus. Tindakan ini tidak bisa dibatalkan dari sini.`
+          );
+          if (!konfirmasi) return;
+
+          const btn = e.currentTarget;
+          btn.disabled = true;
+          btn.classList.add('opacity-50');
+          try {
+            await callBackend({ action: 'hapusPdfTersimpan', payload: { nipp: savedPdfCurrentUser.nipp, fileUrl } });
+            savedPdfAllList = savedPdfAllList.filter((it) => it.fileUrl !== fileUrl);
+            populateSavedPdfYearFilter(savedPdfAllList);
+            applySavedPdfFilter();
+            showToast('Data berhasil dihapus.');
+          } catch (err) {
+            btn.disabled = false;
+            btn.classList.remove('opacity-50');
+            showToast('Gagal menghapus data: ' + err.message);
+          }
+        });
+      });
     }
 
     async function loadSavedPdfWidget(user) {
       if (!user || !user.nipp) return;
+      savedPdfCurrentUser = user;
 
       document.getElementById('savedPdfLoggedOutHint').classList.add('hidden');
       const widget = document.getElementById('savedPdfWidget');
