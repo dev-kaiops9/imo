@@ -368,13 +368,26 @@
               </div>
 
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1" for="profilJabatanInput">Jabatan</label>
-                <input type="text" id="profilJabatanInput" placeholder="Jabatan" disabled class="profil-field w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+                <label class="block text-xs font-semibold text-slate-600 mb-1" for="profilJabatanSelect">Jabatan</label>
+                <select id="profilJabatanSelect" disabled class="profil-field w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
+                  <option value="" disabled>Pilih Jabatan</option>
+                  <option value="KS">KS</option>
+                  <option value="PPKA">PPKA</option>
+                  <option value="PRS">PRS</option>
+                  <option value="PLR">PLR</option>
+                  <option value="PJL">PJL</option>
+                  <option value="Lainnya">Lainnya</option>
+                </select>
+                <div id="profilJabatanLainnyaField" class="hidden mt-2">
+                  <input type="text" id="profilJabatanLainnyaInput" placeholder="Ketik jabatan" disabled class="profil-field w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+                </div>
               </div>
 
-              <div>
+              <div class="relative">
                 <label class="block text-xs font-semibold text-slate-600 mb-1" for="profilStasiunInput">Stasiun</label>
-                <input type="text" id="profilStasiunInput" placeholder="Stasiun" disabled class="profil-field w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+                <input type="text" id="profilStasiunInput" placeholder="Stasiun" disabled autocomplete="off" class="profil-field w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl text-sm text-slate-500 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+                <div id="profilStasiunSuggest" class="hidden absolute left-0 right-0 z-20 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg max-h-48 overflow-y-auto"></div>
+                <p id="profilStasiunPreview" class="hidden text-xs text-slate-400 mt-1 px-1"></p>
               </div>
 
               <p id="profilError" class="hidden text-xs text-rose-600 bg-rose-50 border border-rose-100 rounded-2xl px-3 py-2"></p>
@@ -647,11 +660,24 @@
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Jabatan</label>
-          <input type="text" id="loginJabatanInput" placeholder="Contoh: PPKA Utama" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+          <select id="loginJabatanSelect" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition">
+            <option value="" disabled selected>Pilih Jabatan</option>
+            <option value="KS">KS</option>
+            <option value="PPKA">PPKA</option>
+            <option value="PRS">PRS</option>
+            <option value="PLR">PLR</option>
+            <option value="PJL">PJL</option>
+            <option value="Lainnya">Lainnya</option>
+          </select>
+          <div id="loginJabatanLainnyaField" class="hidden mt-2">
+            <input type="text" id="loginJabatanLainnyaInput" placeholder="Ketik jabatan" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+          </div>
         </div>
-        <div>
+        <div class="relative">
           <label class="block text-xs font-semibold text-slate-600 mb-1">Stasiun / Dipo</label>
-          <input type="text" id="loginStasiunInput" placeholder="Contoh: Stasiun Gambir (GMR)" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+          <input type="text" id="loginStasiunInput" placeholder="Contoh: Glenmore atau GLM" required autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+          <div id="loginStasiunSuggest" class="hidden absolute left-0 right-0 z-20 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg max-h-48 overflow-y-auto"></div>
+          <p id="loginStasiunPreview" class="hidden text-xs text-slate-400 mt-1 px-1"></p>
         </div>
 
         <button type="submit" id="btnDaftarDanLogin" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
@@ -1311,8 +1337,10 @@
           // NIPP belum terdaftar -> tampilkan form pendaftaran, NIPP sudah terisi otomatis.
           document.getElementById('loginNippReadonly').value = nipp;
           document.getElementById('loginNameInput').value = '';
-          document.getElementById('loginJabatanInput').value = '';
+          setJabatanValue('loginJabatanSelect', 'loginJabatanLainnyaField', 'loginJabatanLainnyaInput', '');
           document.getElementById('loginStasiunInput').value = '';
+          document.getElementById('loginStasiunPreview').classList.add('hidden');
+          document.getElementById('loginStasiunSuggest').classList.add('hidden');
           showLoginStage('daftar');
         }
       } catch (err) {
@@ -1340,13 +1368,188 @@
         .catch((err) => console.warn('Gagal mencatat pemakaian (login):', err.message));
     }
 
+    // -----------------------------------------------------------------------
+    // Preview normalisasi Stasiun (live, saat user mengetik) — LOGIKANYA
+    // SAMA PERSIS dengan normalizeStasiun_() di Code.gs (backend), supaya
+    // teks yang ditampilkan di sini benar-benar mencerminkan apa yang nanti
+    // disimpan. Ini murni tampilan (UX) — nilai yang benar-benar disimpan
+    // tetap ditentukan oleh backend, bukan oleh fungsi ini.
+    // -----------------------------------------------------------------------
+    function normalizeStasiunPreview(stasiun) {
+      let cleaned = String(stasiun == null ? '' : stasiun).trim().replace(/\s+/g, ' ');
+      if (!cleaned) return '';
+      const tanpaAwalan = cleaned.replace(/^stasiun\s+/i, '');
+      if (tanpaAwalan) cleaned = tanpaAwalan;
+      return cleaned
+        .toLowerCase()
+        .split(' ')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+
+    // Update satu elemen teks preview berdasarkan isi input-nya saat ini.
+    // Menampilkan "Akan disimpan sebagai: ..." kalau field terisi, atau
+    // menyembunyikannya kalau kosong.
+    function updateStasiunPreview(inputId, previewId) {
+      const input = document.getElementById(inputId);
+      const preview = document.getElementById(previewId);
+      if (!input || !preview) return;
+
+      const hasil = normalizeStasiunPreview(input.value);
+      if (hasil) {
+        preview.textContent = `Akan disimpan sebagai: ${hasil}`;
+        preview.classList.remove('hidden');
+      } else {
+        preview.classList.add('hidden');
+      }
+    }
+
+    // Pasang listener 'input' di satu field Stasiun supaya preview-nya
+    // ter-update live setiap kali user mengetik.
+    function wireStasiunPreview(inputId, previewId) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      input.addEventListener('input', () => updateStasiunPreview(inputId, previewId));
+      updateStasiunPreview(inputId, previewId);
+    }
+
+    // -----------------------------------------------------------------------
+    // Dropdown Jabatan (form Daftar Akun & menu Profil) — pilihan tetap
+    // KS/PPKA/PRS/PLR/PJL, + "Lainnya" yang membuka input teks manual di
+    // bawahnya. Pola sama seperti dropdown Dinas "Lainnya" di form serah
+    // terima harian (lihat assets/js/form.js).
+    // -----------------------------------------------------------------------
+    const JABATAN_TETAP = ['KS', 'PPKA', 'PRS', 'PLR', 'PJL'];
+
+    function wireJabatanDropdown(selectId, lainnyaFieldId) {
+      const select = document.getElementById(selectId);
+      const lainnyaField = document.getElementById(lainnyaFieldId);
+      if (!select || !lainnyaField) return;
+      select.addEventListener('change', () => {
+        lainnyaField.classList.toggle('hidden', select.value !== 'Lainnya');
+      });
+    }
+
+    // Isi dropdown (+ input manual "Lainnya" kalau perlu) dari sebuah nilai
+    // Jabatan yang tersimpan. Kalau nilainya SUDAH persis salah satu pilihan
+    // tetap, dropdown diarahkan ke situ. Kalau tidak cocok sama sekali (data
+    // lama / jabatan custom), dropdown diarahkan ke "Lainnya" dan nilai
+    // aslinya dipindah ke input manual — supaya data lama tidak pernah
+    // hilang/tertimpa begitu saja.
+    function setJabatanValue(selectId, lainnyaFieldId, lainnyaInputId, value) {
+      const select = document.getElementById(selectId);
+      const lainnyaField = document.getElementById(lainnyaFieldId);
+      const lainnyaInput = document.getElementById(lainnyaInputId);
+      if (!select || !lainnyaField || !lainnyaInput) return;
+
+      const v = String(value || '').trim();
+      if (JABATAN_TETAP.includes(v)) {
+        select.value = v;
+        lainnyaField.classList.add('hidden');
+        lainnyaInput.value = '';
+      } else if (v) {
+        select.value = 'Lainnya';
+        lainnyaField.classList.remove('hidden');
+        lainnyaInput.value = v;
+      } else {
+        select.value = '';
+        lainnyaField.classList.add('hidden');
+        lainnyaInput.value = '';
+      }
+    }
+
+    // Ambil nilai Jabatan final dari dropdown + input manual (kalau
+    // "Lainnya" yang dipilih) — dipakai saat submit form Daftar Akun /
+    // Simpan Profil.
+    function getJabatanValue(selectId, lainnyaInputId) {
+      const select = document.getElementById(selectId);
+      const lainnyaInput = document.getElementById(lainnyaInputId);
+      if (!select) return '';
+      if (select.value === 'Lainnya') return lainnyaInput ? lainnyaInput.value.trim() : '';
+      return select.value;
+    }
+
+    // -----------------------------------------------------------------------
+    // Autocomplete Stasiun — daftar Kode+Nama dibaca dari sheet
+    // "MasterStasiun" lewat action "getDaftarStasiun" (sekali saat halaman
+    // dimuat, di-cache di memori). Pencocokan: nama ATAU kode mengandung
+    // teks yang diketik, tidak peduli besar/kecil huruf — mis. mengetik
+    // "gle" atau "glm" sama-sama menampilkan "Glenmore (GLM)". Field tetap
+    // bisa diisi manual seperti biasa; daftar ini murni bantuan, bukan
+    // paksaan harus pilih dari daftar.
+    // -----------------------------------------------------------------------
+    let daftarStasiunCache = [];
+
+    async function loadDaftarStasiun() {
+      try {
+        const data = await callBackend({ action: 'getDaftarStasiun' });
+        daftarStasiunCache = Array.isArray(data) ? data : [];
+      } catch (err) {
+        console.warn('Gagal memuat daftar stasiun:', err.message);
+        daftarStasiunCache = [];
+      }
+    }
+
+    function cariSaranStasiun(query) {
+      const q = String(query || '').trim().toLowerCase();
+      if (!q) return [];
+      return daftarStasiunCache
+        .filter((s) => (s.nama || '').toLowerCase().includes(q) || (s.kode || '').toLowerCase().includes(q))
+        .slice(0, 8);
+    }
+
+    function wireStasiunAutocomplete(inputId, suggestId, previewId) {
+      const input = document.getElementById(inputId);
+      const suggestBox = document.getElementById(suggestId);
+      if (!input || !suggestBox) return;
+
+      const renderSuggest = () => {
+        const matches = cariSaranStasiun(input.value);
+        if (!matches.length) {
+          suggestBox.classList.add('hidden');
+          suggestBox.innerHTML = '';
+          return;
+        }
+        suggestBox.innerHTML = matches.map((s) => {
+          const nama = String(s.nama || '').replace(/"/g, '&quot;');
+          const kode = String(s.kode || '').replace(/"/g, '&quot;');
+          return `<button type="button" data-nama="${nama}" class="w-full text-left px-4 py-2 text-sm hover:bg-indigo-50 transition flex items-center justify-between gap-2 border-b border-slate-100 last:border-0">
+            <span class="text-slate-700">${nama}</span>
+            ${kode ? `<span class="text-xs text-slate-400 font-mono">${kode}</span>` : ''}
+          </button>`;
+        }).join('');
+        suggestBox.classList.remove('hidden');
+      };
+
+      input.addEventListener('input', renderSuggest);
+      input.addEventListener('focus', renderSuggest);
+
+      // Klik salah satu saran -> isi field dengan Nama resminya. Pakai
+      // 'mousedown' (bukan 'click') supaya event ini kejadian SEBELUM
+      // 'blur' pada field input, jadi klik tidak keburu batal gara-gara
+      // suggest box keburu disembunyikan oleh blur handler.
+      suggestBox.addEventListener('mousedown', (e) => {
+        const btn = e.target.closest('button[data-nama]');
+        if (!btn) return;
+        e.preventDefault();
+        input.value = btn.getAttribute('data-nama');
+        suggestBox.classList.add('hidden');
+        suggestBox.innerHTML = '';
+        updateStasiunPreview(inputId, previewId);
+      });
+
+      input.addEventListener('blur', () => {
+        setTimeout(() => suggestBox.classList.add('hidden'), 150);
+      });
+    }
+
     // ---- Tahap 2B: NIPP belum terdaftar -> submit form pendaftaran ----
     // (via Code.gs action "daftarPegawai", menyimpan ke sheet Pegawai yang sama)
     async function handleDaftarDanLogin(e) {
       e.preventDefault();
 
       const nama = document.getElementById('loginNameInput').value.trim();
-      const jabatan = document.getElementById('loginJabatanInput').value.trim();
+      const jabatan = getJabatanValue('loginJabatanSelect', 'loginJabatanLainnyaInput');
       const stasiun = document.getElementById('loginStasiunInput').value.trim();
 
       if (!nama || !jabatan || !stasiun) {
@@ -1392,7 +1595,7 @@
     function populateProfilForm(user) {
       document.getElementById('profilNippInput').value = user && user.nipp ? user.nipp : '';
       document.getElementById('profilNamaInput').value = user && user.nama ? user.nama : '';
-      document.getElementById('profilJabatanInput').value = user && user.jabatan ? user.jabatan : '';
+      setJabatanValue('profilJabatanSelect', 'profilJabatanLainnyaField', 'profilJabatanLainnyaInput', user && user.jabatan ? user.jabatan : '');
       document.getElementById('profilStasiunInput').value = user && user.stasiun ? user.stasiun : '';
       document.getElementById('profilError').classList.add('hidden');
     }
@@ -1421,7 +1624,13 @@
 
       document.getElementById('profilError').classList.add('hidden');
 
-      if (isEdit) document.getElementById('profilNamaInput').focus();
+      if (isEdit) {
+        document.getElementById('profilNamaInput').focus();
+        updateStasiunPreview('profilStasiunInput', 'profilStasiunPreview');
+      } else {
+        document.getElementById('profilStasiunPreview').classList.add('hidden');
+        document.getElementById('profilStasiunSuggest').classList.add('hidden');
+      }
     }
 
     // Tombol "Batal" — buang perubahan yang belum disimpan (kembalikan nilai
@@ -1461,7 +1670,7 @@
       }
 
       const nama = document.getElementById('profilNamaInput').value.trim();
-      const jabatan = document.getElementById('profilJabatanInput').value.trim();
+      const jabatan = getJabatanValue('profilJabatanSelect', 'profilJabatanLainnyaInput');
       const stasiun = document.getElementById('profilStasiunInput').value.trim();
 
       if (!nama || !jabatan || !stasiun) {
@@ -1869,6 +2078,19 @@
       initSavedPdfFilters();
       loadUsageCounter();
       startUsageCounterPolling();
+
+      // Live preview normalisasi Stasiun (form pendaftaran & menu Profil).
+      wireStasiunPreview('loginStasiunInput', 'loginStasiunPreview');
+      wireStasiunPreview('profilStasiunInput', 'profilStasiunPreview');
+
+      // Dropdown Jabatan (KS/PPKA/PRS/PLR/PJL/Lainnya) di form pendaftaran & Profil.
+      wireJabatanDropdown('loginJabatanSelect', 'loginJabatanLainnyaField');
+      wireJabatanDropdown('profilJabatanSelect', 'profilJabatanLainnyaField');
+
+      // Autocomplete Stasiun (daftar Kode+Nama dari sheet MasterStasiun).
+      loadDaftarStasiun();
+      wireStasiunAutocomplete('loginStasiunInput', 'loginStasiunSuggest', 'loginStasiunPreview');
+      wireStasiunAutocomplete('profilStasiunInput', 'profilStasiunSuggest', 'profilStasiunPreview');
 
       // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap
       // terlihat login di semua menu, termasuk setelah refresh halaman.
