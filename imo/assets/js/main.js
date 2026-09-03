@@ -104,7 +104,7 @@ function wirePreviewAndSave() {
       Busy.hide();
       document.getElementById("previewOverlay").classList.remove("is-open");
       document.getElementById("previewOverlay").setAttribute("aria-hidden", "true");
-      showResult(true, `Tersimpan sebagai "${pdf.fileName}" di ${CONFIG.DRIVE_ROOT_FOLDER}/${data.stasiun}/${data.jabatan}/${data.nipp}/${tahunBulanFolder_(data.tanggal)}/`);
+      showResult(true, "File Tersimpan di Database");
       Toast.show("Data berhasil disimpan.", "success");
       notifyParentPdfSaved();
     } catch (err) {
