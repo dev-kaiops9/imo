@@ -577,6 +577,17 @@ const Api = {
     });
     return json.data || {};
   },
+
+  /**
+   * Ambil daftar Kode/Nama/Kelas seluruh Stasiun dari sheet MasterStasiun.
+   * Dipakai buat cari Kelas Stasiun milik user saat membangun Cover PDF
+   * rekap bulanan (lihat PdfBulanan._drawCoverPage di bawah).
+   * @returns {Promise<Array<{kode:string, nama:string, kelas:string}>>}
+   */
+  async getDaftarStasiun() {
+    const json = await this._post({ action: "getDaftarStasiun" });
+    return json.data || [];
+  },
 };
 
 /**
@@ -943,10 +954,25 @@ const PdfBulanan = {
     const valueX = 567; // px — posisi mulai teks nilai (persis setelah titik dua)
     const valueRightEdge = 1320; // px — tepi kanan kartu
 
-    // UNIT KERJA selalu diawali "Stasiun " (kalau nilainya belum diawali kata itu).
-    const stasiunRaw = String(user.stasiun || "-").trim();
-    const stasiunValue =
-      stasiunRaw === "-" || /^stasiun\b/i.test(stasiunRaw) ? stasiunRaw : `Stasiun ${stasiunRaw}`;
+    // UNIT KERJA = "UPT Stasiun {Kelas} {Nama}" — Kelas diambil dari sheet
+    // MasterStasiun (kolom Kelas: "Kelas 1"/"Kelas 2"/"Kelas 3"/"Besar A"/
+    // "Besar B"/"Besar C", dst), dicocokkan PERSIS (case-sensitive) dengan
+    // nama stasiun milik user (dari sheet Pegawai). Kalau stasiunnya tidak
+    // ketemu di MasterStasiun ATAU kolom Kelas-nya kosong, LEMPAR ERROR
+    // (bukan fallback diam-diam) supaya ketahuan datanya belum lengkap —
+    // caller (build IMO bulanan) sudah punya try/catch yang menampilkan
+    // pesan ini lewat Toast.
+    const stasiunNama = String(user.stasiun || "").trim();
+    const daftarStasiun = await Api.getDaftarStasiun();
+    const stasiunInfo = daftarStasiun.find((s) => s.nama === stasiunNama);
+    const kelas = stasiunInfo ? String(stasiunInfo.kelas || "").trim() : "";
+    if (!stasiunInfo || !kelas) {
+      throw new Error(
+        `Data Kelas untuk stasiun "${stasiunNama}" belum lengkap di sheet MasterStasiun. ` +
+        `Lengkapi dulu kolom Kelas untuk stasiun ini sebelum membuat rekap bulanan.`
+      );
+    }
+    const stasiunValue = `UPT Stasiun ${kelas} ${stasiunInfo.nama}`;
 
     const rows = [
       { label: "NAMA", value: user.nama || "-", yTop: 1294, yBottom: 1372, baseline: 1350 },
