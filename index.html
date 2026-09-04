@@ -617,7 +617,13 @@
       </form>
 
       <!-- ---- TAHAP 2A: NIPP DITEMUKAN ---- -->
-      <div id="loginStageFound" class="hidden space-y-3.5">
+      <!-- Dibuat <form> (bukan <div> biasa) + tombol LOGIN "type=submit" supaya
+           tombol Enter di keyboard bisa dipakai untuk login juga, tidak cuma
+           klik mouse/tap — sama seperti pola Tahap 1 & Tahap 2B. Tombol LOGIN
+           di-focus otomatis begitu tahap ini ditampilkan (lihat showLoginStage()),
+           supaya Enter langsung kena ke tombol ini walau tidak ada input teks
+           yang bisa difokus di tahap ini. -->
+      <form id="loginStageFound" onsubmit="handleLoginConfirmedSubmit(event)" class="hidden space-y-3.5">
         <div class="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 space-y-2">
           <p class="text-xs font-bold text-emerald-700 mb-1">Data Pegawai Ditemukan</p>
           <div class="flex items-start justify-between gap-2 text-xs">
@@ -637,13 +643,13 @@
             <span id="foundStasiun" class="font-semibold text-slate-700 text-right">-</span>
           </div>
         </div>
-        <button type="button" onclick="handleLoginConfirmed()" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200">
+        <button type="submit" id="btnLoginConfirmed" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200">
           LOGIN
         </button>
         <button type="button" onclick="backToNippStage()" class="w-full py-2 text-slate-500 hover:text-slate-700 font-semibold text-xs transition">
           ← Ganti NIPP
         </button>
-      </div>
+      </form>
 
       <!-- ---- TAHAP 2B: NIPP BELUM TERDAFTAR -> FORM PENDAFTARAN ---- -->
       <form id="loginStageDaftar" onsubmit="handleDaftarDanLogin(event)" class="hidden space-y-3.5">
@@ -652,7 +658,7 @@
         </p>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap</label>
-          <input type="text" id="loginNameInput" placeholder="Contoh: Christine Eva" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+          <input type="text" id="loginNameInput" placeholder="Contoh: Arjuna Bhimasakti" required class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 mb-1">NIPP</label>
@@ -674,7 +680,7 @@
           </div>
         </div>
         <div class="relative">
-          <label class="block text-xs font-semibold text-slate-600 mb-1">Stasiun / Dipo</label>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Stasiun</label>
           <input type="text" id="loginStasiunInput" placeholder="Contoh: Glenmore atau GLM" required autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
           <div id="loginStasiunSuggest" class="hidden absolute left-0 right-0 z-20 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg max-h-48 overflow-y-auto"></div>
           <p id="loginStasiunPreview" class="hidden text-xs text-slate-400 mt-1 px-1"></p>
@@ -1349,7 +1355,13 @@
       }
     }
 
-    // ---- Tahap 2A: NIPP ditemukan -> user menekan LOGIN ----
+    // ---- Tahap 2A: NIPP ditemukan -> submit form (klik tombol LOGIN ATAU
+    // tekan Enter, keduanya memicu event 'submit' yang sama). ----
+    function handleLoginConfirmedSubmit(e) {
+      e.preventDefault();
+      handleLoginConfirmed();
+    }
+
     function handleLoginConfirmed() {
       if (!pendingUser) return;
       applyLoggedInUI(pendingUser);
@@ -1478,14 +1490,22 @@
     // paksaan harus pilih dari daftar.
     // -----------------------------------------------------------------------
     let daftarStasiunCache = [];
+    // true kalau getDaftarStasiun sudah PERNAH berhasil dimuat minimal
+    // sekali. Dipakai supaya validasi "Stasiun Belum Terdaftar" di bawah
+    // TIDAK ikut menolak pendaftaran hanya gara-gara sheet MasterStasiun
+    // gagal dimuat (mis. jaringan lambat) — kalau daftarnya sendiri belum
+    // berhasil diambil, validasi dilewati (fail-open), bukan fail-closed.
+    let daftarStasiunLoaded = false;
 
     async function loadDaftarStasiun() {
       try {
         const data = await callBackend({ action: 'getDaftarStasiun' });
         daftarStasiunCache = Array.isArray(data) ? data : [];
+        daftarStasiunLoaded = true;
       } catch (err) {
         console.warn('Gagal memuat daftar stasiun:', err.message);
         daftarStasiunCache = [];
+        daftarStasiunLoaded = false;
       }
     }
 
@@ -1495,6 +1515,47 @@
       return daftarStasiunCache
         .filter((s) => (s.nama || '').toLowerCase().includes(q) || (s.kode || '').toLowerCase().includes(q))
         .slice(0, 8);
+    }
+
+    // -----------------------------------------------------------------------
+    // Validasi Stasiun terhadap sheet MasterStasiun. Pencocokan dilakukan
+    // dengan normalisasi YANG SAMA dengan normalizeStasiunPreview() supaya
+    // "stasiun kalisetail", "KALISETAIL", dan "Kalisetail" semuanya dianggap
+    // cocok dengan baris MasterStasiun "Kalisetail" — atau lewat Kode
+    // (mis. mengetik "GLM" tetap dianggap valid kalau ada di MasterStasiun).
+    // Mengembalikan objek stasiun yang cocok (persis dari MasterStasiun)
+    // kalau ketemu, atau null kalau tidak ada.
+    // -----------------------------------------------------------------------
+    function cariStasiunTerdaftar(inputStasiun) {
+      const namaNormInput = normalizeStasiunPreview(inputStasiun);
+      const kodeInput = String(inputStasiun || '').trim().toLowerCase();
+      if (!namaNormInput) return null;
+      return daftarStasiunCache.find((s) => {
+        const namaCocok = normalizeStasiunPreview(s.nama) === namaNormInput;
+        const kodeCocok = s.kode && String(s.kode).trim().toLowerCase() === kodeInput;
+        return namaCocok || kodeCocok;
+      }) || null;
+    }
+
+    // Pastikan daftarStasiunCache sudah berhasil dimuat sebelum divalidasi
+    // (coba muat ulang sekali kalau sebelumnya gagal/belum selesai), lalu
+    // periksa apakah stasiun yang diketik user ada di MasterStasiun.
+    // Mengembalikan '' kalau valid (atau kalau daftar gagal dimuat sama
+    // sekali — fail-open supaya user tidak terkunci gara-gara error jaringan),
+    // atau pesan error kalau stasiun jelas TIDAK ada di daftar.
+    async function validasiStasiunTerdaftar(inputStasiun) {
+      if (!daftarStasiunLoaded) {
+        await loadDaftarStasiun();
+      }
+      if (!daftarStasiunLoaded || !daftarStasiunCache.length) {
+        // Daftar MasterStasiun belum/tidak berhasil dimuat -> jangan
+        // blokir pendaftaran, biarkan backend yang jadi validasi terakhir.
+        return '';
+      }
+      if (!cariStasiunTerdaftar(inputStasiun)) {
+        return 'Stasiun Belum Terdaftar. Ketik sebagian nama/kode untuk melihat saran, lalu pilih salah satu dari daftar.';
+      }
+      return '';
     }
 
     function wireStasiunAutocomplete(inputId, suggestId, previewId) {
@@ -1556,7 +1617,18 @@
         return;
       }
 
+      // Tolak pendaftaran kalau nama Stasiun yang diketik tidak ada di
+      // sheet MasterStasiun (dicocokkan lewat Nama ATAU Kode, lihat
+      // cariStasiunTerdaftar()). Mencegah data Stasiun ngawur/typo masuk
+      // ke sheet Pegawai sejak awal, bukan cuma di-normalize saja.
       setLoginBusy(true);
+      const pesanErrorStasiun = await validasiStasiunTerdaftar(stasiun);
+      if (pesanErrorStasiun) {
+        showLoginError(pesanErrorStasiun);
+        setLoginBusy(false);
+        return;
+      }
+
       try {
         const data = await callBackend({
           action: 'daftarPegawai',
@@ -1716,6 +1788,16 @@
         stage === 'found' ? 'Periksa data pegawai di bawah ini' :
         'Lengkapi data untuk mendaftar';
       document.getElementById('loginError').classList.add('hidden');
+
+      // Auto-focus tombol LOGIN di Tahap 2A supaya tombol Enter langsung
+      // berfungsi begitu data pegawai ditemukan (tahap ini tidak punya
+      // input teks yang bisa difokus, jadi tombolnya sendiri yang difokus).
+      if (stage === 'found') {
+        setTimeout(() => {
+          const btn = document.getElementById('btnLoginConfirmed');
+          if (btn) btn.focus();
+        }, 0);
+      }
     }
 
     function showLoginError(msg) {
