@@ -679,6 +679,19 @@
           <div id="loginStasiunSuggest" class="hidden absolute left-0 right-0 z-20 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg max-h-48 overflow-y-auto"></div>
           <p id="loginStasiunPreview" class="hidden text-xs text-slate-400 mt-1 px-1"></p>
         </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Nomor WhatsApp Aktif</label>
+          <input type="tel" id="loginNoWaInput" inputmode="numeric" placeholder="Contoh: 081234567890" required autocomplete="off" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition font-mono" />
+          <p class="text-[11px] text-slate-400 mt-1 px-1">Dipakai untuk verifikasi jika lupa password.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Password</label>
+          <input type="password" id="loginPasswordInput" placeholder="Minimal 6 karakter" minlength="6" required autocomplete="new-password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Verifikasi Password</label>
+          <input type="password" id="loginPasswordConfirmInput" placeholder="Ulangi password" minlength="6" required autocomplete="new-password" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition" />
+        </div>
 
         <button type="submit" id="btnDaftarDanLogin" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
           Daftar dan Login
@@ -1341,6 +1354,9 @@
           document.getElementById('loginStasiunInput').value = '';
           document.getElementById('loginStasiunPreview').classList.add('hidden');
           document.getElementById('loginStasiunSuggest').classList.add('hidden');
+          document.getElementById('loginNoWaInput').value = '';
+          document.getElementById('loginPasswordInput').value = '';
+          document.getElementById('loginPasswordConfirmInput').value = '';
           showLoginStage('daftar');
         }
       } catch (err) {
@@ -1551,9 +1567,20 @@
       const nama = document.getElementById('loginNameInput').value.trim();
       const jabatan = getJabatanValue('loginJabatanSelect', 'loginJabatanLainnyaInput');
       const stasiun = document.getElementById('loginStasiunInput').value.trim();
+      const noWa = document.getElementById('loginNoWaInput').value.trim();
+      const password = document.getElementById('loginPasswordInput').value;
+      const konfirmasiPassword = document.getElementById('loginPasswordConfirmInput').value;
 
-      if (!nama || !jabatan || !stasiun) {
-        showLoginError('Lengkapi Nama Lengkap, Jabatan, dan Stasiun terlebih dahulu.');
+      if (!nama || !jabatan || !stasiun || !noWa || !password || !konfirmasiPassword) {
+        showLoginError('Lengkapi semua kolom pendaftaran terlebih dahulu.');
+        return;
+      }
+      if (password.length < 6) {
+        showLoginError('Password minimal 6 karakter.');
+        return;
+      }
+      if (password !== konfirmasiPassword) {
+        showLoginError('Verifikasi Password tidak sama dengan Password.');
         return;
       }
 
@@ -1561,7 +1588,15 @@
       try {
         const data = await callBackend({
           action: 'daftarPegawai',
-          payload: { nama: nama, nipp: pendingNipp, jabatan: jabatan, stasiun: stasiun },
+          payload: {
+            nama: nama,
+            nipp: pendingNipp,
+            jabatan: jabatan,
+            stasiun: stasiun,
+            noWa: noWa,
+            password: password,
+            konfirmasiPassword: konfirmasiPassword,
+          },
         });
         // Backend mengembalikan nama yang SUDAH dinormalisasi (Title Case) —
         // pakai persis nilai balikan ini sebagai identitas user aktif.
@@ -1570,6 +1605,8 @@
         applyLoggedInUI(user);
         localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(user));
         closeLoginModal();
+        document.getElementById('loginPasswordInput').value = '';
+        document.getElementById('loginPasswordConfirmInput').value = '';
         showToast(`Pendaftaran berhasil. Selamat datang, ${user.nama}!`);
         // "daftarPegawai" sudah menambah Counter di backend — sinkronkan
         // widget sekarang juga.
