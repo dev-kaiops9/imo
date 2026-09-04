@@ -52,13 +52,24 @@ function buildNamaFileBulanan_(bulanNama, user) {
   return `${up(bulanNama)}_STA ${up(user.stasiun)}_${up(user.nama)}_${up(user.jabatan)}_${up(user.nipp)}.pdf`;
 }
 
-/** Trigger unduhan file PDF (base64) langsung dari browser, terpisah dari
- *  proses simpan ke Google Drive. */
-function downloadBase64Pdf_(base64, fileName) {
-  const byteChars = atob(base64);
-  const byteNumbers = new Array(byteChars.length);
-  for (let i = 0; i < byteChars.length; i++) byteNumbers[i] = byteChars.charCodeAt(i);
-  const blob = new Blob([new Uint8Array(byteNumbers)], { type: "application/pdf" });
+/**
+ * Trigger unduhan file PDF langsung dari browser, terpisah dari proses
+ * simpan ke Google Drive.
+ *
+ * PERBAIKAN: sebelumnya fungsi ini menerima base64 lalu men-decode-nya
+ * lewat atob() + menyalin byte SATU-SATU ke `new Array()` biasa (bukan
+ * typed array). Untuk PDF gabungan bulanan yang bisa puluhan-ratusan MB,
+ * itu artinya browser harus mengalokasikan Array JS dengan puluhan-ratusan
+ * JUTA elemen angka — tiap elemen makan memori jauh lebih besar dari 1
+ * byte, jadi total alokasinya bisa berkali-kali lipat ukuran file
+ * sebenarnya. Inilah penyebab utama error "allocation size overflow".
+ *
+ * Sekarang fungsi ini menerima `bytes` (Uint8Array hasil out.save() di
+ * PdfBulanan.build) LANGSUNG, tanpa lewat base64 sama sekali — Blob bisa
+ * dibuat langsung dari Uint8Array, jadi tidak ada decode/alokasi ekstra.
+ */
+function downloadPdfBytes_(bytes, fileName) {
+  const blob = new Blob([bytes], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -579,6 +590,21 @@ const Api = {
   },
 
   /**
+   * Ganti isi 1 PDF harian LAMA dengan hasil kompres ulang. Sengaja
+   * dipertahankan meski fitur "Kompres PDF Lama" sudah dihapus dari UI —
+   * bisa dipicu manual (mis. lewat console/skrip terpisah) untuk migrasi
+   * PDF harian lama tanpa perlu ubah Code.gs lagi.
+   * @returns {Promise<{fileUrl: string}>} fileUrl BARU (menggantikan yang lama)
+   */
+  async gantiPdfLamaTerkompresi({ nipp, fileUrl, pdfBase64 }) {
+    const json = await this._post({
+      action: "gantiPdfLamaTerkompresi",
+      payload: { nipp, fileUrl, pdfBase64 },
+    });
+    return json.data || {};
+  },
+
+  /**
    * Ambil daftar Kode/Nama/Kelas seluruh Stasiun dari sheet MasterStasiun.
    * Dipakai buat cari Kelas Stasiun milik user saat membangun Cover PDF
    * rekap bulanan (lihat PdfBulanan._drawCoverPage di bawah).
@@ -831,34 +857,73 @@ const PdfBulanan = {
     // Diambil LEWAT BACKEND (Api.ambilPdfBase64), bukan fetch langsung ke
     // drive.google.com — lihat komentar di Api.ambilPdfBase64 kenapa fetch
     // langsung selalu gagal (CORS + URL yang diambil bukan file mentah).
-    // Rentang progres 15% - 85% dibagi rata ke tiap PDF harian yang digabung.
+    //
+    // PERBAIKAN: sebelumnya tiap PDF harian diambil SATU PER SATU secara
+    // berurutan (await di dalam for-loop) — kalau sebulan ada puluhan
+    // shift, itu puluhan kali round-trip network berurutan ke Apps
+    // Script, yang bikin proses terasa berat/lambat. Sekarang permintaan
+    // diambil PARALEL (dibatasi beberapa sekaligus lewat FETCH_CONCURRENCY
+    // supaya tidak membanjiri Apps Script), tapi halaman tetap DIGABUNG
+    // sesuai URUTAN savedList (bukan urutan selesainya fetch), jadi hasil
+    // PDF-nya identik seperti sebelumnya — cuma jauh lebih cepat.
     const total = savedList.length;
+    const fetched = new Array(total).fill(null);
+    let fetchedCount = 0;
+    const FETCH_CONCURRENCY = 4;
+    const fetchQueue = [];
+    for (let i = 0; i < total; i++) fetchQueue.push(i);
+
+    const fetchWorker = async () => {
+      while (fetchQueue.length) {
+        const idx = fetchQueue.shift();
+        const item = savedList[idx];
+        if (item.fileUrl) {
+          try {
+            const fileId = extractDriveFileId_(item.fileUrl);
+            if (!fileId) throw new Error("ID file tidak ditemukan pada URL tersimpan.");
+            fetched[idx] = { base64: await Api.ambilPdfBase64(fileId) };
+          } catch (err) {
+            fetched[idx] = { error: err };
+          }
+        }
+        fetchedCount++;
+        // Tahap fetch: 15% - 65%.
+        report(15 + Math.round((fetchedCount / Math.max(total, 1)) * 50));
+      }
+    };
+    await Promise.all(
+      Array.from({ length: Math.min(FETCH_CONCURRENCY, total) }, () => fetchWorker())
+    );
+
+    // ---- Gabungkan halaman sesuai urutan savedList (65% - 85%) ----
     for (let i = 0; i < total; i++) {
       const item = savedList[i];
-      if (item.fileUrl) {
-        try {
-          const fileId = extractDriveFileId_(item.fileUrl);
-          if (!fileId) throw new Error("ID file tidak ditemukan pada URL tersimpan.");
-          const base64 = await Api.ambilPdfBase64(fileId);
-          const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-          const srcDoc = await PDFDocument.load(bytes);
-          const copied = await out.copyPages(srcDoc, srcDoc.getPageIndices());
-          copied.forEach((p) => out.addPage(p));
-        } catch (err) {
-          Toast.show(`Gagal memuat PDF ${item.tanggal} (${item.dinas}), dilewati. (${err.message})`, "warn");
-        }
+      if (!item.fileUrl) continue;
+      const result = fetched[i];
+      if (!result) continue;
+      if (result.error) {
+        Toast.show(`Gagal memuat PDF ${item.tanggal} (${item.dinas}), dilewati. (${result.error.message})`, "warn");
+        continue;
       }
-      report(15 + Math.round(((i + 1) / Math.max(total, 1)) * 70));
+      try {
+        const bytes = Uint8Array.from(atob(result.base64), (c) => c.charCodeAt(0));
+        const srcDoc = await PDFDocument.load(bytes);
+        const copied = await out.copyPages(srcDoc, srcDoc.getPageIndices());
+        copied.forEach((p) => out.addPage(p));
+      } catch (err) {
+        Toast.show(`Gagal memuat PDF ${item.tanggal} (${item.dinas}), dilewati. (${err.message})`, "warn");
+      }
+      report(65 + Math.round(((i + 1) / Math.max(total, 1)) * 20));
     }
 
     report(88);
     const bytes = await out.save();
     report(92);
-    const base64 = this._toBase64(bytes);
+    const base64 = await this._toBase64(bytes);
     // Format: (BULAN)_STA (STASIUN)_(NAMA)_(JABATAN)_(NIPP).pdf
     // Contoh: AGUSTUS_STA GLENMORE_BUDI SANTOSO_PPKA_69123.pdf
     const fileName = buildNamaFileBulanan_(bulanNama, user);
-    return { base64, fileName };
+    return { bytes, base64, fileName };
   },
 
   /**
@@ -1097,7 +1162,7 @@ const PdfBulanan = {
     let embedBytes;
     let embedIsPng;
     try {
-      const normalized = await this._normalizeImageForEmbed(photo.dataUrl, photo.mimeType);
+      const normalized = await this._normalizeImageForEmbed(photo.dataUrl, photo.mimeType, maxW, maxH);
       embedBytes = normalized.bytes;
       embedIsPng = normalized.isPng;
     } catch (err) {
@@ -1124,24 +1189,48 @@ const PdfBulanan = {
    *  filenya), siap di-embed pdf-lib. Perlu karena foto upload bisa datang
    *  dari format lain (WEBP, HEIC, dst) yang tidak bisa langsung di-embed
    *  pdf-lib walau bisa ditampilkan browser. Latar diisi putih dulu supaya
-   *  foto PNG transparan tidak berubah jadi hitam saat dikonversi ke JPEG. */
-  _normalizeImageForEmbed(dataUrl, mimeType) {
+   *  foto PNG transparan tidak berubah jadi hitam saat dikonversi ke JPEG.
+   *
+   *  SEKALIAN di-resize (downscale saja, TIDAK PERNAH upscale) ke resolusi
+   *  yang sepadan dengan area foto di halaman (maxWpt x maxHpt, dalam pt)
+   *  pada ~300 DPI cetak — sama seperti perbaikan di pdf.js. Foto
+   *  SmartCard/Daftar Hadir sering diunggah dari hasil scan/kamera
+   *  beresolusi sangat tinggi, padahal cuma digambar memenuhi 1 halaman
+   *  A4; piksel di atas 300 DPI pada ukuran itu tidak pernah kelihatan,
+   *  jadi memangkasnya tidak membuat foto pecah — hanya memperkecil file. */
+  _normalizeImageForEmbed(dataUrl, mimeType, maxWpt, maxHpt) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       img.onload = () => {
         try {
+          const TARGET_DPI = 300;
+          const natW = img.naturalWidth || img.width;
+          const natH = img.naturalHeight || img.height;
+
+          let outW = natW;
+          let outH = natH;
+          if (maxWpt && maxHpt) {
+            const maxWpx = Math.max(1, Math.round((maxWpt / 72) * TARGET_DPI));
+            const maxHpx = Math.max(1, Math.round((maxHpt / 72) * TARGET_DPI));
+            const scale = Math.min(1, maxWpx / natW, maxHpx / natH); // jangan upscale
+            outW = Math.max(1, Math.round(natW * scale));
+            outH = Math.max(1, Math.round(natH * scale));
+          }
+
           const canvas = document.createElement("canvas");
-          canvas.width = img.naturalWidth || img.width;
-          canvas.height = img.naturalHeight || img.height;
+          canvas.width = outW;
+          canvas.height = outH;
           const ctx = canvas.getContext("2d");
           if (!ctx) throw new Error("Canvas 2D context tidak tersedia.");
           ctx.fillStyle = "#FFFFFF";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, outW, outH);
 
           const isPng = !!(mimeType && mimeType.includes("png"));
           const outType = isPng ? "image/png" : "image/jpeg";
-          const outUrl = canvas.toDataURL(outType, 0.95);
+          const outUrl = canvas.toDataURL(outType, 0.92);
           if (!outUrl || outUrl === "data:,") throw new Error("Gagal mengonversi foto.");
 
           fetch(outUrl)
@@ -1163,13 +1252,30 @@ const PdfBulanan = {
     return await res.arrayBuffer();
   },
 
+  /**
+   * Konversi bytes PDF akhir ke base64 (dipakai untuk dikirim ke Apps
+   * Script lewat JSON, karena Web App Apps Script cuma menerima
+   * teks/JSON, bukan file biner langsung).
+   *
+   * PERBAIKAN: sebelumnya dibangun lewat loop `binary += ...` yang
+   * menumpuk satu string JS raksasa sepanjang seluruh isi file (bisa
+   * ratusan MB untuk PDF gabungan sebulan) sebelum di-base64. Sekarang
+   * memakai Blob + FileReader.readAsDataURL, yang encoding-nya ditangani
+   * native oleh browser (jauh lebih hemat memori & tidak menumpuk string
+   * lewat concatenation di JS).
+   */
   _toBase64(bytes) {
-    let binary = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) {
-      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
-    }
-    return btoa(binary);
+    return new Promise((resolve, reject) => {
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = String(reader.result || "");
+        const comma = result.indexOf(",");
+        resolve(comma >= 0 ? result.slice(comma + 1) : result);
+      };
+      reader.onerror = () => reject(new Error("Gagal mengonversi PDF ke base64."));
+      reader.readAsDataURL(blob);
+    });
   },
 };
 
@@ -1240,7 +1346,7 @@ function wireUnduhImo() {
       // Tahap 3 (97% - 100%): mengunduh PDF ke perangkat.
       Busy.show("MENDOWNLOAD PDF…", { progress: true });
       Busy.setProgress(97);
-      downloadBase64Pdf_(pdf.base64, pdf.fileName);
+      downloadPdfBytes_(pdf.bytes, pdf.fileName);
       Busy.setProgress(100);
 
       Busy.hide();
