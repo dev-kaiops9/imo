@@ -30,7 +30,59 @@ const Form = {
     this._wireLiveValidationClear();
     this._wireDinasMode();
     this._applyDinasMode(); // set tampilan awal (dinas belum dipilih -> mode normal)
-    return this.loadSession();
+    const loggedIn = this.loadSession();
+
+    // Ambil daftar "PDF Tersimpan" di LATAR BELAKANG begitu halaman dibuka
+    // (bukan menunggu sampai tombol "Lanjut" diklik). Dengan begitu, saat
+    // user selesai mengisi Langkah 1 dan menekan "Lanjut →", pengecekan
+    // duplikat tanggal (checkTanggalDuplikat) biasanya tinggal membaca
+    // cache yang sudah selesai dimuat — tidak ada jeda loading baru.
+    if (loggedIn) this._prefetchSavedPdfList();
+
+    return loggedIn;
+  },
+
+  // Cache hasil "cekPdfTersimpan" supaya tidak perlu request baru setiap
+  // kali tombol "Lanjut" diklik. _savedPdfListPromise dipakai supaya kalau
+  // ada beberapa pemanggil sekaligus, mereka menunggu SATU request yang
+  // sama (tidak dobel fetch).
+  _savedPdfList: null,
+  _savedPdfListPromise: null,
+
+  /** Mulai (atau pakai ulang) proses ambil daftar PDF Tersimpan milik user aktif. */
+  _prefetchSavedPdfList() {
+    if (!this.currentUser || !this.currentUser.nipp) return Promise.resolve([]);
+    if (this._savedPdfListPromise) return this._savedPdfListPromise; // sudah berjalan/selesai, pakai ulang.
+
+    this._savedPdfListPromise = Api.cekPdfTersimpan(this.currentUser.nipp)
+      .then((data) => {
+        this._savedPdfList = (data && data.list) || [];
+        return this._savedPdfList;
+      })
+      .catch(() => {
+        // Gagal ambil (mis. jaringan) — anggap kosong, jangan blokir user.
+        // Set null lagi supaya percobaan berikutnya (klik Lanjut) mencoba fetch ulang.
+        this._savedPdfListPromise = null;
+        return [];
+      });
+    return this._savedPdfListPromise;
+  },
+
+  /**
+   * Catat entri yang baru saja berhasil disimpan (dipanggil dari main.js
+   * setelah Api.saveSerahTerima() sukses) langsung ke cache lokal, supaya
+   * kalau user langsung isi entri baru lagi di sesi yang sama, tanggal
+   * yang baru saja disimpan langsung terdeteksi duplikat tanpa perlu
+   * fetch ulang ke server.
+   */
+  registerSavedPdf(tanggalISO, dinas, jenisSerahTerima, fileUrl) {
+    if (!this._savedPdfList) this._savedPdfList = [];
+    this._savedPdfList.push({
+      tanggal: this._isoToDDMMYYYY(tanggalISO),
+      dinas,
+      jenisSerahTerima,
+      fileUrl,
+    });
   },
 
   /** Pasang listener perubahan Dinas untuk mengatur mode tampilan (normal / LIBUR / Lainnya). */
@@ -181,6 +233,51 @@ const Form = {
     if (isLainnya && !dinasLainnya) ok = false;
     if (!ok) Toast.show("Lengkapi data dinas terlebih dahulu.", "error");
     return ok;
+  },
+
+  /**
+   * Cek apakah tanggal yang sedang dipilih di Langkah 1 SUDAH ADA di
+   * "PDF Tersimpan" milik user yang sedang login (sheet SerahTerima).
+   *
+   * Memakai cache dari _prefetchSavedPdfList() (sudah mulai diambil sejak
+   * halaman ini dibuka) supaya klik "Lanjut" TIDAK menunggu request baru
+   * ke server — kalau cache belum selesai juga (mis. baru buka halaman
+   * lalu langsung buru-buru klik Lanjut), baru di sini menunggu request
+   * yang sama itu selesai (bukan bikin request baru/dobel).
+   *
+   * Dipanggil dari main.js SEBELUM pindah dari Langkah 1 -> Langkah 2,
+   * supaya user tidak bisa lanjut mengisi & upload foto untuk tanggal
+   * yang datanya sudah pernah disimpan sebelumnya (mencegah dobel entri
+   * untuk tanggal yang sama).
+   *
+   * @returns {Promise<{duplikat: boolean, tanggalTampil?: string}>}
+   *   duplikat=true jika tanggal sudah ada; tanggalTampil format
+   *   "dd-mm-yyyy" (sama seperti ditampilkan di widget PDF Tersimpan).
+   */
+  async checkTanggalDuplikat() {
+    const tanggalISO = document.getElementById("tanggal").value;
+    const nipp = this.currentUser && this.currentUser.nipp;
+    if (!tanggalISO || !nipp) return { duplikat: false };
+
+    const tanggalTampil = this._isoToDDMMYYYY(tanggalISO);
+
+    try {
+      const list = await this._prefetchSavedPdfList();
+      const sudahAda = (list || []).some((item) => item.tanggal === tanggalTampil);
+      return { duplikat: sudahAda, tanggalTampil };
+    } catch (err) {
+      // Gagal cek ke server (mis. jaringan bermasalah) — jangan blokir
+      // user karena error koneksi, biarkan tetap lanjut seperti biasa.
+      return { duplikat: false };
+    }
+  },
+
+  /** "yyyy-mm-dd" (dari <input type="date">) -> "dd-mm-yyyy" (format tampilan backend). */
+  _isoToDDMMYYYY(iso) {
+    const parts = String(iso || "").split("-");
+    if (parts.length !== 3) return "";
+    const [yyyy, mm, dd] = parts;
+    return `${dd}-${mm}-${yyyy}`;
   },
 
   /** Validasi step 2 (Upload Foto). */

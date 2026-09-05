@@ -57,16 +57,60 @@ const Stepper = {
 };
 
 // ---------------------------------------------------------------------
+// Popup "Tanggal Sudah Ada" — muncul saat user menekan "Lanjut →" di
+// Langkah 1 tapi tanggal yang dipilih sudah punya data tersimpan
+// sebelumnya (lihat Form.checkTanggalDuplikat di form.js).
+// ---------------------------------------------------------------------
+const DuplikatTanggalModal = {
+  open(tanggalTampil) {
+    document.getElementById("duplikatTanggalValue").textContent = tanggalTampil || "-";
+    const overlay = document.getElementById("duplikatTanggalOverlay");
+    overlay.classList.add("is-open");
+    overlay.setAttribute("aria-hidden", "false");
+  },
+  close() {
+    const overlay = document.getElementById("duplikatTanggalOverlay");
+    overlay.classList.remove("is-open");
+    overlay.setAttribute("aria-hidden", "true");
+  },
+};
+
+function wireDuplikatTanggalModal() {
+  const overlay = document.getElementById("duplikatTanggalOverlay");
+  if (!overlay) return; // jaga-jaga kalau markup belum ada di HTML.
+  document.getElementById("btnTutupDuplikatTanggal").addEventListener("click", () => DuplikatTanggalModal.close());
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) DuplikatTanggalModal.close();
+  });
+}
+
+// ---------------------------------------------------------------------
 // Wiring tombol next/back antar step
 // ---------------------------------------------------------------------
 function wireStepNavigation() {
   document.querySelectorAll("[data-next]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const target = Number(btn.dataset.next);
-      const currentValid =
-        (Stepper.current === 1 && Form.validateStep1()) ||
-        Stepper.current > 1;
-      if (currentValid) Stepper.goTo(target);
+
+      // Langkah 1 -> 2: validasi field dulu, baru cek duplikat tanggal
+      // ke server. Langkah lain (>1) tidak divalidasi ulang di sini
+      // (step 2 divalidasi terpisah lewat tombol "Lihat Preview").
+      if (Stepper.current === 1) {
+        if (!Form.validateStep1()) return;
+
+        btn.disabled = true;
+        try {
+          const { duplikat, tanggalTampil } = await Form.checkTanggalDuplikat();
+          if (duplikat) {
+            DuplikatTanggalModal.open(tanggalTampil);
+            return; // Batalkan perpindahan step — user harus ganti tanggal.
+          }
+        } finally {
+          btn.disabled = false;
+        }
+      }
+
+      Stepper.goTo(target);
     });
   });
 
@@ -99,13 +143,20 @@ function wirePreviewAndSave() {
       const pdf = await Pdf.build(data);
 
       Busy.show("MENYIMPAN DATA…");
-      await Api.saveSerahTerima(data, pdf);
+      const result = await Api.saveSerahTerima(data, pdf);
 
       Busy.hide();
       document.getElementById("previewOverlay").classList.remove("is-open");
       document.getElementById("previewOverlay").setAttribute("aria-hidden", "true");
       showResult(true, "File Tersimpan di Database");
       Toast.show("Data berhasil disimpan.", "success");
+
+      // Update cache lokal daftar "PDF Tersimpan" supaya kalau user
+      // langsung isi entri baru lagi tanpa reload halaman, pengecekan
+      // duplikat tanggal (Form.checkTanggalDuplikat) langsung tahu
+      // tanggal ini sudah terpakai — tanpa perlu fetch ulang ke server.
+      Form.registerSavedPdf(data.tanggal, data.dinas, data.jenisSerahTerima, result.pdfUrl);
+
       notifyParentPdfSaved();
     } catch (err) {
       Busy.hide();
@@ -194,6 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
   Form.init();
   UploadField.init();
   wireStepNavigation();
+  wireDuplikatTanggalModal();
   wirePreviewAndSave();
   wireReset();
   wireLoginGate();

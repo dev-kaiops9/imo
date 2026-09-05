@@ -64,6 +64,19 @@ const Api = {
   },
 
   /**
+   * Ambil daftar PDF Tersimpan milik satu NIPP dari sheet SerahTerima.
+   * Dipakai untuk widget sidebar "PDF Tersimpan" di dashboard, DAN untuk
+   * validasi tanggal duplikat di halaman ini (lihat Form.checkTanggalDuplikat
+   * di form.js) sebelum user menekan "Lanjut →" pada Langkah 1.
+   * @param {string} nipp
+   * @returns {Promise<{found: boolean, list: Array<{tanggal, dinas, jenisSerahTerima, fileUrl}>}>}
+   */
+  async cekPdfTersimpan(nipp) {
+    const json = await this._post({ action: "cekPdfTersimpan", nipp });
+    return json.data;
+  },
+
+  /**
    * Kirim seluruh data serah terima (form + foto sudah tertempel di PDF
    * base64) ke backend — PDF disimpan ke Google Drive dan baris baru
    * dicatat ke sheet SerahTerima.

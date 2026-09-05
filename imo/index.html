@@ -352,6 +352,35 @@
   <div class="busy-overlay__text" id="busyText">MEMPROSES…</div>
 </div>
 
+<!-- ==================== POPUP TANGGAL SUDAH ADA ====================
+     Muncul ketika user menekan "Lanjut →" di Langkah 1 (Data Dinas)
+     tapi tanggal yang dipilih sudah punya data tersimpan di sheet
+     SerahTerima (dicek lewat action "cekPdfTersimpan" — lihat
+     Form.checkTanggalDuplikat di form.js & wireStepNavigation di
+     main.js). Reuse style popup "danger" yang sudah ada (dipakai juga
+     untuk konfirmasi hapus PDF Tersimpan) supaya konsisten. -->
+<div class="overlay overlay--danger" id="duplikatTanggalOverlay" aria-hidden="true">
+  <div class="doc doc--danger" style="max-width: 440px;">
+    <div class="doc--danger__icon">
+      <i class="fa-solid fa-calendar-xmark"></i>
+    </div>
+    <div class="doc__body" style="padding-top: 8px; text-align: center;">
+      <h2 class="doc--danger__title">Tanggal Sudah Ada</h2>
+      <p class="doc--danger__desc">
+        Data dinasan untuk tanggal <strong id="duplikatTanggalValue">-</strong>
+        sudah tersimpan sebelumnya.
+      </p>
+      <div class="doc--danger__warn">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <span>Pilih tanggal lain, atau hapus dulu data lama di widget "PDF Tersimpan" pada sidebar kanan jika data ini memang perlu diganti.</span>
+      </div>
+    </div>
+    <div class="doc__foot" style="border-top: none; justify-content: center; padding-top: 4px;">
+      <button type="button" class="btn btn--primary" id="btnTutupDuplikatTanggal">Mengerti</button>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== TOASTS ==================== -->
 <div class="toast-stack" id="toastStack"></div>
 
