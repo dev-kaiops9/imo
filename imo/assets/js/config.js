@@ -25,7 +25,16 @@ const CONFIG = {
     // pdf.js) mengasumsikan Pagi/Siang/Malam tetap berjalan seperti semula.
     dinas: ["Pagi", "Siang", "Malam", "LIBUR", "Lainnya"],
     jenisSerahTerima: ["Awal Dinas", "Akhir Dinas", "Serah Terima Dinasan"],
+    // BARU — khusus mode "Stasiun Tempat Wakilan" (lihat MODE_* di bawah).
+    // Tidak dipakai sama sekali oleh mode Kedudukan.
+    wakilan: ["PPKA", "PLR", "PRS", "PJL"],
   },
+
+  // BARU — dua mode form Langkah 1 (lihat Form.mode/Form.setMode di form.js).
+  // "kedudukan" = form asli (tidak berubah sama sekali). "wakilan" = form
+  // yang sama + 2 field tambahan (Stasiun Tempat Wakilan, Wakilan).
+  MODE_KEDUDUKAN: "kedudukan",
+  MODE_WAKILAN: "wakilan",
 
   // Pilihan dinas dengan alur khusus (bukan Pagi/Siang/Malam biasa).
   // Dipakai oleh form.js untuk mengunci Jenis Serah Terima & menyembunyikan
@@ -63,6 +72,18 @@ const CONFIG = {
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yy = String(d.getFullYear()).slice(-2);
     return `${dd}-${mm}-${yy} (${dinas}).pdf`;
+  },
+
+  // BARU — format nama file PDF khusus mode "Stasiun Tempat Wakilan":
+  // dd-mm-yyyy (Wakilan StasiunTempatWakilan Dinas).pdf
+  // Terpisah sepenuhnya dari buildPdfFileName() di atas — mode Kedudukan
+  // TIDAK tersentuh sama sekali oleh fungsi ini.
+  buildPdfFileNameWakilan(tanggalISO, wakilan, stasiunTempatWakilan, dinas) {
+    const d = new Date(tanggalISO + "T00:00:00");
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy} (${wakilan} ${stasiunTempatWakilan} ${dinas}).pdf`;
   },
 
   // Isi kolom "Kegiatan" otomatis mengikuti dropdown Dinas

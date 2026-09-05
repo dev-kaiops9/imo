@@ -144,7 +144,13 @@ const Pdf = {
       }
     }
 
-    const fileName = CONFIG.buildPdfFileName(data.tanggal, data.dinas);
+    // BARU — nama file bercabang sesuai mode (lihat Form.mode/collect()).
+    // Mode Kedudukan (data.mode !== MODE_WAKILAN, termasuk semua pemanggil
+    // lama yang belum mengirim field "mode") tetap memakai buildPdfFileName()
+    // yang sama persis seperti sebelumnya.
+    const fileName = data.mode === CONFIG.MODE_WAKILAN
+      ? CONFIG.buildPdfFileNameWakilan(data.tanggal, data.wakilan, data.stasiunTempatWakilan, data.dinas)
+      : CONFIG.buildPdfFileName(data.tanggal, data.dinas);
     const blob = doc.output("blob");
     const base64 = doc.output("datauristring").split(",")[1];
 

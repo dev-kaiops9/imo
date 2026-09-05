@@ -179,7 +179,6 @@
     </button>
     <button type="button" class="mode-switcher__tab" id="modeTabWakilan" data-mode="wakilan" role="tab" aria-selected="false">
       Stasiun Tempat Wakilan
-      <span class="mode-switcher__badge">SEGERA</span>
     </button>
   </div>
 
@@ -214,6 +213,27 @@
         </div>
       </div>
       <p class="panel__hint">Tentukan jadwal dan jenis serah terima yang dilakukan.</p>
+
+      <!-- BARU — hanya tampil saat mode "Stasiun Tempat Wakilan" (lihat
+           Form.setMode di form.js). Disembunyikan lewat class "hidden",
+           sama seperti pola fieldDinasLainnya di bawah. -->
+      <div class="field-row hidden" id="fieldRowWakilan">
+        <div class="field">
+          <label class="field__label" for="stasiunTempatWakilan">Stasiun Tempat Wakilan <span class="req">*</span></label>
+          <div class="field__control">
+            <input type="text" id="stasiunTempatWakilan" class="input" placeholder="Contoh: Glenmore atau GLM" autocomplete="off" />
+            <div id="stasiunTempatWakilanSuggest" class="hidden" style="position:absolute; left:0; right:0; z-index:20; margin-top:4px; background:#fff; border:1.5px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(15,23,42,0.12); max-height:192px; overflow-y:auto;"></div>
+          </div>
+          <div class="field__error" id="err-stasiunTempatWakilan">Stasiun Tempat Wakilan wajib dipilih dari daftar.</div>
+        </div>
+        <div class="field">
+          <label class="field__label" for="wakilan">Wakilan <span class="req">*</span></label>
+          <select id="wakilan" class="select">
+            <option value="">Pilih wakilan</option>
+          </select>
+          <div class="field__error" id="err-wakilan">Wakilan wajib dipilih.</div>
+        </div>
+      </div>
 
       <div class="field-row">
         <div class="field">
@@ -312,17 +332,9 @@
   </main>
 
   </div>
-  <!-- /modeContentKedudukan -->
-
-  <!-- ==================== MODE: STASIUN TEMPAT WAKILAN ====================
-       Form untuk mode ini belum dibuat — sengaja hanya placeholder dulu. -->
-  <div class="hidden" id="modeContentWakilan">
-    <div class="mode-placeholder">
-      <div class="mode-placeholder__icon"><i class="fa-solid fa-screwdriver-wrench"></i></div>
-      <div class="mode-placeholder__title">Masih Tahap Pengembangan</div>
-      <div class="mode-placeholder__text">Form untuk mode Stasiun Tempat Wakilan sedang disiapkan. Silakan gunakan mode Stasiun Kedudukan untuk saat ini.</div>
-    </div>
-  </div>
+  <!-- /modeContentKedudukan — sekarang dipakai BERSAMA oleh kedua mode
+       (Kedudukan & Wakilan reuse form yang sama persis; lihat Form.setMode
+       di form.js untuk field tambahan yang muncul/hilang sesuai mode). -->
 
   </div>
 </div>
@@ -400,26 +412,21 @@
 <script src="assets/js/main.js"></script>
 
 <!-- ==================== MODE SWITCHER SCRIPT ====================
-     Toggle tampilan antara mode "Stasiun Kedudukan" (form yang sudah
-     ada) dan "Stasiun Tempat Wakilan" (placeholder). Berdiri sendiri,
-     tidak menyentuh logic form.js/main.js lain. -->
+     Toggle tab aktif + delegasikan ke Form.setMode() (form.js) yang
+     menampilkan/menyembunyikan field tambahan (Stasiun Tempat Wakilan,
+     Wakilan) di Langkah 1. Form Kedudukan sendiri tidak digandakan. -->
 <script>
   (function () {
     var tabKedudukan = document.getElementById('modeTabKedudukan');
     var tabWakilan = document.getElementById('modeTabWakilan');
-    var contentKedudukan = document.getElementById('modeContentKedudukan');
-    var contentWakilan = document.getElementById('modeContentWakilan');
 
     function setMode(mode) {
       var isKedudukan = mode === 'kedudukan';
-
       tabKedudukan.classList.toggle('is-active', isKedudukan);
       tabWakilan.classList.toggle('is-active', !isKedudukan);
       tabKedudukan.setAttribute('aria-selected', String(isKedudukan));
       tabWakilan.setAttribute('aria-selected', String(!isKedudukan));
-
-      contentKedudukan.classList.toggle('hidden', !isKedudukan);
-      contentWakilan.classList.toggle('hidden', isKedudukan);
+      if (typeof Form !== 'undefined' && Form.setMode) Form.setMode(mode);
     }
 
     tabKedudukan.addEventListener('click', function () { setMode('kedudukan'); });

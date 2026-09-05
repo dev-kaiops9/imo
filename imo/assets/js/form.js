@@ -24,12 +24,19 @@ const Form = {
   // "gabung" — lihat CONFIG.MAPPING).
   _JENIS_KHUSUS: "Serah Terima Dinasan",
 
+  // BARU — mode Langkah 1: CONFIG.MODE_KEDUDUKAN (default, form asli TIDAK
+  // berubah) atau CONFIG.MODE_WAKILAN (form yang sama + 2 field tambahan).
+  mode: null,
+
   init() {
+    this.mode = CONFIG.MODE_KEDUDUKAN;
     this._populateSelect("dinas", CONFIG.OPTIONS.dinas);
     this._populateSelect("jenisSerahTerima", CONFIG.OPTIONS.jenisSerahTerima);
+    this._populateSelect("wakilan", CONFIG.OPTIONS.wakilan);
     this._wireLiveValidationClear();
     this._wireDinasMode();
     this._applyDinasMode(); // set tampilan awal (dinas belum dipilih -> mode normal)
+    this._wireStasiunWakilanAutocomplete();
     const loggedIn = this.loadSession();
 
     // Ambil daftar "PDF Tersimpan" di LATAR BELAKANG begitu halaman dibuka
@@ -135,6 +142,116 @@ const Form = {
     hintLibur.classList.toggle("hidden", !isLibur);
   },
 
+  // -----------------------------------------------------------------------
+  // BARU — Mode "Stasiun Tempat Wakilan" (Langkah 1)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Ganti mode aktif. Hanya menampilkan/menyembunyikan field-row tambahan
+   * (#fieldRowWakilan) di Langkah 1 — TIDAK menyentuh field/alur lain sama
+   * sekali. Dipanggil dari skrip mode switcher di index.html saat user
+   * klik tab.
+   */
+  setMode(mode) {
+    this.mode = mode === CONFIG.MODE_WAKILAN ? CONFIG.MODE_WAKILAN : CONFIG.MODE_KEDUDUKAN;
+    const isWakilan = this.mode === CONFIG.MODE_WAKILAN;
+    const row = document.getElementById("fieldRowWakilan");
+    if (row) row.classList.toggle("hidden", !isWakilan);
+
+    if (isWakilan) {
+      this._prefetchDaftarStasiun();
+    } else {
+      // Balik ke Kedudukan: bersihkan error field Wakilan supaya tidak
+      // "nyangkut" kalau user sempat coba Lanjut di mode Wakilan lalu
+      // pindah kembali ke Kedudukan.
+      this._clearFieldError("stasiunTempatWakilan");
+      this._clearFieldError("wakilan");
+    }
+  },
+
+  // Cache daftar MasterStasiun (reuse action backend "getDaftarStasiun",
+  // sama seperti dipakai form pendaftaran di root index.html & bulanan.js).
+  _daftarStasiunCache: [],
+  _daftarStasiunLoaded: false,
+  _daftarStasiunPromise: null,
+
+  _prefetchDaftarStasiun() {
+    if (this._daftarStasiunLoaded || this._daftarStasiunPromise) return this._daftarStasiunPromise;
+    this._daftarStasiunPromise = Api.getDaftarStasiun()
+      .then((data) => {
+        this._daftarStasiunCache = Array.isArray(data) ? data : [];
+        this._daftarStasiunLoaded = true;
+        return this._daftarStasiunCache;
+      })
+      .catch((err) => {
+        console.warn("Gagal memuat daftar stasiun:", err.message);
+        this._daftarStasiunPromise = null; // izinkan coba lagi nanti
+        return [];
+      });
+    return this._daftarStasiunPromise;
+  },
+
+  _cariSaranStasiun(query) {
+    const q = String(query || "").trim().toLowerCase();
+    if (!q) return [];
+    return this._daftarStasiunCache
+      .filter((s) => (s.nama || "").toLowerCase().includes(q) || (s.kode || "").toLowerCase().includes(q))
+      .slice(0, 8);
+  },
+
+  /** Cocokkan input dengan entri MasterStasiun (Nama ATAU Kode), abaikan besar/kecil huruf. */
+  _cariStasiunTerdaftar(inputStasiun) {
+    const namaInput = String(inputStasiun || "").trim().toLowerCase();
+    const kodeInput = namaInput;
+    if (!namaInput) return null;
+    return this._daftarStasiunCache.find((s) => {
+      const namaCocok = String(s.nama || "").trim().toLowerCase() === namaInput;
+      const kodeCocok = s.kode && String(s.kode).trim().toLowerCase() === kodeInput;
+      return namaCocok || kodeCocok;
+    }) || null;
+  },
+
+  _wireStasiunWakilanAutocomplete() {
+    const input = document.getElementById("stasiunTempatWakilan");
+    const suggestBox = document.getElementById("stasiunTempatWakilanSuggest");
+    if (!input || !suggestBox) return;
+
+    const renderSuggest = () => {
+      const matches = this._cariSaranStasiun(input.value);
+      if (!matches.length) {
+        suggestBox.classList.add("hidden");
+        suggestBox.innerHTML = "";
+        return;
+      }
+      suggestBox.innerHTML = matches.map((s) => {
+        const nama = String(s.nama || "").replace(/"/g, "&quot;");
+        const kode = String(s.kode || "").replace(/"/g, "&quot;");
+        return `<button type="button" data-nama="${nama}" style="width:100%; text-align:left; padding:8px 14px; font-size:13.5px; background:transparent; border:none; border-bottom:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+          <span>${nama}</span>${kode ? `<span style="font-size:11px; color:var(--ink-300); font-family:var(--font-mono);">${kode}</span>` : ""}
+        </button>`;
+      }).join("");
+      suggestBox.classList.remove("hidden");
+    };
+
+    input.addEventListener("input", renderSuggest);
+    input.addEventListener("focus", renderSuggest);
+
+    // 'mousedown' (bukan 'click') supaya kejadian sebelum 'blur' pada input.
+    suggestBox.addEventListener("mousedown", (e) => {
+      const btn = e.target.closest("button[data-nama]");
+      if (!btn) return;
+      e.preventDefault();
+      input.value = btn.getAttribute("data-nama");
+      suggestBox.classList.add("hidden");
+      suggestBox.innerHTML = "";
+      this._clearFieldError("stasiunTempatWakilan");
+    });
+
+    input.addEventListener("blur", () => {
+      setTimeout(() => suggestBox.classList.add("hidden"), 150);
+    });
+  },
+
   /** Ambil user aktif dari sesi Login. Return true jika ada & valid. */
   loadSession() {
     this.currentUser = this._readSession();
@@ -189,7 +306,7 @@ const Form = {
   },
 
   _wireLiveValidationClear() {
-    ["dinas", "tanggal", "jenisSerahTerima", "dinasLainnya"].forEach((id) => {
+    ["dinas", "tanggal", "jenisSerahTerima", "dinasLainnya", "stasiunTempatWakilan", "wakilan"].forEach((id) => {
       const el = document.getElementById(id);
       el.addEventListener("input", () => this._clearFieldError(id));
       el.addEventListener("change", () => this._clearFieldError(id));
@@ -231,6 +348,25 @@ const Form = {
 
     if (!dinas || !tanggal || !jenis) ok = false;
     if (isLainnya && !dinasLainnya) ok = false;
+
+    // BARU — 2 field tambahan HANYA divalidasi saat mode Wakilan. Mode
+    // Kedudukan tidak tersentuh sama sekali oleh blok ini.
+    if (this.mode === CONFIG.MODE_WAKILAN) {
+      const stasiunWakilanInput = document.getElementById("stasiunTempatWakilan").value.trim();
+      const wakilan = document.getElementById("wakilan").value;
+      // Fail-open kalau daftar MasterStasiun belum/gagal dimuat (mis.
+      // jaringan lambat) — sama seperti pola validasiStasiunTerdaftar()
+      // di form pendaftaran (root index.html), supaya user tidak terkunci
+      // gara-gara error jaringan, bukan gara-gara stasiunnya salah.
+      const stasiunValid = !this._daftarStasiunLoaded || !this._daftarStasiunCache.length
+        || !!this._cariStasiunTerdaftar(stasiunWakilanInput);
+
+      this._setFieldError("stasiunTempatWakilan", !stasiunWakilanInput || !stasiunValid);
+      this._setFieldError("wakilan", !wakilan);
+      if (!stasiunWakilanInput || !stasiunValid) ok = false;
+      if (!wakilan) ok = false;
+    }
+
     if (!ok) Toast.show("Lengkapi data dinas terlebih dahulu.", "error");
     return ok;
   },
@@ -263,7 +399,15 @@ const Form = {
 
     try {
       const list = await this._prefetchSavedPdfList();
-      const sudahAda = (list || []).some((item) => item.tanggal === tanggalTampil);
+      // BARU — dibedakan per mode: entri Wakilan (stasiunTempatWakilan
+      // terisi) tidak dianggap bentrok dengan entri Kedudukan di tanggal
+      // yang sama, dan sebaliknya — keduanya kejadian yang berbeda.
+      const isWakilanMode = this.mode === CONFIG.MODE_WAKILAN;
+      const sudahAda = (list || []).some((item) => {
+        if (item.tanggal !== tanggalTampil) return false;
+        const itemIsWakilan = !!item.stasiunTempatWakilan;
+        return itemIsWakilan === isWakilanMode;
+      });
       return { duplikat: sudahAda, tanggalTampil };
     } catch (err) {
       // Gagal cek ke server (mis. jaringan bermasalah) — jangan blokir
@@ -320,7 +464,7 @@ const Form = {
     const user = this.currentUser || {};
     const dinas = document.getElementById("dinas").value;
     const dinasLainnya = document.getElementById("dinasLainnya").value.trim();
-    return {
+    const data = {
       nipp: user.nipp || "",
       nama: user.nama || "",
       jabatan: user.jabatan || "",
@@ -331,7 +475,16 @@ const Form = {
       jenisSerahTerima: jenis,
       employeeFound: this.employeeFound,
       mapping,
+      mode: this.mode,
     };
+    // BARU — hanya diisi saat mode Wakilan; mode Kedudukan tidak membawa
+    // field ini sama sekali (undefined), jadi Api.saveSerahTerima() dan
+    // Pdf.build() tetap berjalan persis seperti semula untuk Kedudukan.
+    if (this.mode === CONFIG.MODE_WAKILAN) {
+      data.stasiunTempatWakilan = document.getElementById("stasiunTempatWakilan").value.trim();
+      data.wakilan = document.getElementById("wakilan").value;
+    }
+    return data;
   },
 
   reset() {
@@ -339,5 +492,11 @@ const Form = {
     ["dinas", "jenisSerahTerima"].forEach((id) => (document.getElementById(id).value = ""));
     document.getElementById("jenisSerahTerima").disabled = false;
     this._applyDinasMode();
+    // BARU — bersihkan 2 field tambahan juga (tidak berpengaruh apa pun
+    // saat mode Kedudukan karena field-nya memang tersembunyi).
+    const stasiunWakilanEl = document.getElementById("stasiunTempatWakilan");
+    const wakilanEl = document.getElementById("wakilan");
+    if (stasiunWakilanEl) stasiunWakilanEl.value = "";
+    if (wakilanEl) wakilanEl.value = "";
   },
 };
