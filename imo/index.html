@@ -257,7 +257,11 @@
         <div class="field__error" id="err-dinasLainnya">Isi Dinas/Kegiatan wajib diisi.</div>
       </div>
 
-      <div class="field">
+      <!-- BARU — disembunyikan lewat class "hidden" saat jabatan user (dari
+           sesi login) adalah PLR/PRS/PJL (mode Kedudukan), atau saat mode
+           Wakilan dan jabatan user BUKAN PPKA. Lihat
+           Form._refreshJenisSerahTerimaState di form.js. -->
+      <div class="field" id="fieldJenisSerahTerima">
         <label class="field__label" for="jenisSerahTerima">Jenis Serah Terima <span class="req">*</span></label>
         <select id="jenisSerahTerima" class="select">
           <option value="">Pilih jenis serah terima</option>

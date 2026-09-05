@@ -39,6 +39,9 @@ const Form = {
     // BARU — jenisSerahTerima sekarang juga menentukan blok upload mana
     // yang tampil di Langkah 2 (lihat _applyUploadVisibility di bawah).
     document.getElementById("jenisSerahTerima").addEventListener("change", () => this._applyUploadVisibility());
+    // BARU — pilihan "Wakilan" ikut menentukan status dropdown Jenis Serah
+    // Terima saat jabatan user PPKA (lihat _refreshJenisSerahTerimaState).
+    document.getElementById("wakilan").addEventListener("change", () => this._refreshJenisSerahTerimaState());
     this._applyDinasMode(); // set tampilan awal (dinas belum dipilih -> mode normal)
     this._wireStasiunWakilanAutocomplete();
     const loggedIn = this.loadSession();
@@ -117,7 +120,6 @@ const Form = {
     const isLainnya = dinas === CONFIG.DINAS_KHUSUS.LAINNYA;
     const isKhusus = isLibur || isLainnya;
 
-    const jenisSelect = document.getElementById("jenisSerahTerima");
     const fieldDinasLainnya = document.getElementById("fieldDinasLainnya");
     const fieldFotoDokumentasi = document.getElementById("fieldFotoDokumentasi");
     const hintLibur = document.getElementById("hintLiburNoUpload");
@@ -126,21 +128,77 @@ const Form = {
     fieldDinasLainnya.classList.toggle("hidden", !isLainnya);
     if (!isLainnya) this._clearFieldError("dinasLainnya");
 
-    // Jenis Serah Terima: dikunci otomatis untuk LIBUR & Lainnya, bebas dipilih
-    // seperti semula untuk Pagi/Siang/Malam/kosong.
-    if (isKhusus) {
-      jenisSelect.value = this._JENIS_KHUSUS;
-      jenisSelect.disabled = true;
-      this._clearFieldError("jenisSerahTerima");
-    } else {
-      jenisSelect.disabled = false;
-    }
+    // Jenis Serah Terima: dikunci otomatis untuk LIBUR & Lainnya (dan juga
+    // untuk aturan jabatan/wakilan — lihat _refreshJenisSerahTerimaState),
+    // bebas dipilih seperti semula untuk Pagi/Siang/Malam/kosong.
+    this._refreshJenisSerahTerimaState();
 
     // Langkah 2 — Upload Foto Dokumentasi Kegiatan:
     // LIBUR -> sembunyikan (tidak perlu foto sama sekali).
     // Lainnya/Pagi/Siang/Malam/kosong -> tampilkan (existing).
     fieldFotoDokumentasi.classList.toggle("hidden", isLibur);
     hintLibur.classList.toggle("hidden", !isLibur);
+  },
+
+  /**
+   * BARU — menentukan status dropdown "Jenis Serah Terima" berdasarkan
+   * gabungan 2 aturan:
+   *
+   * 1) Aturan Dinas (existing, TIDAK berubah): LIBUR/Lainnya mengunci nilai
+   *    ke "Stasiun Buka" & menonaktifkan dropdown.
+   *
+   * 2) Aturan Jabatan/Wakilan (BARU):
+   *    - Mode "Stasiun Kedudukan": jika jabatan user (dari sesi login)
+   *      adalah PLR/PRS/PJL -> SEMBUNYIKAN dropdown, default "Stasiun Buka".
+   *      Jika jabatan PPKA -> dropdown aktif normal (tidak disentuh).
+   *    - Mode "Stasiun Tempat Wakilan":
+   *        * Jika jabatan user BUKAN PPKA (PLR/PRS/PJL) -> SEMBUNYIKAN
+   *          dropdown, default "Stasiun Buka".
+   *        * Jika jabatan user PPKA:
+   *            - Dropdown "Wakilan" = PPKA -> dropdown Jenis Serah Terima
+   *              aktif normal (Stasiun Buka & Stasiun Tutup).
+   *            - Dropdown "Wakilan" = PLR/PRS/PJL (atau belum dipilih)
+   *              -> NONAKTIFKAN (disabled, tetap terlihat) dropdown Jenis
+   *              Serah Terima, default "Stasiun Buka".
+   *
+   * Kedua aturan digabung: dropdown dikunci ke "Stasiun Buka" jika salah
+   * satu aturan mengunci (dinas khusus ATAU jabatan/wakilan), dan hanya
+   * disembunyikan sepenuhnya jika aturan jabatan/wakilan secara spesifik
+   * meminta "hidden".
+   */
+  _refreshJenisSerahTerimaState() {
+    const dinas = document.getElementById("dinas").value;
+    const isDinasKhusus = dinas === CONFIG.DINAS_KHUSUS.LIBUR || dinas === CONFIG.DINAS_KHUSUS.LAINNYA;
+
+    const jabatan = this.currentUser && this.currentUser.jabatan;
+    const isPPKA = jabatan === "PPKA";
+
+    // 'normal' = dropdown bebas dipilih user (tunduk pada aturan dinas di atas).
+    // 'disabled' = dropdown terlihat tapi nonaktif, nilai dikunci "Stasiun Buka".
+    // 'hidden' = seluruh field disembunyikan, nilai dikunci "Stasiun Buka".
+    let jabatanState;
+    if (this.mode === CONFIG.MODE_WAKILAN) {
+      if (!isPPKA) {
+        jabatanState = "hidden";
+      } else {
+        const wakilanVal = document.getElementById("wakilan").value;
+        jabatanState = wakilanVal === "PPKA" ? "normal" : "disabled";
+      }
+    } else {
+      jabatanState = isPPKA ? "normal" : "hidden";
+    }
+
+    const jenisSelect = document.getElementById("jenisSerahTerima");
+    const jenisField = document.getElementById("fieldJenisSerahTerima");
+    const forceBuka = isDinasKhusus || jabatanState !== "normal";
+
+    if (jenisField) jenisField.classList.toggle("hidden", jabatanState === "hidden");
+    jenisSelect.disabled = forceBuka;
+
+    if (forceBuka) {
+      jenisSelect.value = this._JENIS_KHUSUS; // "Stasiun Buka"
+      this._clearFieldError("jenisSerahTerima");
+    }
 
     // Blok upload Foto Serah Terima (Stasiun Buka, 1 foto) vs blok Awal
     // Dinas + Akhir Dinas (Stasiun Tutup, 2 foto) — lihat _applyUploadVisibility.
@@ -197,6 +255,11 @@ const Form = {
       this._clearFieldError("stasiunTempatWakilan");
       this._clearFieldError("wakilan");
     }
+
+    // BARU — aturan tampilan Jenis Serah Terima berbeda antara mode
+    // Kedudukan & Wakilan (tergantung jabatan user & pilihan Wakilan),
+    // lihat _refreshJenisSerahTerimaState.
+    this._refreshJenisSerahTerimaState();
   },
 
   // Cache daftar MasterStasiun (reuse action backend "getDaftarStasiun",
@@ -301,6 +364,11 @@ const Form = {
       notLoggedIn.classList.add("hidden");
       mainFormArea.classList.remove("hidden");
       stepperNav.classList.remove("hidden");
+
+      // BARU — jabatan baru diketahui setelah sesi termuat, jadi aturan
+      // tampilan Jenis Serah Terima (lihat _refreshJenisSerahTerimaState)
+      // baru bisa diterapkan di sini, bukan saat init() awal.
+      this._refreshJenisSerahTerimaState();
       return true;
     }
 
