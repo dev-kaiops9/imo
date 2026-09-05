@@ -17,20 +17,30 @@
 // s.d. ±31 file harian + Cover/SmartCard/Daftar Hadir) tidak pernah
 // mendekati batas blob keras Apps Script (50MB).
 //
-// Target lunak 1MB/hari × 31 hari ≈ 31MB, jauh di bawah 50MB — beri
-// banyak ruang untuk halaman Cover/SmartCard/Daftar Hadir + overhead.
-// Batas keras 1,1MB dijaga lewat reserve overhead tabel/teks di bawah
-// target, BUKAN dengan upscale kualitas balik kalau kelewat (JPEG tidak
-// bisa "kurang dari 0" — pada kualitas & DPI terendah di tangga di bawah,
-// foto asli manapun praktis sudah jauh di bawah budget ini).
-const PDF_HARIAN_TARGET_BYTES = 1000 * 1024; // ~1MB — target yang DIKEJAR
-const PDF_HARIAN_HARD_CAP_BYTES = Math.round(1.1 * 1024 * 1024); // 1,1MB — ambang peringatan
+// DIUBAH — target dinaikkan dari 1MB ke 1,5MB/hari (permintaan: hasil foto
+// serah terima harus lebih tajam saat di-zoom). Perhitungan margin bulanan:
+// 1,5MB × 31 hari ≈ 46,5MB, masih di bawah 50MB — sisa ±3,5MB untuk halaman
+// Cover/SmartCard/Daftar Hadir (masing-masing dikompres terpisah di
+// bulanan.js, biasanya jauh di bawah itu) + overhead base64. Kalau ke
+// depan overhead bulanan mulai mepet (mis. banyak baris "Lainnya" dengan
+// teks panjang, atau SmartCard/Daftar Hadir foto besar), turunkan lagi
+// angka ini secukupnya.
+// Batas keras dijaga lewat reserve overhead tabel/teks di bawah target,
+// BUKAN dengan upscale kualitas balik kalau kelewat (JPEG tidak bisa
+// "kurang dari 0" — pada kualitas & DPI terendah di tangga di bawah, foto
+// asli manapun praktis sudah jauh di bawah budget ini).
+const PDF_HARIAN_TARGET_BYTES = 1500 * 1024; // ~1,5MB — target yang DIKEJAR
+const PDF_HARIAN_HARD_CAP_BYTES = Math.round(1.65 * 1024 * 1024); // ~1,65MB (rasio sama seperti sebelumnya: 1,1x target) — ambang peringatan
 const PDF_OVERHEAD_RESERVE_BYTES = 40 * 1024; // cadangan vektor tabel/teks jsPDF (kecil, tapi disisihkan)
-// Tangga DPI dicoba dari yang PALING TINGGI dulu (paling tajam) — turun
-// hanya kalau kualitas terendah di tangga itu MASIH kelewat jatah.
-const FOTO_DPI_CANDIDATES = [300, 250, 200, 150];
+// DIUBAH — tangga DPI ditambah 350 di puncak (dicoba dari yang PALING
+// TINGGI dulu, paling tajam) supaya dengan budget yang lebih besar sekarang
+// foto bisa bertahan di resolusi lebih tinggi sebelum turun tangga; turun
+// hanya kalau kualitas terendah di tangga itu MASIH kelewat jatah. _compressForBudget
+// TIDAK PERNAH upscale, jadi 350 hanya kepakai kalau foto sumbernya memang
+// beresolusi cukup (foto kamera & hasil convert PDF 450 DPI biasanya cukup).
+const FOTO_DPI_CANDIDATES = [350, 300, 250, 200, 150];
 const FOTO_QUALITY_MIN = 0.4;
-const FOTO_QUALITY_MAX = 0.92;
+const FOTO_QUALITY_MAX = 0.95; // dinaikkan dari 0,92 — budget lebih besar, kualitas puncak boleh lebih tinggi
 const FOTO_QUALITY_BINARY_STEPS = 6; // ~0,008 resolusi kualitas — cukup halus
 
 const Pdf = {
@@ -184,7 +194,7 @@ const Pdf = {
       );
       if (typeof Toast !== "undefined") {
         Toast.show(
-          `PDF harian ini ${(blob.size / 1024 / 1024).toFixed(2)}MB, sedikit di atas target 1,1MB (foto kemungkinan sangat detail).`,
+          `PDF harian ini ${(blob.size / 1024 / 1024).toFixed(2)}MB, sedikit di atas target ${(PDF_HARIAN_HARD_CAP_BYTES / 1024 / 1024).toFixed(2)}MB (foto kemungkinan sangat detail).`,
           "warn"
         );
       }
