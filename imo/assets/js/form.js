@@ -168,8 +168,8 @@ const Form = {
   _readSession() {
     try {
       const raw = window.parent && window.parent !== window
-        ? window.parent.localStorage.getItem(SESSION_STORAGE_KEY)
-        : localStorage.getItem(SESSION_STORAGE_KEY);
+        ? window.parent.sessionStorage.getItem(SESSION_STORAGE_KEY)
+        : sessionStorage.getItem(SESSION_STORAGE_KEY);
       const user = JSON.parse(raw);
       if (user && user.nama && user.nipp) return user;
     } catch (err) {

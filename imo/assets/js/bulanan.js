@@ -157,8 +157,8 @@ const Session = {
   _read() {
     try {
       const raw = window.parent && window.parent !== window
-        ? window.parent.localStorage.getItem(SESSION_STORAGE_KEY)
-        : localStorage.getItem(SESSION_STORAGE_KEY);
+        ? window.parent.sessionStorage.getItem(SESSION_STORAGE_KEY)
+        : sessionStorage.getItem(SESSION_STORAGE_KEY);
       const user = JSON.parse(raw);
       if (user && user.nama && user.nipp) return user;
     } catch (err) { /* sesi rusak -> anggap belum login */ }
@@ -760,12 +760,17 @@ const SavedPdfList = {
       return list;
     }
 
-    wrap.innerHTML = list.map((item) => `
+    wrap.innerHTML = list.map((item) => {
+      const isLibur = item.dinas === "LIBUR";
+      const dinasBadgeClass = isLibur
+        ? "bg-rose-100 text-rose-600"
+        : "bg-indigo-100 text-indigo-700";
+      return `
       <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm" data-file-url="${item.fileUrl ? this._escapeAttr(item.fileUrl) : ""}">
         <div class="min-w-0">
           <p class="text-[11px] font-bold text-slate-700 font-mono truncate">${item.tanggal}</p>
           <div class="flex items-center gap-1.5 mt-0.5">
-            <span class="text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full shrink-0">${item.dinas}</span>
+            <span class="text-[9px] ${dinasBadgeClass} font-bold px-1.5 py-0.5 rounded-full shrink-0">${item.dinas}</span>
             <span class="text-[10px] text-slate-500 truncate">${item.jenisSerahTerima}</span>
           </div>
         </div>
@@ -778,7 +783,8 @@ const SavedPdfList = {
             : `<span class="text-[10px] text-slate-300">Tidak ada</span>`}
         </div>
       </div>
-    `).join("");
+    `;
+    }).join("");
 
     this._wireDeleteButtons();
     return list;

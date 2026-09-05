@@ -890,12 +890,17 @@
         return;
       }
 
-      wrap.innerHTML = list.map((item) => `
+      wrap.innerHTML = list.map((item) => {
+        const isLibur = item.dinas === 'LIBUR';
+        const dinasBadgeClass = isLibur
+          ? 'bg-rose-100 text-rose-600'
+          : 'bg-indigo-100 text-indigo-700';
+        return `
         <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm" data-file-url="${item.fileUrl ? escapeAttr_(item.fileUrl) : ''}">
           <div class="min-w-0">
             <p class="text-[11px] font-bold text-slate-700 font-mono truncate">${item.tanggal}</p>
             <div class="flex items-center gap-1.5 mt-0.5">
-              <span class="text-[9px] bg-indigo-100 text-indigo-700 font-bold px-1.5 py-0.5 rounded-full shrink-0">${item.dinas}</span>
+              <span class="text-[9px] ${dinasBadgeClass} font-bold px-1.5 py-0.5 rounded-full shrink-0">${item.dinas}</span>
               <span class="text-[10px] text-slate-500 truncate">${item.jenisSerahTerima}</span>
             </div>
           </div>
@@ -908,7 +913,8 @@
               : `<span class="text-[10px] text-slate-300">Tidak ada</span>`}
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       wireSavedPdfDeleteButtons();
     }
@@ -1040,7 +1046,7 @@
     // baru) supaya daftar di widget langsung ter-update tanpa perlu reload.
     window.refreshSavedPdfWidget = function () {
       try {
-        const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+        const savedUser = JSON.parse(sessionStorage.getItem(LOGIN_STORAGE_KEY));
         if (savedUser && savedUser.nipp) loadSavedPdfWidget(savedUser);
       } catch (err) { /* abaikan data sesi yang rusak */ }
     };
@@ -1365,7 +1371,7 @@
     function handleLoginConfirmed() {
       if (!pendingUser) return;
       applyLoggedInUI(pendingUser);
-      localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(pendingUser));
+      sessionStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(pendingUser));
       closeLoginModal();
       showToast(`Selamat datang, ${pendingUser.nama}!`);
 
@@ -1644,7 +1650,7 @@
         const user = { nama: data.nama, nipp: data.nipp, jabatan: data.jabatan, stasiun: data.stasiun };
 
         applyLoggedInUI(user);
-        localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(user));
+        sessionStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(user));
         closeLoginModal();
         showToast(`Pendaftaran berhasil. Selamat datang, ${user.nama}!`);
         // "daftarPegawai" sudah menambah Counter di backend — sinkronkan
@@ -1713,7 +1719,7 @@
     // field ke data user yang sedang login), lalu kembali ke MODE LIHAT.
     function cancelProfilEdit() {
       try {
-        const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+        const savedUser = JSON.parse(sessionStorage.getItem(LOGIN_STORAGE_KEY));
         populateProfilForm(savedUser);
       } catch (err) {
         populateProfilForm(null);
@@ -1739,7 +1745,7 @@
     async function handleSaveProfil(e) {
       e.preventDefault();
 
-      const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY) || 'null');
+      const savedUser = JSON.parse(sessionStorage.getItem(LOGIN_STORAGE_KEY) || 'null');
       if (!savedUser || !savedUser.nipp) {
         showProfilError('Sesi login tidak ditemukan. Silakan login ulang.');
         return;
@@ -1767,7 +1773,7 @@
         // seperti alur pendaftaran.
         const updatedUser = { nama: data.nama, nipp: data.nipp, jabatan: data.jabatan, stasiun: data.stasiun };
 
-        localStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(updatedUser));
+        sessionStorage.setItem(LOGIN_STORAGE_KEY, JSON.stringify(updatedUser));
         applyLoggedInUI(updatedUser);
         populateProfilForm(updatedUser);
         setProfilEditMode(false);
@@ -1847,7 +1853,7 @@
         </button>
       `;
 
-      localStorage.removeItem(LOGIN_STORAGE_KEY);
+      sessionStorage.removeItem(LOGIN_STORAGE_KEY);
       showToast('Anda telah keluar dari akun.');
     }
 
@@ -1874,7 +1880,7 @@
       if (tabId === 'profil') {
         let hasSession = false;
         try {
-          const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+          const savedUser = JSON.parse(sessionStorage.getItem(LOGIN_STORAGE_KEY));
           hasSession = !!(savedUser && savedUser.nipp);
         } catch (err) { /* abaikan data sesi yang rusak */ }
         if (!hasSession) tabId = 'dashboard';
@@ -1957,7 +1963,7 @@
         // Selalu isi ulang form dengan data user AKTIF (bukan cache lama)
         // dan mulai dari MODE LIHAT setiap kali menu ini dibuka.
         try {
-          const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+          const savedUser = JSON.parse(sessionStorage.getItem(LOGIN_STORAGE_KEY));
           populateProfilForm(savedUser);
         } catch (err) {
           populateProfilForm(null);
@@ -1968,7 +1974,7 @@
         headerActions.classList.remove('hidden');
       }
 
-      localStorage.setItem(TAB_STORAGE_KEY, tabId);
+      sessionStorage.setItem(TAB_STORAGE_KEY, tabId);
     }
 
     // Salin nomor WhatsApp developer ke clipboard (dari menu About | Data Backup)
@@ -2181,14 +2187,14 @@
       // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap
       // terlihat login di semua menu, termasuk setelah refresh halaman.
       try {
-        const savedUser = JSON.parse(localStorage.getItem(LOGIN_STORAGE_KEY));
+        const savedUser = JSON.parse(sessionStorage.getItem(LOGIN_STORAGE_KEY));
         if (savedUser && savedUser.nama) {
           applyLoggedInUI(savedUser);
         }
       } catch (err) { /* abaikan data sesi yang rusak */ }
 
       // Pulihkan menu terakhir yang aktif.
-      const savedTab = localStorage.getItem(TAB_STORAGE_KEY) || 'dashboard';
+      const savedTab = sessionStorage.getItem(TAB_STORAGE_KEY) || 'dashboard';
       selectTab(savedTab);
     });
   </script>
