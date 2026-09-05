@@ -495,18 +495,33 @@
       </div>
 
       <!-- ===== Widget khusus menu IMO (Per Hari & Per Bulan):
-           PDF Tersimpan — muncul otomatis begitu user login, berisi daftar
-           seluruh PDF serah terima milik user tersebut, terurut tanggal
-           termuda dulu lalu Dinas Pagi -> Siang -> Malam dalam tanggal
-           yang sama. Tidak tampil di menu Serah Terima PDF / PDF to A4,
-           yang menampilkan widget Kalender & Informasi Akun sebagai
+           "DATA STASIUN KEDUDUKAN" / "DATA STASIUN WAKILAN" — muncul
+           otomatis begitu user login, berisi daftar PDF serah terima milik
+           user tersebut, terurut tanggal termuda dulu lalu Dinas Pagi ->
+           Siang -> Malam dalam tanggal yang sama.
+           DIUBAH — dulu bernama statis "PDF Tersimpan" & selalu menampilkan
+           SEMUA baris (Kedudukan + Wakilan tercampur). Sekarang judul & isi
+           listnya mengikuti mode aktif (lihat savedPdfMode/setSavedPdfMode
+           di bawah): "DATA STASIUN KEDUDUKAN" -> hanya baris dengan
+           stasiunTempatWakilan KOSONG (perilaku list lama, sebelum ada
+           fitur Wakilan). "DATA STASIUN WAKILAN" -> hanya baris dengan
+           stasiunTempatWakilan TERISI (PDF yang tersimpan di sub-folder
+           Wakilan di Drive), plus badge nama stasiun wakilannya per kartu.
+           Di sub-menu Per Hari, mode ini otomatis mengikuti tab mode yang
+           dipilih di form (dikirim iframe lewat postMessage
+           'imoModeChanged' — lihat listener 'message' di bawah). Di
+           sub-menu Per Bulan, untuk saat ini SELALU default ke "DATA
+           STASIUN KEDUDUKAN" (Per Bulan belum punya tab mode sendiri) —
+           lihat pemanggilan setSavedPdfMode('kedudukan') di selectTab().
+           Tidak tampil di menu Serah Terima PDF / PDF to A4, yang
+           menampilkan widget Kalender & Informasi Akun sebagai
            gantinya. ===== -->
       <div id="toolRightWidgets" class="flex-1 min-h-0 flex flex-col">
         <div id="savedPdfWidget" class="hidden flex-col gap-3 p-5 bg-gradient-to-br from-indigo-50/90 to-slate-50 rounded-3xl border border-indigo-100 shadow-sm transition-all duration-300 flex-1 min-h-0">
           <div class="flex items-center justify-between pb-3 border-b border-indigo-100 shrink-0">
             <div class="flex items-center gap-2">
               <i class="fa-solid fa-file-pdf text-indigo-500 text-sm"></i>
-              <span class="text-xs font-bold text-slate-700 tracking-wider uppercase">PDF Tersimpan</span>
+              <span id="savedPdfWidgetTitle" class="text-xs font-bold text-slate-700 tracking-wider uppercase">DATA STASIUN KEDUDUKAN</span>
             </div>
             <span id="savedPdfCount" class="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full">0</span>
           </div>
@@ -851,6 +866,30 @@
     let savedPdfAllList = [];
     let savedPdfCurrentUser = null; // { nipp, ... } — dipakai tombol hapus
 
+    // BARU — mode aktif widget: 'kedudukan' (default) atau 'wakilan'.
+    // Menentukan judul widget ("DATA STASIUN KEDUDUKAN"/"DATA STASIUN
+    // WAKILAN") DAN subset savedPdfAllList yang ditampilkan (lihat
+    // applySavedPdfFilter). Diganti oleh:
+    //  - Listener 'message' (imoModeChanged) saat sub-menu Per Hari aktif
+    //    dan user ganti tab mode di form (atau form baru dimuat).
+    //  - selectTab(), yang untuk saat ini SELALU memaksa 'kedudukan' saat
+    //    masuk sub-menu Per Bulan (Per Bulan belum punya tab mode sendiri
+    //    — lihat TODO di selectTab). Nanti kalau Per Bulan sudah punya tab
+    //    mode Stasiun Tempat Wakilan sendiri, ganti pemaksaan itu dengan
+    //    sinkronisasi yang sama seperti Per Hari.
+    let savedPdfMode = 'kedudukan';
+
+    /** Ganti mode widget: perbarui judul, lalu render ulang list dari cache
+     *  yang sudah ada (tidak fetch ulang ke server — hanya re-filter). */
+    function setSavedPdfMode(mode) {
+      savedPdfMode = mode === 'wakilan' ? 'wakilan' : 'kedudukan';
+      const titleEl = document.getElementById('savedPdfWidgetTitle');
+      if (titleEl) {
+        titleEl.textContent = savedPdfMode === 'wakilan' ? 'DATA STASIUN WAKILAN' : 'DATA STASIUN KEDUDUKAN';
+      }
+      applySavedPdfFilter();
+    }
+
     function populateSavedPdfYearFilter(list) {
       const sel = document.getElementById('savedPdfFilterTahun');
       const prevValue = sel.value;
@@ -865,6 +904,13 @@
       const bulanVal = document.getElementById('savedPdfFilterBulan').value;
       const tahunVal = document.getElementById('savedPdfFilterTahun').value;
       const filtered = savedPdfAllList.filter((item) => {
+        // BARU — filter mode: stasiunTempatWakilan TERISI = baris mode
+        // Stasiun Tempat Wakilan, KOSONG = baris mode Stasiun Kedudukan
+        // (lihat SERAH_COLS.STASIUN_WAKILAN & cekPdfTersimpan di Code.gs).
+        const isWakilanItem = !!String(item.stasiunTempatWakilan || '').trim();
+        if (savedPdfMode === 'wakilan' && !isWakilanItem) return false;
+        if (savedPdfMode === 'kedudukan' && isWakilanItem) return false;
+
         const t = tanggalParts(item.tanggal);
         if (bulanVal && String(t.mm) !== bulanVal) return false;
         if (tahunVal && String(t.yyyy) !== tahunVal) return false;
@@ -895,13 +941,21 @@
         const dinasBadgeClass = isLibur
           ? 'bg-rose-100 text-rose-600'
           : 'bg-indigo-100 text-indigo-700';
+        // BARU — badge nama stasiun tempat wakilan, hanya muncul saat mode
+        // widget = 'wakilan' (kartu mode Kedudukan tidak berubah tampilannya
+        // sama sekali dari sebelumnya). Berguna kalau user pernah mewakili
+        // di beberapa stasiun berbeda, supaya tiap kartu tetap bisa dibedakan.
+        const wakilanBadge = savedPdfMode === 'wakilan' && item.stasiunTempatWakilan
+          ? `<span class="text-[9px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full shrink-0 truncate max-w-[110px]" title="${escapeAttr_(item.stasiunTempatWakilan)}">${item.stasiunTempatWakilan}</span>`
+          : '';
         return `
         <div class="flex items-center justify-between gap-2 bg-white rounded-2xl border border-slate-100 px-3 py-2.5 shadow-sm" data-file-url="${item.fileUrl ? escapeAttr_(item.fileUrl) : ''}">
           <div class="min-w-0">
             <p class="text-[11px] font-bold text-slate-700 font-mono truncate">${item.tanggal}</p>
-            <div class="flex items-center gap-1.5 mt-0.5">
+            <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
               <span class="text-[9px] ${dinasBadgeClass} font-bold px-1.5 py-0.5 rounded-full shrink-0">${item.dinas}</span>
               <span class="text-[10px] text-slate-500 truncate">${item.jenisSerahTerima}</span>
+              ${wakilanBadge}
             </div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0">
@@ -1869,6 +1923,11 @@
       return tabId === 'imo-per-hari' || tabId === 'imo-per-bulan';
     }
 
+    // BARU — dilacak supaya listener 'message' (imoModeChanged) tahu apakah
+    // sub-menu Per Hari sedang aktif sebelum menerapkan sinyal ganti mode
+    // dari iframe-nya (lihat window.addEventListener('message', ...)).
+    let currentToolTabId = null;
+
     function selectTab(tabId) {
       // Kompatibilitas: sesi lama yang tersimpan di localStorage dengan tab "imo"
       // diarahkan otomatis ke sub-menu default "Per Hari".
@@ -1927,6 +1986,21 @@
 
       pageTitle.textContent = tabTitles[tabId] || 'Tools';
       updateRightWidgetsVisibility(tabId);
+
+      // BARU — reset default mode widget "DATA STASIUN KEDUDUKAN/WAKILAN"
+      // setiap kali (baru) masuk salah satu sub-menu IMO:
+      //  - imo-per-hari: default 'kedudukan' dulu (form di iframe juga
+      //    selalu mulai dari mode Kedudukan) — nilai sebenarnya akan segera
+      //    menyusul lewat postMessage 'imoModeChanged' begitu iframe-nya
+      //    selesai dimuat/user ganti tab di form.
+      //  - imo-per-bulan: SEMENTARA selalu 'kedudukan' (Per Bulan belum
+      //    punya tab mode Stasiun Kedudukan/Stasiun Tempat Wakilan sendiri).
+      //    TODO: kalau Per Bulan sudah punya tab mode sendiri, ganti baris
+      //    ini dengan sinkronisasi via postMessage yang sama seperti Per Hari.
+      // Tidak dipanggil untuk tab lain supaya tidak mengubah apa pun di
+      // luar 2 sub-menu IMO.
+      currentToolTabId = tabId;
+      if (isImoGroupTab(tabId)) setSavedPdfMode('kedudukan');
 
       // Sembunyikan semua view dulu, lalu tampilkan yang sesuai tab aktif.
       dashboardView.classList.add('hidden');
@@ -2080,9 +2154,21 @@
     // Jalur tambahan real-time: jika halaman tool di dalam iframe mengirim
     // window.parent.postMessage({ type: 'usageCounterUpdated' }, '*') setelah
     // sebuah proses selesai, widget langsung sinkron tanpa menunggu polling.
+    //
+    // BARU — 'imoModeChanged' dikirim oleh imo/imo/index.html (form Per
+    // Hari) setiap kali tab mode Stasiun Kedudukan/Stasiun Tempat Wakilan
+    // diklik (dan sekali otomatis saat iframe itu pertama kali dimuat).
+    // Dipakai untuk menyinkronkan judul & isi widget sidebar kanan
+    // ("DATA STASIUN KEDUDUKAN" / "DATA STASIUN WAKILAN") — lihat
+    // setSavedPdfMode(). Hanya diproses kalau sub-menu Per Hari yang
+    // sedang aktif (currentToolTabId), supaya pesan basi dari iframe lama
+    // tidak menimpa widget kalau user sudah keburu pindah ke Per Bulan.
     window.addEventListener('message', (event) => {
-      if (event && event.data && event.data.type === 'usageCounterUpdated') {
+      if (!event || !event.data) return;
+      if (event.data.type === 'usageCounterUpdated') {
         loadUsageCounter();
+      } else if (event.data.type === 'imoModeChanged') {
+        if (currentToolTabId === 'imo-per-hari') setSavedPdfMode(event.data.mode);
       }
     });
 

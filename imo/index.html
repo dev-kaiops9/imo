@@ -461,10 +461,25 @@
       tabKedudukan.setAttribute('aria-selected', String(isKedudukan));
       tabWakilan.setAttribute('aria-selected', String(!isKedudukan));
       if (typeof Form !== 'undefined' && Form.setMode) Form.setMode(mode);
+
+      // BARU — beri tahu dashboard (parent, imo/index.html) supaya widget
+      // sidebar kanan ("DATA STASIUN KEDUDUKAN" / "DATA STASIUN WAKILAN")
+      // ikut berganti judul & isi list-nya. Dibungkus try/catch karena
+      // window.parent bisa melempar error kalau halaman ini kebetulan
+      // dibuka langsung (bukan di dalam iframe dashboard) — pesan itu
+      // aman diabaikan, tidak memengaruhi fungsi form sama sekali.
+      try {
+        window.parent.postMessage({ type: 'imoModeChanged', mode: mode }, '*');
+      } catch (e) { /* diakses di luar iframe dashboard — abaikan */ }
     }
 
     tabKedudukan.addEventListener('click', function () { setMode('kedudukan'); });
     tabWakilan.addEventListener('click', function () { setMode('wakilan'); });
+
+    // BARU — kirim juga sekali saat halaman form ini pertama kali dimuat
+    // (bukan hanya saat user klik tab), supaya dashboard langsung tahu
+    // mode default ("kedudukan") sejak awal tanpa perlu interaksi apa pun.
+    setMode('kedudukan');
   })();
 </script>
 </body>
