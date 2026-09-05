@@ -24,7 +24,14 @@ const CONFIG = {
     // sejumlah logika (lihat DINAS_KHUSUS di bawah, form.js, preview.js,
     // pdf.js) mengasumsikan Pagi/Siang/Malam tetap berjalan seperti semula.
     dinas: ["Pagi", "Siang", "Malam", "LIBUR", "Lainnya"],
-    jenisSerahTerima: ["Awal Dinas", "Akhir Dinas", "Serah Terima Dinasan"],
+    // DIUBAH — sebelumnya 3 pilihan ("Awal Dinas", "Akhir Dinas", "Serah
+    // Terima Dinasan"), sekarang diringkas jadi 2. "Stasiun Tutup"
+    // menggantikan gabungan "Awal Dinas" + "Akhir Dinas" (Langkah 2 langsung
+    // menampilkan kedua upload sekaligus — lihat form.js/upload.js/pdf.js/
+    // preview.js). "Stasiun Buka" menggantikan nama "Serah Terima Dinasan"
+    // (logika/tabel tidak berubah). Dropdown ini dipakai BERSAMA oleh kedua
+    // mode (Kedudukan & Wakilan reuse elemen #jenisSerahTerima yang sama).
+    jenisSerahTerima: ["Stasiun Buka", "Stasiun Tutup"],
     // BARU — khusus mode "Stasiun Tempat Wakilan" (lihat MODE_* di bawah).
     // Tidak dipakai sama sekali oleh mode Kedudukan.
     wakilan: ["PPKA", "PLR", "PRS", "PJL"],
@@ -35,6 +42,12 @@ const CONFIG = {
   // yang sama + 2 field tambahan (Stasiun Tempat Wakilan, Wakilan).
   MODE_KEDUDUKAN: "kedudukan",
   MODE_WAKILAN: "wakilan",
+
+  // BARU — dua pilihan dropdown "Jenis Serah Terima" (lihat OPTIONS di atas).
+  // Konstanta ini dipakai form.js/upload.js/pdf.js/preview.js supaya tidak
+  // ada string "Stasiun Buka"/"Stasiun Tutup" yang diketik berulang-ulang.
+  JENIS_BUKA: "Stasiun Buka",
+  JENIS_TUTUP: "Stasiun Tutup",
 
   // Pilihan dinas dengan alur khusus (bukan Pagi/Siang/Malam biasa).
   // Dipakai oleh form.js untuk mengunci Jenis Serah Terima & menyembunyikan
@@ -47,18 +60,19 @@ const CONFIG = {
 
   // Aturan inti: jenis serah terima -> tabel yang dipakai & kolom foto.
   // Jangan ubah "key" (harus sama persis dengan isi dropdown jenisSerahTerima).
+  // DIUBAH — "Stasiun Tutup" sekarang satu entri yang menggabungkan bekas
+  // "Awal Dinas" + "Akhir Dinas" (kedua kolom foto tetap terpisah di tabel
+  // PDF/preview, lihat getTableColumns() di bawah — hanya dropdownnya yang
+  // digabung). "Stasiun Buka" adalah nama baru dari "Serah Terima Dinasan"
+  // (tabel & kolom TIDAK berubah).
   MAPPING: {
-    "Awal Dinas": {
+    "Stasiun Tutup": {
       tabel: "tabel_dinas_tutup",
-      kolomFotoSerahTerima: "Awal Dinas",
+      kolomFotoAwalDinas: "Awal Dinas",
+      kolomFotoAkhirDinas: "Akhir Dinas",
       kolomFotoDokumentasi: "Dokumentasi Kegiatan",
     },
-    "Akhir Dinas": {
-      tabel: "tabel_dinas_tutup",
-      kolomFotoSerahTerima: "Akhir Dinas",
-      kolomFotoDokumentasi: "Dokumentasi Kegiatan",
-    },
-    "Serah Terima Dinasan": {
+    "Stasiun Buka": {
       tabel: "tabel_dinas_buka",
       kolomFotoSerahTerima: "Serah Terima Dinasan",
       kolomFotoDokumentasi: "Dokumentasi Kegiatan",
@@ -100,26 +114,21 @@ const CONFIG = {
   // layar) dan pdf.js (hasil akhir), supaya keduanya SELALU identik.
   // "w" = proporsi lebar kolom (total per tabel harus berjumlah 1).
   //
-  // "targetKey" (opsional) = key kolom yang menampung foto serah terima
-  // untuk data ini ("awal"/"akhir"/"gabung"). Khusus tabel_dinas_tutup,
-  // dipakai untuk menggeser alokasi lebar antar kolom "Awal Dinas" dan
-  // "Akhir Dinas": kolom yang jadi tujuan foto diperlebar, kolom
-  // pasangannya (yang kosong, tidak dipakai untuk jenis serah terima ini)
-  // disempitkan — total lebar keduanya tetap sama seperti sebelumnya,
-  // jadi kolom lain (Hari/Tanggal, Kegiatan, Dokumentasi Kegiatan) tidak
-  // ikut terpengaruh. tabel_dinas_buka tidak punya sepasang kolom seperti
-  // ini (cuma 1 kolom tujuan foto), jadi lebarnya tetap statis.
-  getTableColumns(tabel, targetKey) {
+  // DIUBAH — dulu kolom "Awal Dinas"/"Akhir Dinas" pada tabel_dinas_tutup
+  // punya lebar asimetris (kolom yang terisi foto diperlebar, pasangannya
+  // yang kosong disempitkan) karena dulu HANYA SALAH SATU yang pernah
+  // terisi dalam satu submit. Sekarang ("Stasiun Tutup") KEDUA kolom
+  // selalu terisi sekaligus dalam satu submit yang sama, jadi lebarnya
+  // dibuat sama rata (masing-masing separuh dari total lebar lama
+  // WIDE+NARROW = 0.34+0.10 = 0.44, supaya kolom lain — Hari/Tanggal,
+  // Kegiatan, Dokumentasi Kegiatan — tidak ikut terpengaruh/bergeser).
+  getTableColumns(tabel) {
     if (tabel === "tabel_dinas_tutup") {
-      const WIDE = 0.34;
-      const NARROW = 0.10;
-      const awalW = targetKey === "akhir" ? NARROW : WIDE;
-      const akhirW = targetKey === "akhir" ? WIDE : NARROW;
       return [
         { key: "hari", label: "Hari, Tanggal", w: 0.14 },
         { key: "kegiatan", label: "Kegiatan", w: 0.10 },
-        { key: "awal", label: "Awal Dinas", w: awalW },
-        { key: "akhir", label: "Akhir Dinas", w: akhirW },
+        { key: "awal", label: "Awal Dinas", w: 0.22 },
+        { key: "akhir", label: "Akhir Dinas", w: 0.22 },
         { key: "dok", label: "Dokumentasi Kegiatan", w: 0.32 },
       ];
     }
@@ -131,13 +140,14 @@ const CONFIG = {
     ];
   },
 
-  // Nama kolom foto (target) untuk setiap jenis serah terima —
-  // dipakai untuk tahu foto "serah terima" harus masuk ke cell mana.
+  // Nama kolom foto (target) untuk jenis serah terima yang HANYA punya
+  // 1 foto serah terima ("Stasiun Buka" -> kolom "gabung"). "Stasiun
+  // Tutup" tidak punya satu targetKey tunggal (2 foto sekaligus: "awal"
+  // & "akhir") — pdf.js/preview.js menangani kasus itu secara khusus,
+  // lihat pengecekan `jenisSerahTerima === CONFIG.JENIS_TUTUP` di sana.
   getTargetPhotoKey(jenisSerahTerima) {
     const map = {
-      "Awal Dinas": "awal",
-      "Akhir Dinas": "akhir",
-      "Serah Terima Dinasan": "gabung",
+      "Stasiun Buka": "gabung",
     };
     return map[jenisSerahTerima];
   },

@@ -182,17 +182,25 @@ const PdfToJpgConverter = {
 };
 
 const UploadField = {
-  // Menyimpan state 2 foto: { file, dataUrl, base64, mimeType, fileName }
+  // Menyimpan state foto: { file, dataUrl, base64, mimeType, fileName }
+  // BARU — fotoAwalDinas & fotoAkhirDinas, khusus jenis "Stasiun Tutup"
+  // (lihat CONFIG.JENIS_TUTUP di config.js) yang butuh 2 foto serah terima
+  // sekaligus. fotoSerahTerima tetap dipakai untuk "Stasiun Buka" (1 foto).
   state: {
     fotoSerahTerima: null,
+    fotoAwalDinas: null,
+    fotoAkhirDinas: null,
     fotoDokumentasi: null,
   },
 
   init() {
-    // Hanya kolom "Foto Serah Terima" yang boleh menerima PDF 2 halaman
-    // (otomatis dikonversi jadi JPG 450 DPI). Kolom "Dokumentasi Kegiatan"
-    // tetap gambar saja.
+    // Kolom "Foto Serah Terima" (Stasiun Buka) serta "Awal Dinas"/"Akhir
+    // Dinas" (Stasiun Tutup) boleh menerima PDF 2 halaman (otomatis
+    // dikonversi jadi JPG 450 DPI) — sama persis mekanismenya. Kolom
+    // "Dokumentasi Kegiatan" tetap gambar saja.
     this._wire("dzSerahTerima", "fileSerahTerima", "thumbSerahTerima", "fotoSerahTerima", { allowPdf: true });
+    this._wire("dzAwalDinas", "fileAwalDinas", "thumbAwalDinas", "fotoAwalDinas", { allowPdf: true });
+    this._wire("dzAkhirDinas", "fileAkhirDinas", "thumbAkhirDinas", "fotoAkhirDinas", { allowPdf: true });
     this._wire("dzDokumentasi", "fileDokumentasi", "thumbDokumentasi", "fotoDokumentasi", { allowPdf: false });
   },
 
@@ -343,10 +351,16 @@ const UploadField = {
 
   reset() {
     this.state.fotoSerahTerima = null;
+    this.state.fotoAwalDinas = null;
+    this.state.fotoAkhirDinas = null;
     this.state.fotoDokumentasi = null;
     const a = document.getElementById("thumbSerahTerima");
     const b = document.getElementById("thumbDokumentasi");
+    const c = document.getElementById("thumbAwalDinas");
+    const d = document.getElementById("thumbAkhirDinas");
     if (a) a.innerHTML = "";
     if (b) b.innerHTML = "";
+    if (c) c.innerHTML = "";
+    if (d) d.innerHTML = "";
   },
 };

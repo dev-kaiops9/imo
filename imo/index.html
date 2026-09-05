@@ -281,6 +281,9 @@
       </div>
       <p class="panel__hint">Unggah bukti serah terima dan dokumentasi kegiatan.</p>
 
+      <!-- Muncul hanya saat Jenis Serah Terima = "Stasiun Buka" (bekas
+           "Serah Terima Dinasan" — 1 foto). Lihat Form._applyUploadVisibility
+           di form.js. -->
       <div class="field" id="fieldFotoSerahTerima">
         <label class="field__label" id="labelFotoSerahTerima">Foto Serah Terima <span class="req">*</span></label>
         <div class="dropzone" id="dzSerahTerima" tabindex="0" role="button" aria-describedby="dzSerahTerimaHint">
@@ -291,6 +294,37 @@
         <input type="file" id="fileSerahTerima" accept="image/*,application/pdf" class="hidden" />
         <div class="thumb-row" id="thumbSerahTerima"></div>
         <div class="field__error" id="err-fotoSerahTerima">Foto serah terima wajib diunggah.</div>
+      </div>
+
+      <!-- BARU — muncul hanya saat Jenis Serah Terima = "Stasiun Tutup"
+           (gabungan bekas "Awal Dinas" + "Akhir Dinas" — 2 foto sekaligus,
+           keduanya wajib). Lihat Form._applyUploadVisibility di form.js. -->
+      <div class="field hidden" id="fieldFotoStasiunTutup">
+        <div class="field__label" style="margin-bottom:10px;">Serah Terima <span class="req">*</span></div>
+
+        <div style="margin-bottom:18px;">
+          <label class="field__label" for="fileAwalDinas">1. Awal Dinas <span class="req">*</span></label>
+          <div class="dropzone" id="dzAwalDinas" tabindex="0" role="button" aria-describedby="dzAwalDinasHint">
+            <div class="dropzone__icon">↑</div>
+            <div class="dropzone__text">Tarik &amp; lepas foto/PDF di sini, atau klik untuk pilih</div>
+            <div class="dropzone__hint" id="dzAwalDinasHint">JPG / PNG, atau PDF 2 halaman (otomatis dikonversi jadi JPG 450 DPI), maks. 15MB</div>
+          </div>
+          <input type="file" id="fileAwalDinas" accept="image/*,application/pdf" class="hidden" />
+          <div class="thumb-row" id="thumbAwalDinas"></div>
+          <div class="field__error" id="err-fotoAwalDinas">Foto Awal Dinas wajib diunggah.</div>
+        </div>
+
+        <div>
+          <label class="field__label" for="fileAkhirDinas">2. Akhir Dinas <span class="req">*</span></label>
+          <div class="dropzone" id="dzAkhirDinas" tabindex="0" role="button" aria-describedby="dzAkhirDinasHint">
+            <div class="dropzone__icon">↑</div>
+            <div class="dropzone__text">Tarik &amp; lepas foto/PDF di sini, atau klik untuk pilih</div>
+            <div class="dropzone__hint" id="dzAkhirDinasHint">JPG / PNG, atau PDF 2 halaman (otomatis dikonversi jadi JPG 450 DPI), maks. 15MB</div>
+          </div>
+          <input type="file" id="fileAkhirDinas" accept="image/*,application/pdf" class="hidden" />
+          <div class="thumb-row" id="thumbAkhirDinas"></div>
+          <div class="field__error" id="err-fotoAkhirDinas">Foto Akhir Dinas wajib diunggah.</div>
+        </div>
       </div>
 
       <div class="field" id="fieldFotoDokumentasi">

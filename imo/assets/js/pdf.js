@@ -54,8 +54,12 @@ const Pdf = {
     const tableTop = marginY;
 
     // ---- Struktur kolom (sumber tunggal: CONFIG, sama dengan preview) ----
+    // targetKey hanya berarti untuk "Stasiun Buka" (1 foto -> kolom
+    // "gabung"). "Stasiun Tutup" ditangani khusus di bawah (2 foto: awal
+    // & akhir sekaligus) — lihat isTutup.
+    const isTutup = data.jenisSerahTerima === CONFIG.JENIS_TUTUP;
     const targetKey = CONFIG.getTargetPhotoKey(data.jenisSerahTerima);
-    const columns = CONFIG.getTableColumns(data.mapping.tabel, targetKey);
+    const columns = CONFIG.getTableColumns(data.mapping.tabel);
     let x = marginX;
     columns.forEach((c) => {
       c.x = x;
@@ -119,20 +123,35 @@ const Pdf = {
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
     } else {
-      // Pagi/Siang/Malam & Lainnya: alur foto existing (foto Serah Terima
-      // kosong/null untuk Lainnya otomatis membuat kolom "gabung" kosong).
-      const croppedSerahTerima = await this._withCroppedDataUrl(photos.fotoSerahTerima);
       const croppedDokumentasi = await this._withCroppedDataUrl(photos.fotoDokumentasi);
 
       // ---- Bagi jatah ukuran (budget) PDF harian ke foto yang aktif ----
-      // Hanya sel yang benar-benar terisi foto yang ikut dibagi jatah;
-      // kalau cuma satu yang terisi (mis. dinas "Lainnya"), semua jatah
-      // dialihkan ke foto itu — sama seperti pola yang sudah dipakai di
-      // migrasi "Kompres PDF Lama" sebelumnya.
-      const slots = [
-        { col: targetCol, photo: croppedSerahTerima },
-        { col: dokCol, photo: croppedDokumentasi },
-      ].filter((s) => s.photo && s.col);
+      // Hanya sel yang benar-benar terisi foto yang ikut dibagi jatah —
+      // sama seperti pola yang sudah dipakai di migrasi "Kompres PDF Lama"
+      // sebelumnya.
+      let slots;
+      if (isTutup) {
+        // Stasiun Tutup: 2 foto serah terima sekaligus (Awal Dinas & Akhir
+        // Dinas), masing-masing masuk kolomnya sendiri — TIDAK digabung
+        // jadi satu kolom (lihat CONFIG.getTableColumns).
+        const croppedAwal = await this._withCroppedDataUrl(photos.fotoAwalDinas);
+        const croppedAkhir = await this._withCroppedDataUrl(photos.fotoAkhirDinas);
+        const awalCol = columns.find((c) => c.key === "awal");
+        const akhirCol = columns.find((c) => c.key === "akhir");
+        slots = [
+          { col: awalCol, photo: croppedAwal },
+          { col: akhirCol, photo: croppedAkhir },
+          { col: dokCol, photo: croppedDokumentasi },
+        ].filter((s) => s.photo && s.col);
+      } else {
+        // Stasiun Buka (& Lainnya, yang otomatis dikunci ke Stasiun Buka
+        // dengan foto Serah Terima kosong/null -> kolom "gabung" kosong).
+        const croppedSerahTerima = await this._withCroppedDataUrl(photos.fotoSerahTerima);
+        slots = [
+          { col: targetCol, photo: croppedSerahTerima },
+          { col: dokCol, photo: croppedDokumentasi },
+        ].filter((s) => s.photo && s.col);
+      }
 
       const totalBudget = PDF_HARIAN_TARGET_BYTES - PDF_OVERHEAD_RESERVE_BYTES;
       const totalActiveWidth = slots.reduce((sum, s) => sum + s.col.width, 0);

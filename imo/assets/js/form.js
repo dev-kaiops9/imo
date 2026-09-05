@@ -20,9 +20,10 @@ const Form = {
   currentUser: null,   // { nama, nipp, jabatan, stasiun } — hasil Session.get()
 
   // Value jenisSerahTerima yang dikunci otomatis untuk dinas LIBUR & Lainnya
-  // (supaya kolom tabel yang dipakai selalu "Serah Terima Dinasan" / kolom
-  // "gabung" — lihat CONFIG.MAPPING).
-  _JENIS_KHUSUS: "Serah Terima Dinasan",
+  // (supaya kolom tabel yang dipakai selalu "Stasiun Buka" / kolom "gabung"
+  // — lihat CONFIG.MAPPING). DIUBAH — dulu "Serah Terima Dinasan", sekarang
+  // nama barunya "Stasiun Buka" (CONFIG.JENIS_BUKA), logika tidak berubah.
+  _JENIS_KHUSUS: CONFIG.JENIS_BUKA,
 
   // BARU — mode Langkah 1: CONFIG.MODE_KEDUDUKAN (default, form asli TIDAK
   // berubah) atau CONFIG.MODE_WAKILAN (form yang sama + 2 field tambahan).
@@ -35,6 +36,9 @@ const Form = {
     this._populateSelect("wakilan", CONFIG.OPTIONS.wakilan);
     this._wireLiveValidationClear();
     this._wireDinasMode();
+    // BARU — jenisSerahTerima sekarang juga menentukan blok upload mana
+    // yang tampil di Langkah 2 (lihat _applyUploadVisibility di bawah).
+    document.getElementById("jenisSerahTerima").addEventListener("change", () => this._applyUploadVisibility());
     this._applyDinasMode(); // set tampilan awal (dinas belum dipilih -> mode normal)
     this._wireStasiunWakilanAutocomplete();
     const loggedIn = this.loadSession();
@@ -100,10 +104,10 @@ const Form = {
   /**
    * Menyesuaikan tampilan form berdasarkan pilihan Dinas saat ini, TANPA
    * mengubah alur existing Pagi/Siang/Malam:
-   * - LIBUR: kunci Jenis Serah Terima ke "Serah Terima Dinasan", sembunyikan
+   * - LIBUR: kunci Jenis Serah Terima ke "Stasiun Buka", sembunyikan
    *   kedua upload foto di Langkah 2.
    * - Lainnya: tampilkan input manual "Isi Dinas/Kegiatan", kunci Jenis
-   *   Serah Terima ke "Serah Terima Dinasan", sembunyikan hanya Upload Foto
+   *   Serah Terima ke "Stasiun Buka", sembunyikan hanya Upload Foto
    *   Serah Terima di Langkah 2 (Upload Foto Dokumentasi Kegiatan tetap ada).
    * - Pagi/Siang/Malam/kosong: semua tampil & berperilaku seperti semula.
    */
@@ -115,7 +119,6 @@ const Form = {
 
     const jenisSelect = document.getElementById("jenisSerahTerima");
     const fieldDinasLainnya = document.getElementById("fieldDinasLainnya");
-    const fieldFotoSerahTerima = document.getElementById("fieldFotoSerahTerima");
     const fieldFotoDokumentasi = document.getElementById("fieldFotoDokumentasi");
     const hintLibur = document.getElementById("hintLiburNoUpload");
 
@@ -133,13 +136,40 @@ const Form = {
       jenisSelect.disabled = false;
     }
 
-    // Langkah 2 — Upload Foto:
-    // LIBUR -> sembunyikan keduanya (tidak perlu foto sama sekali).
-    // Lainnya -> sembunyikan Foto Serah Terima saja.
-    // Pagi/Siang/Malam/kosong -> tampilkan keduanya (existing).
-    fieldFotoSerahTerima.classList.toggle("hidden", isKhusus);
+    // Langkah 2 — Upload Foto Dokumentasi Kegiatan:
+    // LIBUR -> sembunyikan (tidak perlu foto sama sekali).
+    // Lainnya/Pagi/Siang/Malam/kosong -> tampilkan (existing).
     fieldFotoDokumentasi.classList.toggle("hidden", isLibur);
     hintLibur.classList.toggle("hidden", !isLibur);
+
+    // Blok upload Foto Serah Terima (Stasiun Buka, 1 foto) vs blok Awal
+    // Dinas + Akhir Dinas (Stasiun Tutup, 2 foto) — lihat _applyUploadVisibility.
+    this._applyUploadVisibility();
+  },
+
+  /**
+   * BARU — menentukan blok upload mana yang tampil di Langkah 2 berdasarkan
+   * pilihan Jenis Serah Terima saat ini:
+   * - "Stasiun Buka" (termasuk LIBUR/Lainnya yang dikunci ke sini) ->
+   *   tampilkan #fieldFotoSerahTerima (1 upload, mekanisme existing).
+   * - "Stasiun Tutup" -> tampilkan #fieldFotoStasiunTutup (2 upload: Awal
+   *   Dinas + Akhir Dinas sekaligus).
+   * LIBUR tetap menyembunyikan kedua blok (tidak perlu foto serah terima
+   * sama sekali) — ditangani lewat isKhusus/isLibur seperti semula.
+   */
+  _applyUploadVisibility() {
+    const dinas = document.getElementById("dinas").value;
+    const isLibur = dinas === CONFIG.DINAS_KHUSUS.LIBUR;
+    const isLainnya = dinas === CONFIG.DINAS_KHUSUS.LAINNYA;
+    const isKhusus = isLibur || isLainnya;
+    const jenis = document.getElementById("jenisSerahTerima").value;
+    const isTutup = !isKhusus && jenis === CONFIG.JENIS_TUTUP;
+
+    const fieldFotoSerahTerima = document.getElementById("fieldFotoSerahTerima");
+    const fieldFotoStasiunTutup = document.getElementById("fieldFotoStasiunTutup");
+
+    fieldFotoStasiunTutup.classList.toggle("hidden", isKhusus || !isTutup);
+    fieldFotoSerahTerima.classList.toggle("hidden", isKhusus || isTutup);
   },
 
   // -----------------------------------------------------------------------
@@ -429,29 +459,48 @@ const Form = {
     const dinas = document.getElementById("dinas").value;
     const isLibur = dinas === CONFIG.DINAS_KHUSUS.LIBUR;
     const isLainnya = dinas === CONFIG.DINAS_KHUSUS.LAINNYA;
+    const jenis = document.getElementById("jenisSerahTerima").value;
+    // LIBUR/Lainnya selalu terkunci ke CONFIG.JENIS_BUKA (lihat
+    // _applyDinasMode), jadi isTutup otomatis false untuk keduanya.
+    const isTutup = jenis === CONFIG.JENIS_TUTUP;
 
     // LIBUR: tidak perlu foto sama sekali — langsung lolos.
     if (isLibur) return true;
 
     let ok = true;
-    const dzSerahTerima = document.getElementById("dzSerahTerima");
     const dzDokumentasi = document.getElementById("dzDokumentasi");
-
-    // Lainnya: hanya Foto Dokumentasi Kegiatan yang wajib (Foto Serah
-    // Terima disembunyikan, tidak divalidasi).
-    const requireSerahTerima = !isLainnya;
-    const hasSerahTerima = !!UploadField.state.fotoSerahTerima;
     const hasDokumentasi = !!UploadField.state.fotoDokumentasi;
-
-    if (requireSerahTerima) {
-      document.getElementById("err-fotoSerahTerima").style.display = hasSerahTerima ? "none" : "block";
-      dzSerahTerima.classList.toggle("is-invalid", !hasSerahTerima);
-      if (!hasSerahTerima) ok = false;
-    }
-
     document.getElementById("err-fotoDokumentasi").style.display = hasDokumentasi ? "none" : "block";
     dzDokumentasi.classList.toggle("is-invalid", !hasDokumentasi);
     if (!hasDokumentasi) ok = false;
+
+    if (isTutup) {
+      // Stasiun Tutup: Awal Dinas DAN Akhir Dinas dua-duanya wajib — tidak
+      // boleh hanya salah satu (lihat CONFIG.MAPPING["Stasiun Tutup"]).
+      const dzAwal = document.getElementById("dzAwalDinas");
+      const dzAkhir = document.getElementById("dzAkhirDinas");
+      const hasAwal = !!UploadField.state.fotoAwalDinas;
+      const hasAkhir = !!UploadField.state.fotoAkhirDinas;
+
+      document.getElementById("err-fotoAwalDinas").style.display = hasAwal ? "none" : "block";
+      dzAwal.classList.toggle("is-invalid", !hasAwal);
+      if (!hasAwal) ok = false;
+
+      document.getElementById("err-fotoAkhirDinas").style.display = hasAkhir ? "none" : "block";
+      dzAkhir.classList.toggle("is-invalid", !hasAkhir);
+      if (!hasAkhir) ok = false;
+    } else {
+      // Stasiun Buka: Lainnya -> foto serah terima disembunyikan/tidak
+      // wajib (perilaku existing); Pagi/Siang/Malam -> wajib.
+      const requireSerahTerima = !isLainnya;
+      if (requireSerahTerima) {
+        const dzSerahTerima = document.getElementById("dzSerahTerima");
+        const hasSerahTerima = !!UploadField.state.fotoSerahTerima;
+        document.getElementById("err-fotoSerahTerima").style.display = hasSerahTerima ? "none" : "block";
+        dzSerahTerima.classList.toggle("is-invalid", !hasSerahTerima);
+        if (!hasSerahTerima) ok = false;
+      }
+    }
 
     if (!ok) Toast.show("Unggah foto yang wajib sebelum melanjutkan.", "error");
     return ok;

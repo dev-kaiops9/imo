@@ -19,14 +19,17 @@ const Preview = {
     const data = Form.collect();
     const photos = UploadField.state;
 
+    // targetKey hanya berarti untuk "Stasiun Buka" (1 foto -> kolom
+    // "gabung"). "Stasiun Tutup" punya 2 foto sekaligus (awal & akhir) —
+    // lihat isTutup, sama seperti di pdf.js supaya preview & PDF identik.
+    const isTutup = data.jenisSerahTerima === CONFIG.JENIS_TUTUP;
     const targetKey = CONFIG.getTargetPhotoKey(data.jenisSerahTerima);
-    const columns = CONFIG.getTableColumns(data.mapping.tabel, targetKey);
+    const columns = CONFIG.getTableColumns(data.mapping.tabel);
     const tanggalLabel = this._formatTanggalPanjang(data.tanggal);
 
-    const photoByKey = {
-      [targetKey]: photos.fotoSerahTerima,
-      dok: photos.fotoDokumentasi,
-    };
+    const photoByKey = isTutup
+      ? { awal: photos.fotoAwalDinas, akhir: photos.fotoAkhirDinas, dok: photos.fotoDokumentasi }
+      : { [targetKey]: photos.fotoSerahTerima, dok: photos.fotoDokumentasi };
 
     const isLibur = data.dinas === CONFIG.DINAS_KHUSUS.LIBUR;
 
