@@ -359,8 +359,8 @@
      Form.checkTanggalDuplikat di form.js & wireStepNavigation di
      main.js). Reuse style popup "danger" yang sudah ada (dipakai juga
      untuk konfirmasi hapus PDF Tersimpan) supaya konsisten. -->
-<div class="overlay overlay--danger" id="duplikatTanggalOverlay" aria-hidden="true">
-  <div class="doc doc--danger" style="max-width: 440px;">
+<div class="overlay overlay--warning" id="duplikatTanggalOverlay" aria-hidden="true">
+  <div class="doc doc--danger doc--warning" style="max-width: 440px;">
     <div class="doc--danger__icon">
       <i class="fa-solid fa-calendar-xmark"></i>
     </div>
@@ -376,7 +376,7 @@
       </div>
     </div>
     <div class="doc__foot" style="border-top: none; justify-content: center; padding-top: 4px;">
-      <button type="button" class="btn btn--primary" id="btnTutupDuplikatTanggal">Mengerti</button>
+      <button type="button" class="btn btn--warning" id="btnTutupDuplikatTanggal">Mengerti</button>
     </div>
   </div>
 </div>

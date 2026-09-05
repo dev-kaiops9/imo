@@ -965,6 +965,48 @@ input[type="date"]:focus {
 .btn--danger__spinner.hidden { display: none; }
 
 /* ---------------------------------------------------------------------
+   Varian "warning" (kuning/amber) dari popup .doc--danger di atas.
+   Struktur, layout, & animasi "pop" tetap sama persis — class
+   .overlay--warning / .doc--warning di sini HANYA meng-override warnanya
+   dari merah (destruktif) jadi kuning/amber (peringatan/info), karena
+   dipakai untuk kasus yang BUKAN aksi hapus/destruktif, misalnya popup
+   "Tanggal Sudah Ada" di menu IMO Per Hari.
+   --------------------------------------------------------------------- */
+
+.overlay--warning { background: rgba(180, 131, 20, 0.28); }
+
+.doc--warning .doc--danger__icon {
+  background: var(--signal-amber-tint);
+  color: var(--signal-amber);
+  animation: warning-pop 0.4s var(--ease), warning-pulse 2.2s ease-in-out 0.4s infinite;
+}
+
+@keyframes warning-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes warning-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(237, 166, 62, 0.32); }
+  50% { box-shadow: 0 0 0 10px rgba(237, 166, 62, 0); }
+}
+
+.doc--warning .doc--danger__warn {
+  background: var(--signal-amber-tint);
+  color: #8a5c14;
+}
+
+.btn--warning {
+  background: var(--signal-amber);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(237, 166, 62, 0.32);
+  min-width: 118px;
+  justify-content: center;
+}
+.btn--warning:hover { background: #d9922e; }
+
+/* ---------------------------------------------------------------------
    Toast notifications
    --------------------------------------------------------------------- */
 
