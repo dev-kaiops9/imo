@@ -2034,13 +2034,13 @@
       const valueEl = document.getElementById('usageCounterValue');
       const dateEl = document.getElementById('usageCounterDate');
 
-      const BULAN_INDO = [
-        "Januari", "Februari", "Maret", "April", "Mei", "Juni",
-        "Juli", "Agustus", "September", "Oktober", "November", "Desember",
-      ];
-      const now = new Date();
-      const tanggalHariIni = `${String(now.getDate()).padStart(2, '0')} ${BULAN_INDO[now.getMonth()]} ${now.getFullYear()}`;
-      if (dateEl) dateEl.innerText = `per ${tanggalHariIni}`;
+      // Tanggal ini SENGAJA di-fix (bukan tanggal hari ini / new Date()),
+      // karena penghitungan counter di sheet "Counter" sudah berjalan
+      // terhitung sejak web ini mulai dipakai, yaitu 01 September 2026.
+      // Kalau nanti mau reset/mulai hitung ulang dari tanggal lain, cukup
+      // ubah string di bawah ini.
+      const USAGE_COUNTER_SINCE = "01 September 2026";
+      if (dateEl) dateEl.innerText = `per ${USAGE_COUNTER_SINCE}`;
 
       try {
         const data = await callBackend({ action: 'getCounter' });
