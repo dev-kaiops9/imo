@@ -17,6 +17,54 @@
 <!-- Pakai stylesheet yang sama dengan menu "Per Hari" supaya tampilan (panel,
      field, dropzone, tombol, dsb) senada persis. -->
 <link rel="stylesheet" href="assets/css/style.css" />
+
+<!-- ==================== MODE SWITCHER (Stasiun Kedudukan / Stasiun Tempat
+     Wakilan) — style disalin PERSIS dari imo/index.html (menu Per Hari)
+     supaya tampilan tab mode senada, termasuk warna/efek "glass shadow". -->
+<style>
+  .mode-switcher {
+    display: flex;
+    gap: 6px;
+    padding: 6px;
+    margin-bottom: 20px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow:
+      0 8px 28px rgba(79, 70, 229, 0.12),
+      inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+  .mode-switcher__tab {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 14px;
+    border: none;
+    border-radius: 13px;
+    background: transparent;
+    color: #64748b;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  }
+  .mode-switcher__tab:hover:not(.is-active) {
+    background: rgba(99, 102, 241, 0.08);
+    color: #4f46e5;
+  }
+  .mode-switcher__tab.is-active {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+  }
+  .mode-switcher__tab:active { transform: scale(0.98); }
+</style>
 </head>
 <body>
 
@@ -56,10 +104,25 @@
     </div>
   </div>
 
+  <!-- ==================== MODE SWITCHER ====================
+       Dua mode: "Stasiun Kedudukan" (default, tampilan Cover IMO & filter
+       PDF Tersimpan tidak berubah dari sebelumnya) dan "Stasiun Tempat
+       Wakilan" (Cover IMO dapat 1 dropdown tambahan, filter PDF Tersimpan
+       ikut disaring berdasarkan stasiun yang dipilih). Pilihan mode murni
+       tampilan sisi client. -->
+  <div class="mode-switcher" id="modeSwitcher" role="tablist" aria-label="Mode rekap bulanan">
+    <button type="button" class="mode-switcher__tab is-active" id="modeTabKedudukan" data-mode="kedudukan" role="tab" aria-selected="true">
+      Stasiun Kedudukan
+    </button>
+    <button type="button" class="mode-switcher__tab" id="modeTabWakilan" data-mode="wakilan" role="tab" aria-selected="false">
+      Stasiun Tempat Wakilan
+    </button>
+  </div>
+
   <!-- ==================== KONTEN UTAMA (tampil setelah login) ==================== -->
   <main id="mainFormArea">
 
-    <!-- ---------- 1. COVER: BULAN & TAHUN ---------- -->
+    <!-- ---------- 1. COVER: (STASIUN TEMPAT WAKILAN) + BULAN & TAHUN ---------- -->
     <section class="panel">
       <div class="panel__header">
         <div>
@@ -67,7 +130,22 @@
           <h2 class="panel__title">Cover IMO</h2>
         </div>
       </div>
-      <p class="panel__hint">Pilih bulan &amp; tahun rekap — dipakai untuk mengisi cover, dan sekaligus jadi filter daftar PDF tersimpan di bawah.</p>
+      <p class="panel__hint" id="coverHint">Pilih bulan &amp; tahun rekap — dipakai untuk mengisi cover, dan sekaligus jadi filter daftar PDF tersimpan di bawah.</p>
+
+      <!-- BARU — hanya tampil saat mode "Stasiun Tempat Wakilan". Dropdown
+           ini BUKAN input data baru, murni FILTER: memilih stasiun mana
+           yang PDF harian Wakilan-nya (dari menu Per Hari) mau digabungkan
+           di bawah. Sumber data: sheet MasterStasiun (reuse
+           Api.getDaftarStasiun(), sama seperti dipakai Per Hari). -->
+      <div class="field-row hidden" id="fieldRowStasiunWakilanBulanan">
+        <div class="field">
+          <label class="field__label" for="stasiunWakilanBulanan">Stasiun Tempat Wakilan <span class="req">*</span></label>
+          <div class="field__control">
+            <input type="text" id="stasiunWakilanBulanan" class="input" placeholder="Contoh: Glenmore atau GLM" autocomplete="off" />
+            <div id="stasiunWakilanBulananSuggest" class="hidden" style="position:absolute; left:0; right:0; z-index:20; margin-top:4px; background:#fff; border:1.5px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(15,23,42,0.12); max-height:192px; overflow-y:auto;"></div>
+          </div>
+        </div>
+      </div>
 
       <div class="field-row">
         <div class="field">
@@ -264,5 +342,37 @@
 <!-- ==================== APP SCRIPTS ==================== -->
 <script src="assets/js/config.js"></script>
 <script src="assets/js/bulanan.js"></script>
+
+<!-- ==================== MODE SWITCHER SCRIPT ====================
+     Pola SAMA PERSIS dengan imo/index.html (menu Per Hari): toggle tab
+     aktif, delegasikan ke BulananMode.setMode() (bulanan.js), lalu beri
+     tahu dashboard (parent) lewat postMessage supaya widget sidebar kanan
+     ikut sinkron. -->
+<script>
+  (function () {
+    var tabKedudukan = document.getElementById('modeTabKedudukan');
+    var tabWakilan = document.getElementById('modeTabWakilan');
+
+    function setMode(mode) {
+      var isKedudukan = mode === 'kedudukan';
+      tabKedudukan.classList.toggle('is-active', isKedudukan);
+      tabWakilan.classList.toggle('is-active', !isKedudukan);
+      tabKedudukan.setAttribute('aria-selected', String(isKedudukan));
+      tabWakilan.setAttribute('aria-selected', String(!isKedudukan));
+      if (typeof BulananMode !== 'undefined' && BulananMode.setMode) BulananMode.setMode(mode);
+
+      try {
+        window.parent.postMessage({ type: 'imoModeChanged', mode: mode }, '*');
+      } catch (e) { /* diakses di luar iframe dashboard — abaikan */ }
+    }
+
+    tabKedudukan.addEventListener('click', function () { setMode('kedudukan'); });
+    tabWakilan.addEventListener('click', function () { setMode('wakilan'); });
+
+    // Kirim juga sekali saat halaman ini pertama kali dimuat, supaya
+    // dashboard langsung tahu mode default ("kedudukan") sejak awal.
+    setMode('kedudukan');
+  })();
+</script>
 </body>
 </html>
