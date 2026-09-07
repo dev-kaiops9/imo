@@ -1897,9 +1897,13 @@
       const navProfil = document.getElementById('nav-profil');
       if (navProfil) navProfil.classList.add('hidden');
 
-      // Kalau menu "Profil" sedang aktif saat logout, jangan biarkan halaman
-      // kosong tanpa akses — pindahkan ke Dashboard.
-      if (document.getElementById('profilView') && !document.getElementById('profilView').classList.contains('hidden')) {
+      // Kalau menu "Profil" ATAU salah satu sub-menu IMO (Per Hari/Per Bulan
+      // — keduanya butuh login) sedang aktif saat logout, jangan biarkan
+      // halaman kosong tanpa akses — pindahkan ke Dashboard. selectTab()
+      // otomatis menutup sub-menu IMO di sidebar saat pindah ke tab lain,
+      // jadi menu ikut tertutup tanpa perlu logika tambahan.
+      const profilAktif = document.getElementById('profilView') && !document.getElementById('profilView').classList.contains('hidden');
+      if (profilAktif || isImoGroupTab(currentToolTabId)) {
         selectTab('dashboard');
       }
 
