@@ -282,6 +282,13 @@
           <span class="panel__eyebrow">Langkah 2 dari 3</span>
           <h2 class="panel__title">Unggah Foto</h2>
         </div>
+        <!-- BARU — ringkasan Dinas + Tanggal yang dipilih di Langkah 1,
+             ditampilkan ulang di sini supaya user tidak perlu balik ke
+             Langkah 1 untuk mengecek. Diisi & di-refresh oleh
+             updateDinasSummaryBadge() di main.js setiap kali Langkah 2
+             ditampilkan. Berlaku sama untuk mode Stasiun Kedudukan
+             maupun Stasiun Tempat Wakilan (form yang sama persis). -->
+        <span class="dinas-summary-badge hidden" id="dinasSummaryBadge"></span>
       </div>
       <p class="panel__hint">Unggah bukti serah terima dan dokumentasi kegiatan.</p>
 

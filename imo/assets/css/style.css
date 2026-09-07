@@ -511,6 +511,31 @@ button {
   margin-bottom: 24px;
 }
 
+/* BARU — badge ringkasan "Anda akan mengisi data Dinas X - dd/mm/yyyy"
+   di header Langkah 2 (Unggah Foto). Gaya disamakan dengan pil "Pagi"/
+   "Siang" pada widget "DATA STASIUN KEDUDUKAN/WAKILAN" di dashboard
+   (imo/index.html) — teks biru-ungu (var(--mint-700)) di atas latar
+   pil lembut (var(--mint-100)) dengan bingkai oval. */
+.dinas-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  background: var(--mint-100);
+  color: var(--mint-700);
+  border: 1.5px solid var(--mint-200);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .panel__header { flex-wrap: wrap; }
+  .dinas-summary-badge { white-space: normal; text-align: right; }
+}
+
 /* ---------------------------------------------------------------------
    Form elements
    --------------------------------------------------------------------- */

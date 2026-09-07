@@ -52,9 +52,44 @@ const Stepper = {
       step.classList.toggle("is-done", n < stepNumber);
     });
 
+    // BARU — refresh badge ringkasan "Anda akan mengisi data Dinas X -
+    // dd/mm/yyyy" di header Langkah 2 setiap kali Langkah 2 ditampilkan
+    // (baik maju dari Langkah 1 maupun kembali dari Langkah 3), supaya
+    // selalu sinkron dengan pilihan Dinas & Tanggal terbaru di Langkah 1.
+    if (stepNumber === 2) updateDinasSummaryBadge();
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   },
 };
+
+// ---------------------------------------------------------------------
+// Badge ringkasan Dinas & Tanggal di header Langkah 2 (Unggah Foto) —
+// lihat markup #dinasSummaryBadge di index.html & style .dinas-summary-
+// badge di style.css. Sama-sama dipakai oleh mode Stasiun Kedudukan
+// maupun Stasiun Tempat Wakilan karena form Langkah 1/2 adalah elemen
+// DOM yang sama persis (bukan 2 form terpisah) — tidak perlu logika
+// tambahan untuk membedakan mode.
+// ---------------------------------------------------------------------
+function updateDinasSummaryBadge() {
+  const badge = document.getElementById("dinasSummaryBadge");
+  if (!badge) return;
+
+  const dinasVal = document.getElementById("dinas").value;
+  const manualKegiatan = document.getElementById("dinasLainnya").value;
+  const kegiatan = CONFIG.buildKegiatan(dinasVal, manualKegiatan);
+  const tanggalISO = document.getElementById("tanggal").value;
+  const parts = String(tanggalISO || "").split("-");
+
+  if (!kegiatan || parts.length !== 3) {
+    badge.classList.add("hidden");
+    badge.textContent = "";
+    return;
+  }
+
+  const [yyyy, mm, dd] = parts;
+  badge.textContent = `Anda akan mengisi data ${kegiatan} - ${dd}/${mm}/${yyyy}`;
+  badge.classList.remove("hidden");
+}
 
 // ---------------------------------------------------------------------
 // Popup "Tanggal Sudah Ada" — muncul saat user menekan "Lanjut →" di
