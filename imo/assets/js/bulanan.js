@@ -46,10 +46,17 @@ const DINAS_ORDER = { "Pagi": 0, "Siang": 1, "Malam": 2 };
  * Susun nama file rekap bulanan: (BULAN)_STA (STASIUN)_(NAMA)_(JABATAN)_(NIPP).pdf
  * Contoh: AGUSTUS_STA GLENMORE_BUDI SANTOSO_PPKA_69123.pdf
  * Semua bagian teks (bulan/stasiun/nama/jabatan) diseragamkan ke huruf besar.
+ *
+ * BARU — parameter opsional `stasiunOverride`: dipakai saat mode
+ * "Stasiun Tempat Wakilan" supaya nama file memakai stasiun yang dipilih
+ * di dropdown Stasiun Tempat Wakilan (BulananMode.stasiunWakilan), BUKAN
+ * stasiun kedudukan asli user (user.stasiun). Kalau kosong/undefined
+ * (mode Kedudukan), perilaku persis seperti sebelumnya (pakai user.stasiun).
  */
-function buildNamaFileBulanan_(bulanNama, user) {
+function buildNamaFileBulanan_(bulanNama, user, stasiunOverride) {
   const up = (v) => String(v || "").trim().toUpperCase();
-  return `${up(bulanNama)}_STA ${up(user.stasiun)}_${up(user.nama)}_${up(user.jabatan)}_${up(user.nipp)}.pdf`;
+  const stasiunFile = String(stasiunOverride || "").trim() || user.stasiun;
+  return `${up(bulanNama)}_STA ${up(stasiunFile)}_${up(user.nama)}_${up(user.jabatan)}_${up(user.nipp)}.pdf`;
 }
 
 /**
@@ -991,7 +998,13 @@ const SavedPdfList = {
 //   Hal 4-selesai: gabungan PDF harian (urutan sudah difilter+diurutkan)
 // ---------------------------------------------------------------------
 const PdfBulanan = {
-  async build({ user, bulanNama, tahun, smartcard, daftarHadir, savedList, onProgress }) {
+  // BARU — parameter `stasiunWakilan`: hanya terisi (non-kosong) saat mode
+  // "Stasiun Tempat Wakilan" aktif (lihat wireUnduhImo()). Kalau terisi,
+  // dipakai MENGGANTIKAN user.stasiun untuk (a) field UNIT KERJA di Cover
+  // dan (b) nama file PDF hasil unduhan — supaya keduanya mengikuti stasiun
+  // tempat wakilan yang dipilih, bukan stasiun kedudukan asli user. Mode
+  // Kedudukan (stasiunWakilan kosong/tidak dikirim) perilakunya TIDAK berubah.
+  async build({ user, bulanNama, tahun, smartcard, daftarHadir, savedList, stasiunWakilan, onProgress }) {
     const report = typeof onProgress === "function" ? onProgress : () => {};
 
     const { PDFDocument, StandardFonts, rgb } = PDFLib;
@@ -1003,7 +1016,7 @@ const PdfBulanan = {
 
     // ---- Halaman 1: Cover ----
     const cover = out.addPage(A4_LANDSCAPE);
-    await this._drawCoverPage(out, cover, { fontBold, fontRegular, bulanNama, tahun, user });
+    await this._drawCoverPage(out, cover, { fontBold, fontRegular, bulanNama, tahun, user, stasiunWakilan });
     report(5);
 
     // ---- Halaman 2: Foto SmartCard (landscape) ----
@@ -1089,8 +1102,11 @@ const PdfBulanan = {
     report(92);
     const base64 = await this._toBase64(bytes);
     // Format: (BULAN)_STA (STASIUN)_(NAMA)_(JABATAN)_(NIPP).pdf
-    // Contoh: AGUSTUS_STA GLENMORE_BUDI SANTOSO_PPKA_69123.pdf
-    const fileName = buildNamaFileBulanan_(bulanNama, user);
+    // Contoh mode Kedudukan: AGUSTUS_STA GLENMORE_BUDI SANTOSO_PPKA_69123.pdf
+    // Contoh mode Wakilan  : SEPTEMBER_STA SUMBERWADUNG_BUDI SANTOSO_PPKA_69123.pdf
+    // (STASIUN memakai stasiunWakilan kalau mode Wakilan aktif — lihat
+    // buildNamaFileBulanan_).
+    const fileName = buildNamaFileBulanan_(bulanNama, user, stasiunWakilan);
     return { bytes, base64, fileName };
   },
 
@@ -1113,7 +1129,7 @@ const PdfBulanan = {
    * diganti dengan desain baru yang layout-nya beda, angka-angka ini perlu
    * diukur ulang.
    */
-  async _drawCoverPage(pdfDoc, page, { fontBold, fontRegular, bulanNama, tahun, user }) {
+  async _drawCoverPage(pdfDoc, page, { fontBold, fontRegular, bulanNama, tahun, user, stasiunWakilan }) {
     const { rgb } = PDFLib;
     const { width: pw, height: ph } = page.getSize();
 
@@ -1195,7 +1211,12 @@ const PdfBulanan = {
     // (bukan fallback diam-diam) supaya ketahuan datanya belum lengkap —
     // caller (build IMO bulanan) sudah punya try/catch yang menampilkan
     // pesan ini lewat Toast.
-    const stasiunNama = String(user.stasiun || "").trim();
+    // BARU — mode "Stasiun Tempat Wakilan": UNIT KERJA di cover memakai
+    // stasiun yang dipilih di dropdown Stasiun Tempat Wakilan (parameter
+    // stasiunWakilan), BUKAN stasiun kedudukan asli user (user.stasiun).
+    // Mode Kedudukan (stasiunWakilan kosong) perilakunya sama seperti
+    // sebelumnya — tetap pakai user.stasiun.
+    const stasiunNama = String(stasiunWakilan || "").trim() || String(user.stasiun || "").trim();
     const daftarStasiun = await Api.getDaftarStasiun();
     const stasiunInfo = daftarStasiun.find((s) => s.nama === stasiunNama);
     const kelas = stasiunInfo ? String(stasiunInfo.kelas || "").trim() : "";
@@ -1499,6 +1520,11 @@ function wireUnduhImo() {
         user: Session.current,
         bulanNama,
         tahun,
+        // BARU — hanya dikirim (non-kosong) saat mode "Stasiun Tempat
+        // Wakilan" aktif, supaya nama file & UNIT KERJA di Cover memakai
+        // stasiun wakilan, bukan stasiun kedudukan user (lihat
+        // PdfBulanan.build/_drawCoverPage/buildNamaFileBulanan_).
+        stasiunWakilan: isWakilan ? stasiunWakilan : "",
         smartcard: SmartcardWidget.state.data,
         daftarHadir: UploadSingle.state.daftarHadir,
         savedList,
