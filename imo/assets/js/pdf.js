@@ -42,6 +42,7 @@ const FOTO_DPI_CANDIDATES = [350, 300, 250, 200, 150];
 const FOTO_QUALITY_MIN = 0.4;
 const FOTO_QUALITY_MAX = 0.95; // dinaikkan dari 0,92 — budget lebih besar, kualitas puncak boleh lebih tinggi
 const FOTO_QUALITY_BINARY_STEPS = 6; // ~0,008 resolusi kualitas — cukup halus
+const CELL_PHOTO_PAD_MM = 4; // jarak foto ke tepi sel, dipakai di beberapa tempat (lihat _placeImageInCellBudgeted & _drawCompressedImage)
 
 const Pdf = {
   /**
@@ -164,12 +165,41 @@ const Pdf = {
       }
 
       const totalBudget = PDF_HARIAN_TARGET_BYTES - PDF_OVERHEAD_RESERVE_BYTES;
-      const totalActiveWidth = slots.reduce((sum, s) => sum + s.col.width, 0);
 
-      for (const s of slots) {
-        const share = totalActiveWidth > 0 ? s.col.width / totalActiveWidth : 1;
-        const budgetBytes = Math.max(1, Math.round(totalBudget * share));
-        await this._placeImageInCellBudgeted(doc, s.photo, s.col, bodyTop, rowBodyH, budgetBytes);
+      // BARU — jatah dibagi PROPORSIONAL KE KEBUTUHAN NYATA tiap foto
+      // (_estimateIdealBytes: seberapa besar foto ini kalau dirender di
+      // DPI & kualitas JPEG TERTINGGI, tanpa batas jatah sama sekali),
+      // bukan cuma berdasar lebar kolom tabel seperti sebelumnya. Foto
+      // padat detail (mis. hasil convert PDF scan di Awal/Akhir Dinas)
+      // otomatis "minta" jatah lebih besar dibanding foto polos — dulu
+      // keduanya dipukul rata cuma berdasar lebar kolom, itu salah satu
+      // sebab Awal/Akhir Dinas lebih gampang pecah dibanding Dokumentasi.
+      //
+      // Kalau total kebutuhan SEMUA foto aktif hari ini masih di bawah
+      // jatah harian (mis. Stasiun Buka dengan foto yang sudah ringkas),
+      // semuanya langsung dipakai di kualitas puncak tanpa kompres
+      // tambahan — jatah yang nganggur tidak dibuang percuma.
+      const slotDims = slots.map((s) => ({
+        ...s,
+        maxW: s.col.width - CELL_PHOTO_PAD_MM * 2,
+        maxH: rowBodyH - CELL_PHOTO_PAD_MM * 2,
+      }));
+      const idealResults = await Promise.all(
+        slotDims.map((s) => this._estimateIdealBytes(s.photo.dataUrl, s.photo.mimeType, s.maxW, s.maxH))
+      );
+      const idealTotal = idealResults.reduce((sum, r) => sum + r.bytes, 0);
+
+      if (idealTotal > 0 && idealTotal <= totalBudget) {
+        slotDims.forEach((s, i) => {
+          this._drawCompressedImage(doc, idealResults[i], s.col, bodyTop, s.maxW, s.maxH);
+        });
+      } else {
+        for (let i = 0; i < slotDims.length; i++) {
+          const s = slotDims[i];
+          const share = idealTotal > 0 ? idealResults[i].bytes / idealTotal : 1 / slotDims.length;
+          const budgetBytes = Math.max(1, Math.round(totalBudget * share));
+          await this._placeImageInCellBudgeted(doc, s.photo, s.col, bodyTop, rowBodyH, budgetBytes);
+        }
       }
     }
 
@@ -325,33 +355,36 @@ const Pdf = {
 
   async _placeImageInCellBudgeted(doc, photo, col, bodyTop, rowBodyH, budgetBytes) {
     if (!photo || !col) return;
-    const pad = 4;
-    const maxW = col.width - pad * 2;
-    const maxH = rowBodyH - pad * 2;
+    const maxW = col.width - CELL_PHOTO_PAD_MM * 2;
+    const maxH = rowBodyH - CELL_PHOTO_PAD_MM * 2;
 
     // Foto dicari DPI & kualitas JPEG SETINGGI mungkin yang masih muat
     // jatah (budgetBytes) milik sel ini — lihat _compressForBudget di
     // bawah. Ukuran fisik (maxW x maxH mm) tempat foto digambar di
     // halaman TIDAK berubah; yang disesuaikan hanya resolusi piksel &
     // kualitas kompresi datanya, supaya PDF harian gabungan tetap masuk
-    // jatah ~1MB (batas keras 1,1MB) tanpa foto terlihat pecah/kotak.
-    const { dataUrl: dataUrlForPdf, format } = await this._compressForBudget(
-      photo.dataUrl,
-      photo.mimeType,
-      maxW,
-      maxH,
-      budgetBytes
-    );
+    // jatah ~1,5MB (batas keras ~1,65MB) tanpa foto terlihat pecah/kotak.
+    const result = await this._compressForBudget(photo.dataUrl, photo.mimeType, maxW, maxH, budgetBytes);
+    this._drawCompressedImage(doc, result, col, bodyTop, maxW, maxH);
+  },
 
+  /**
+   * BARU — bagian "gambar ke halaman" dipisah dari `_placeImageInCellBudgeted`
+   * supaya bisa dipakai ulang oleh jalur "ideal" di build() (kasus jatah
+   * harian belum termaksimalkan, hasil _estimateIdealBytes langsung dipakai
+   * tanpa kompres ulang lewat _compressForBudget).
+   */
+  _drawCompressedImage(doc, result, col, bodyTop, maxW, maxH) {
+    const pad = CELL_PHOTO_PAD_MM;
     try {
-      const props = doc.getImageProperties(dataUrlForPdf);
+      const props = doc.getImageProperties(result.dataUrl);
       const ratio = Math.min(maxW / props.width, maxH / props.height);
       const drawW = props.width * ratio;
       const drawH = props.height * ratio;
       const drawX = col.x + pad + (maxW - drawW) / 2;
       const drawY = bodyTop + pad + (maxH - drawH) / 2;
 
-      doc.addImage(dataUrlForPdf, format, drawX, drawY, drawW, drawH, undefined, "NONE");
+      doc.addImage(result.dataUrl, result.format, drawX, drawY, drawW, drawH, undefined, "NONE");
     } catch (e) {
       doc.setFontSize(8);
       doc.text("(gambar tidak dapat ditampilkan)", col.x + pad, bodyTop + pad + 6);
@@ -364,6 +397,61 @@ const Pdf = {
     const b64 = idx >= 0 ? dataUrl.slice(idx + 1) : dataUrl;
     const padding = b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0;
     return Math.max(0, Math.round((b64.length * 3) / 4) - padding);
+  },
+
+  /**
+   * BARU — perkiraan ukuran byte "ideal" 1 foto: dirender SEKALI di DPI &
+   * kualitas JPEG TERTINGGI yang tersedia (tangga teratas FOTO_DPI_CANDIDATES
+   * + FOTO_QUALITY_MAX), TANPA batas jatah byte sama sekali. Dipakai HANYA
+   * untuk mengetahui seberapa besar "kebutuhan" foto ini secara wajar, supaya
+   * pembagian jatah harian ke beberapa foto sekaligus (lihat build()) bisa
+   * proporsional ke kebutuhan nyata tiap foto — bukan cuma lebar kolom
+   * tabelnya seperti sebelumnya. TIDAK PERNAH upscale (sama seperti
+   * _compressForBudget). Kalau render gagal (kasus sangat langka), anggap
+   * kebutuhannya = ukuran data URL asli apa adanya, biar tetap ikut
+   * pembagian jatah secara wajar (tidak sampai bikin proses gagal total).
+   */
+  _estimateIdealBytes(dataUrl, mimeType, targetWmm, targetHmm) {
+    const fallback = () => ({
+      dataUrl,
+      format: mimeType && mimeType.includes("png") ? "PNG" : "JPEG",
+      bytes: this._dataUrlBytes(dataUrl),
+    });
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const isPng = !!(mimeType && mimeType.includes("png"));
+          const dpi = FOTO_DPI_CANDIDATES[0]; // tangga tertinggi
+          const maxWpx = Math.max(1, Math.round((targetWmm / 25.4) * dpi));
+          const maxHpx = Math.max(1, Math.round((targetHmm / 25.4) * dpi));
+          const scale = Math.min(1, maxWpx / img.width, maxHpx / img.height); // jangan upscale
+          const outW = Math.max(1, Math.round(img.width * scale));
+          const outH = Math.max(1, Math.round(img.height * scale));
+
+          const canvas = document.createElement("canvas");
+          canvas.width = outW;
+          canvas.height = outH;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("Canvas 2D context tidak tersedia.");
+          ctx.fillStyle = "#FFFFFF";
+          ctx.fillRect(0, 0, outW, outH);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = "high";
+          ctx.drawImage(img, 0, 0, outW, outH);
+
+          const outType = isPng ? "image/png" : "image/jpeg";
+          const url = isPng ? canvas.toDataURL(outType) : canvas.toDataURL(outType, FOTO_QUALITY_MAX);
+          if (!url || url === "data:,") throw new Error("Gagal render.");
+
+          resolve({ dataUrl: url, format: isPng ? "PNG" : "JPEG", bytes: this._dataUrlBytes(url) });
+        } catch (e) {
+          resolve(fallback());
+        }
+      };
+      img.onerror = () => resolve(fallback());
+      img.src = dataUrl;
+    });
   },
 
   /**
