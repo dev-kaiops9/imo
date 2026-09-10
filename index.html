@@ -533,7 +533,7 @@
             </select>
           </div>
 
-          <div id="savedPdfListWrap" class="flex flex-col gap-2 overflow-y-auto pr-1 max-h-[440px]">
+          <div id="savedPdfListWrap" class="flex flex-col gap-2 overflow-y-auto pr-1 flex-1 min-h-0">
             <div class="text-center py-6 text-xs text-slate-400">Belum ada PDF tersimpan.</div>
           </div>
         </div>
@@ -863,6 +863,17 @@
     // ---------------------------------------------------------------------
     let savedPdfAllList = [];
     let savedPdfCurrentUser = null; // { nipp, ... } — dipakai tombol hapus
+    // Penomor permintaan loadSavedPdfWidget() — dipakai supaya kalau ada
+    // beberapa panggilan yang tumpang tindih (mis. user submit beberapa
+    // entri Per Hari berturut-turut lewat "Buat Serah Terima Baru", tiap
+    // sukses simpan memanggil refreshSavedPdfWidget()), HANYA hasil dari
+    // panggilan PALING BARU yang boleh menulis ke wrap/savedPdfAllList.
+    // Tanpa ini, respons yang datang belakangan (baik sukses maupun
+    // gagal/network error) bisa menimpa hasil yang lebih baru walau
+    // permintaannya sendiri lebih lama/lebih dulu dikirim — itulah sebabnya
+    // widget kadang tampil "Gagal memuat riwayat PDF" atau data basi
+    // padahal request terakhir sebenarnya berhasil.
+    let savedPdfLoadSeq = 0;
 
     // Mode aktif widget: 'kedudukan' (default) atau 'wakilan'. Menentukan
     // judul widget ("DATA STASIUN KEDUDUKAN"/"DATA STASIUN WAKILAN") DAN
@@ -1075,6 +1086,12 @@
       if (!user || !user.nipp) return;
       savedPdfCurrentUser = user;
 
+      // Tandai permintaan ini sebagai yang terbaru — respons dari
+      // permintaan-permintaan sebelumnya yang belum selesai (kalau ada)
+      // akan diabaikan begitu mereka selesai, lihat pengecekan `mySeq`
+      // di bawah.
+      const mySeq = ++savedPdfLoadSeq;
+
       document.getElementById('savedPdfLoggedOutHint').classList.add('hidden');
       const widget = document.getElementById('savedPdfWidget');
       widget.classList.remove('hidden');
@@ -1085,10 +1102,12 @@
 
       try {
         const data = await callBackend({ action: 'cekPdfTersimpan', nipp: user.nipp });
+        if (mySeq !== savedPdfLoadSeq) return; // ada permintaan lebih baru — buang hasil ini.
         savedPdfAllList = (data && data.list) || [];
         populateSavedPdfYearFilter(savedPdfAllList);
         applySavedPdfFilter();
       } catch (err) {
+        if (mySeq !== savedPdfLoadSeq) return; // ada permintaan lebih baru — buang error basi ini.
         wrap.innerHTML = `<div class="text-center py-6 text-xs text-rose-400">Gagal memuat riwayat PDF: ${err.message}</div>`;
       }
     }

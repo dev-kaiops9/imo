@@ -170,7 +170,20 @@ function wirePreviewAndSave() {
     document.getElementById("previewOverlay").setAttribute("aria-hidden", "true");
   });
 
+  let isSavingSerahTerima = false; // guard eksplisit — jangan andalkan
+  // busyOverlay saja untuk mencegah submit dobel. Overlay butuh 1 siklus
+  // render utk pointer-events:auto benar-benar aktif, dan di sebagian
+  // browser mobile (tap cepat berulang saat isi banyak entri "Per Hari"
+  // lewat tombol "Buat Serah Terima Baru") jeda itu cukup untuk tap kedua
+  // lolos sebelum overlay menutup tombol, menghasilkan 2x Api.saveSerahTerima
+  // untuk data yang sama. Flag ini menutup klik kedua sejak awal, sebelum
+  // baris kode apa pun (termasuk Busy.show) sempat jalan.
   document.getElementById("btnSavePreview").addEventListener("click", async () => {
+    if (isSavingSerahTerima) return;
+    isSavingSerahTerima = true;
+    const btnSave = document.getElementById("btnSavePreview");
+    btnSave.disabled = true;
+
     const data = Form.collect();
 
     try {
@@ -196,6 +209,9 @@ function wirePreviewAndSave() {
     } catch (err) {
       Busy.hide();
       Toast.show("Gagal menyimpan: " + err.message, "error");
+    } finally {
+      isSavingSerahTerima = false;
+      btnSave.disabled = false;
     }
   });
 }
