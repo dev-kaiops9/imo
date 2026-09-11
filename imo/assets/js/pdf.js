@@ -9,6 +9,27 @@
  *
  * Dipanggil sebagai Pdf.build(data) dari main.js — foto diambil langsung
  * dari UploadField.state (sudah berisi dataUrl/base64 hasil upload.js).
+ *
+ * DIUBAH — sel Awal Dinas / Akhir Dinas / Serah Terima yang sumbernya PDF
+ * (UploadField.state.*.isVector === true) TIDAK LAGI dirender sebagai
+ * gambar JPG. Proses build() sekarang 2 tahap:
+ *   1. Tabel + teks + foto-foto RASTER (Dokumentasi Kegiatan, atau
+ *      Awal/Akhir/Serah Terima yang memang diunggah sebagai foto biasa,
+ *      bukan PDF) digambar seperti biasa lewat jsPDF — sel milik foto
+ *      VEKTOR sengaja dikosongkan dulu.
+ *   2. Dokumen jsPDF itu dimuat ulang lewat pdf-lib, lalu untuk tiap sel
+ *      vektor: PDF sumbernya (2 halaman) ditempel LANGSUNG sebagai objek
+ *      vektor (pdfDoc.embedPage + page.drawPage) ke koordinat sel yang
+ *      sama, disusun bertumpuk (halaman 1 di atas, halaman 2 di bawah,
+ *      persis seperti tampilan thumbnail-nya) — hasilnya tetap tajam
+ *      sempurna di zoom berapa pun karena tidak pernah melalui rasterisasi.
+ * Vektor tidak bisa "dikompres" seperti JPEG, jadi ukurannya (bytes PDF
+ * sumber apa adanya) dikurangkan lebih dulu dari jatah ukuran harian
+ * SEBELUM sisanya dibagi ke foto-foto raster (lihat totalBudget di build()).
+ * Kalau PDF sumber suatu sel ternyata sangat besar sampai tidak lagi
+ * menyisakan jatah wajar untuk Dokumentasi Kegiatan, sel itu FALLBACK ke
+ * cara lama (dirender jadi gambar terkompresi) khusus untuk hari itu,
+ * dengan peringatan lewat Toast — lihat _resolvePhotoSlots().
  * -----------------------------------------------------------------------
  */
 
@@ -43,6 +64,17 @@ const FOTO_QUALITY_MIN = 0.4;
 const FOTO_QUALITY_MAX = 0.95; // dinaikkan dari 0,92 — budget lebih besar, kualitas puncak boleh lebih tinggi
 const FOTO_QUALITY_BINARY_STEPS = 6; // ~0,008 resolusi kualitas — cukup halus
 const CELL_PHOTO_PAD_MM = 4; // jarak foto ke tepi sel, dipakai di beberapa tempat (lihat _placeImageInCellBudgeted & _drawCompressedImage)
+
+// ---- Konstanta khusus penempelan PDF sumber sebagai vektor ----
+const MM_TO_PT = 72 / 25.4;
+// Jarak antar 2 halaman PDF sumber saat ditumpuk dalam 1 sel (setara
+// dividerGap di PdfToJpgConverter.upload.js: dpi*0.04 px @ dpi px/inch
+// = 0,04 inci = 0,04*72 pt).
+const VECTOR_STACK_GAP_PT = 0.04 * 72;
+// Jatah minimum yang tetap disisihkan untuk Dokumentasi Kegiatan (raster)
+// sebelum sebuah sel vektor dianggap "terlalu besar" dan di-fallback jadi
+// gambar terkompresi khusus untuk hari itu (lihat _resolvePhotoSlots()).
+const MIN_RASTER_RESERVE_BYTES = 150 * 1024;
 
 const Pdf = {
   /**
@@ -125,6 +157,8 @@ const Pdf = {
     const targetCol = columns.find((c) => c.key === targetKey);
     const dokCol = columns.find((c) => c.key === "dok");
 
+    let vectorOverlayTasks = [];
+
     if (isLibur) {
       // LIBUR: tidak ada foto sama sekali (Serah Terima Dinasan tetap
       // kosong) — kolom Dokumentasi Kegiatan diisi teks "LIBUR" bold merah.
@@ -134,73 +168,82 @@ const Pdf = {
       doc.setFont("helvetica", "normal");
       doc.setTextColor(0, 0, 0);
     } else {
-      const croppedDokumentasi = await this._withCroppedDataUrl(photos.fotoDokumentasi);
-
-      // ---- Bagi jatah ukuran (budget) PDF harian ke foto yang aktif ----
-      // Hanya sel yang benar-benar terisi foto yang ikut dibagi jatah —
-      // sama seperti pola yang sudah dipakai di migrasi "Kompres PDF Lama"
-      // sebelumnya.
-      let slots;
+      // ---- Kelompokkan sel yang aktif: kandidat VEKTOR (sumbernya PDF,
+      // lihat photo.isVector dari upload.js) vs RASTER biasa. Dokumentasi
+      // Kegiatan tidak pernah vektor (upload.js tidak mengizinkan PDF di
+      // kolom itu) — selalu masuk kandidat raster.
+      let vectorCandidates, rasterCandidates;
       if (isTutup) {
         // Stasiun Tutup: 2 foto serah terima sekaligus (Awal Dinas & Akhir
         // Dinas), masing-masing masuk kolomnya sendiri — TIDAK digabung
         // jadi satu kolom (lihat CONFIG.getTableColumns).
-        const croppedAwal = await this._withCroppedDataUrl(photos.fotoAwalDinas);
-        const croppedAkhir = await this._withCroppedDataUrl(photos.fotoAkhirDinas);
         const awalCol = columns.find((c) => c.key === "awal");
         const akhirCol = columns.find((c) => c.key === "akhir");
-        slots = [
-          { col: awalCol, photo: croppedAwal },
-          { col: akhirCol, photo: croppedAkhir },
-          { col: dokCol, photo: croppedDokumentasi },
+        const all = [
+          { col: awalCol, photo: photos.fotoAwalDinas },
+          { col: akhirCol, photo: photos.fotoAkhirDinas },
+          { col: dokCol, photo: photos.fotoDokumentasi },
         ].filter((s) => s.photo && s.col);
+        vectorCandidates = all.filter((s) => s.photo.isVector);
+        rasterCandidates = all.filter((s) => !s.photo.isVector);
       } else {
         // Stasiun Buka (& Lainnya, yang otomatis dikunci ke Stasiun Buka
         // dengan foto Serah Terima kosong/null -> kolom "gabung" kosong).
-        const croppedSerahTerima = await this._withCroppedDataUrl(photos.fotoSerahTerima);
-        slots = [
-          { col: targetCol, photo: croppedSerahTerima },
-          { col: dokCol, photo: croppedDokumentasi },
+        const all = [
+          { col: targetCol, photo: photos.fotoSerahTerima },
+          { col: dokCol, photo: photos.fotoDokumentasi },
         ].filter((s) => s.photo && s.col);
+        vectorCandidates = all.filter((s) => s.photo.isVector);
+        rasterCandidates = all.filter((s) => !s.photo.isVector);
       }
 
       const totalBudget = PDF_HARIAN_TARGET_BYTES - PDF_OVERHEAD_RESERVE_BYTES;
 
-      // BARU — jatah dibagi PROPORSIONAL KE KEBUTUHAN NYATA tiap foto
-      // (_estimateIdealBytes: seberapa besar foto ini kalau dirender di
-      // DPI & kualitas JPEG TERTINGGI, tanpa batas jatah sama sekali),
-      // bukan cuma berdasar lebar kolom tabel seperti sebelumnya. Foto
-      // padat detail (mis. hasil convert PDF scan di Awal/Akhir Dinas)
-      // otomatis "minta" jatah lebih besar dibanding foto polos — dulu
-      // keduanya dipukul rata cuma berdasar lebar kolom, itu salah satu
-      // sebab Awal/Akhir Dinas lebih gampang pecah dibanding Dokumentasi.
-      //
-      // Kalau total kebutuhan SEMUA foto aktif hari ini masih di bawah
-      // jatah harian (mis. Stasiun Buka dengan foto yang sudah ringkas),
-      // semuanya langsung dipakai di kualitas puncak tanpa kompres
-      // tambahan — jatah yang nganggur tidak dibuang percuma.
-      const slotDims = slots.map((s) => ({
-        ...s,
-        maxW: s.col.width - CELL_PHOTO_PAD_MM * 2,
-        maxH: rowBodyH - CELL_PHOTO_PAD_MM * 2,
-      }));
-      const idealResults = await Promise.all(
-        slotDims.map((s) => this._estimateIdealBytes(s.photo.dataUrl, s.photo.mimeType, s.maxW, s.maxH))
-      );
-      const idealTotal = idealResults.reduce((sum, r) => sum + r.bytes, 0);
+      // ---- Vektor tidak bisa dikompres: siapkan sumbernya (bytes + kotak
+      // batas konten tiap halaman), lalu putuskan mana yang benar-benar
+      // ditempel sebagai vektor vs mana yang harus FALLBACK jadi raster
+      // (kalau ukurannya sampai tidak menyisakan jatah wajar untuk
+      // Dokumentasi Kegiatan) — lihat _resolveVectorSlots().
+      const { vectorSlots, fallbackToRaster } = await this._resolveVectorSlots(vectorCandidates, totalBudget);
+      const rasterSlots = [...rasterCandidates, ...fallbackToRaster];
+      const vectorBytesUsed = vectorSlots.reduce((sum, s) => sum + s.source.bytes.length, 0);
+      const rasterBudget = Math.max(1, totalBudget - vectorBytesUsed);
 
-      if (idealTotal > 0 && idealTotal <= totalBudget) {
-        slotDims.forEach((s, i) => {
-          this._drawCompressedImage(doc, idealResults[i], s.col, bodyTop, s.maxW, s.maxH);
-        });
-      } else {
-        for (let i = 0; i < slotDims.length; i++) {
-          const s = slotDims[i];
-          const share = idealTotal > 0 ? idealResults[i].bytes / idealTotal : 1 / slotDims.length;
-          const budgetBytes = Math.max(1, Math.round(totalBudget * share));
-          await this._placeImageInCellBudgeted(doc, s.photo, s.col, bodyTop, rowBodyH, budgetBytes);
+      // ---- Gambar foto RASTER (Dokumentasi Kegiatan + fallback bila ada)
+      // — logika kompres/pembagian jatah SAMA seperti sebelumnya, hanya
+      // sekarang jatahnya (rasterBudget) sudah dikurangi ukuran vektor.
+      if (rasterSlots.length) {
+        const croppedRasterSlots = await Promise.all(
+          rasterSlots.map(async (s) => ({ col: s.col, photo: await this._withCroppedDataUrl(s.photo) }))
+        );
+        const slotDims = croppedRasterSlots.map((s) => ({
+          ...s,
+          maxW: s.col.width - CELL_PHOTO_PAD_MM * 2,
+          maxH: rowBodyH - CELL_PHOTO_PAD_MM * 2,
+        }));
+        const idealResults = await Promise.all(
+          slotDims.map((s) => this._estimateIdealBytes(s.photo.dataUrl, s.photo.mimeType, s.maxW, s.maxH))
+        );
+        const idealTotal = idealResults.reduce((sum, r) => sum + r.bytes, 0);
+
+        if (idealTotal > 0 && idealTotal <= rasterBudget) {
+          slotDims.forEach((s, i) => {
+            this._drawCompressedImage(doc, idealResults[i], s.col, bodyTop, s.maxW, s.maxH);
+          });
+        } else {
+          for (let i = 0; i < slotDims.length; i++) {
+            const s = slotDims[i];
+            const share = idealTotal > 0 ? idealResults[i].bytes / idealTotal : 1 / slotDims.length;
+            const budgetBytes = Math.max(1, Math.round(rasterBudget * share));
+            await this._placeImageInCellBudgeted(doc, s.photo, s.col, bodyTop, rowBodyH, budgetBytes);
+          }
         }
       }
+
+      // ---- Sel VEKTOR sengaja TIDAK digambar ke jsPDF sama sekali —
+      // dicatat dulu (rect sel + sumbernya), ditempel setelah dokumen
+      // jsPDF selesai dibangun lewat pdf-lib (lihat tahap 2 di bawah).
+      vectorOverlayTasks = vectorSlots.map((s) => ({ col: s.col, source: s.source, bodyTop, rowBodyH }));
     }
 
     // BARU — nama file bercabang sesuai mode (lihat Form.mode/collect()).
@@ -210,8 +253,29 @@ const Pdf = {
     const fileName = data.mode === CONFIG.MODE_WAKILAN
       ? CONFIG.buildPdfFileNameWakilan(data.tanggal, data.wakilan, data.stasiunTempatWakilan, data.dinas)
       : CONFIG.buildPdfFileName(data.tanggal, data.dinas);
-    const blob = doc.output("blob");
-    const base64 = doc.output("datauristring").split(",")[1];
+
+    // ---- Tahap 2: tempel sel VEKTOR (kalau ada) lewat pdf-lib. Dokumen
+    // jsPDF yang sudah jadi (tabel + teks + foto raster) dimuat ulang
+    // sebagai PDFDocument, lalu tiap PDF sumber ditempel LANGSUNG sebagai
+    // objek vektor ke koordinat selnya masing-masing — tidak ada
+    // rasterisasi/kompresi JPEG yang menyentuh konten ini sama sekali.
+    let finalBytes;
+    if (vectorOverlayTasks.length) {
+      const jsPdfBytes = doc.output("arraybuffer");
+      const { PDFDocument } = PDFLib;
+      const finalDoc = await PDFDocument.load(jsPdfBytes);
+      const finalPage = finalDoc.getPages()[0];
+      const pageHeightPt = finalPage.getHeight();
+      for (const task of vectorOverlayTasks) {
+        await this._embedVectorCell(finalDoc, finalPage, pageHeightPt, task);
+      }
+      finalBytes = await finalDoc.save();
+    } else {
+      finalBytes = doc.output("arraybuffer");
+    }
+
+    const blob = new Blob([finalBytes], { type: "application/pdf" });
+    const base64 = this._arrayBufferToBase64(finalBytes);
 
     // Pagar pengaman terakhir: kalau ternyata TETAP kelewat batas keras
     // (kasus langka — foto sangat kompleks/detail di kedua sel sekaligus),
@@ -572,6 +636,195 @@ const Pdf = {
       img.onerror = () => resolve({ dataUrl, format: mimeType && mimeType.includes("png") ? "PNG" : "JPEG", bytes: this._dataUrlBytes(dataUrl) });
       img.src = dataUrl;
     });
+  },
+
+  /**
+   * Menentukan sel mana yang BENAR-BENAR ditempel sebagai vektor, dan mana
+   * yang harus FALLBACK jadi raster (kompresi JPEG seperti biasa) — hanya
+   * terjadi kalau total ukuran PDF sumber semua sel vektor sampai tidak
+   * lagi menyisakan MIN_RASTER_RESERVE_BYTES untuk Dokumentasi Kegiatan.
+   * Sel yang dikorbankan adalah yang PALING BESAR dulu, supaya sisa sel
+   * vektor yang tetap tajam sebanyak mungkin. Kasus ini sangat jarang
+   * terjadi (PDF hasil scan aplikasi resmi biasanya kecil).
+   * @returns {Promise<{vectorSlots: Array, fallbackToRaster: Array}>}
+   */
+  async _resolveVectorSlots(vectorCandidates, totalBudget) {
+    if (!vectorCandidates.length) return { vectorSlots: [], fallbackToRaster: [] };
+
+    const withSource = await Promise.all(
+      vectorCandidates.map(async (s) => ({ ...s, source: await this._prepareVectorSource(s.photo) }))
+    );
+    // Terbesar dulu (lihat komentar di atas).
+    withSource.sort((a, b) => b.source.bytes.length - a.source.bytes.length);
+
+    const vectorSlots = [];
+    const fallbackToRaster = [];
+    const remaining = withSource.slice();
+
+    while (remaining.length) {
+      const vectorBytesUsed = remaining.reduce((sum, s) => sum + s.source.bytes.length, 0);
+      if (vectorBytesUsed <= totalBudget - MIN_RASTER_RESERVE_BYTES) {
+        vectorSlots.push(...remaining);
+        break;
+      }
+      const worst = remaining.shift();
+      fallbackToRaster.push(worst.photo);
+      if (typeof Toast !== "undefined") {
+        Toast.show(
+          `PDF sumber "${worst.col.label}" berukuran besar, dipakai sebagai gambar terkompresi (bukan vektor) khusus untuk hari ini.`,
+          "warn"
+        );
+      }
+    }
+
+    return { vectorSlots, fallbackToRaster };
+  },
+
+  /**
+   * Mengurai PDF sumber (2 halaman, bytes base64 dari upload.js) menjadi
+   * bytes mentah (dipakai pdf-lib untuk embed) + kotak batas konten tiap
+   * halaman dalam satuan pt, sistem koordinat PDF asli (dipakai supaya
+   * spasi kosong di tepi halaman sumber ikut terbuang, sama seperti
+   * _cropWhitespace pada jalur raster).
+   */
+  async _prepareVectorSource(photo) {
+    const raw = atob(photo.pdfBytesBase64);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+
+    // .slice() supaya buffer yang dipegang pdfjsLib terpisah dari `bytes`
+    // yang nanti dipakai pdf-lib (pdfjsLib bisa "meminjam"/mentransfer
+    // buffer yang diberikan padanya).
+    const pdfDoc = await pdfjsLib.getDocument({ data: bytes.slice() }).promise;
+    const page1 = await pdfDoc.getPage(1);
+    const page2 = await pdfDoc.getPage(2);
+    const box1 = await this._detectPdfContentBoxPt(page1);
+    const box2 = await this._detectPdfContentBoxPt(page2);
+    return { bytes, box1, box2 };
+  },
+
+  /**
+   * Deteksi kotak batas konten (non-putih) 1 halaman PDF, dikembalikan
+   * dalam satuan pt pada sistem koordinat PDF asli halaman itu (origin
+   * kiri-bawah) — versi vektor dari _detectContentBounds di
+   * upload.js/PdfToJpgConverter, tapi hasilnya kotak koordinat PDF
+   * (lewat viewport.convertToPdfPoint), bukan kotak piksel kanvas.
+   */
+  async _detectPdfContentBoxPt(page) {
+    const SCAN_MAX = 700;
+    const base = page.getViewport({ scale: 1 });
+    const scale = Math.min(1.5, SCAN_MAX / Math.max(base.width, base.height));
+    const viewport = page.getViewport({ scale });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.ceil(viewport.width));
+    canvas.height = Math.max(1, Math.ceil(viewport.height));
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const threshold = 248;
+    let minX = canvas.width, minY = canvas.height, maxX = -1, maxY = -1;
+    for (let y = 0; y < canvas.height; y++) {
+      for (let x = 0; x < canvas.width; x++) {
+        const idx = (y * canvas.width + x) * 4;
+        const r = data[idx], g = data[idx + 1], b = data[idx + 2], a = data[idx + 3];
+        if (a > 10 && (r < threshold || g < threshold || b < threshold)) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    // Halaman kosong (jarang) -> pakai kotak halaman penuh apa adanya.
+    if (maxX < minX || maxY < minY) {
+      const view = page.view; // [x0, y0, x1, y1] dalam pt, kotak halaman asli
+      return { left: view[0], bottom: view[1], right: view[2], top: view[3] };
+    }
+
+    const padPx = Math.round(Math.max(canvas.width, canvas.height) * 0.012);
+    minX = Math.max(0, minX - padPx);
+    minY = Math.max(0, minY - padPx);
+    maxX = Math.min(canvas.width - 1, maxX + padPx);
+    maxY = Math.min(canvas.height - 1, maxY + padPx);
+
+    const corners = [
+      viewport.convertToPdfPoint(minX, minY),
+      viewport.convertToPdfPoint(maxX, minY),
+      viewport.convertToPdfPoint(minX, maxY),
+      viewport.convertToPdfPoint(maxX, maxY),
+    ];
+    const xs = corners.map((c) => c[0]);
+    const ys = corners.map((c) => c[1]);
+    return { left: Math.min(...xs), right: Math.max(...xs), bottom: Math.min(...ys), top: Math.max(...ys) };
+  },
+
+  /**
+   * Menempel (embed) 1 sel vektor: memuat PDF sumbernya lewat pdf-lib,
+   * menempelkan kedua halamannya (dipangkas ke kotak konten masing-masing)
+   * bertumpuk (hal.1 di atas, hal.2 di bawah — sama seperti susunan
+   * thumbnail-nya) ke dalam rect sel yang sama persis posisinya dengan
+   * yang dipakai jalur raster dulu, dengan 1 skala seragam supaya rasio
+   * aspek asli tiap halaman tetap terjaga (tidak gepeng/molor).
+   */
+  async _embedVectorCell(finalDoc, finalPage, pageHeightPt, task) {
+    const { col, source, bodyTop, rowBodyH } = task;
+    const pad = CELL_PHOTO_PAD_MM;
+
+    // Rect sel: dari mm (top-left, sistem jsPDF) ke pt (bottom-left, sistem pdf-lib).
+    const cellLeftMm = col.x + pad;
+    const cellTopMm = bodyTop + pad;
+    const cellWmm = col.width - pad * 2;
+    const cellHmm = rowBodyH - pad * 2;
+    const xPt = cellLeftMm * MM_TO_PT;
+    const cellWpt = cellWmm * MM_TO_PT;
+    const cellHpt = cellHmm * MM_TO_PT;
+    const yPt = pageHeightPt - cellTopMm * MM_TO_PT - cellHpt;
+
+    const { PDFDocument } = PDFLib;
+    const srcDoc = await PDFDocument.load(source.bytes);
+    const srcPages = srcDoc.getPages();
+    const embeddedPage1 = await finalDoc.embedPage(srcPages[0], source.box1);
+    const embeddedPage2 = await finalDoc.embedPage(srcPages[1], source.box2);
+
+    const w1 = source.box1.right - source.box1.left;
+    const h1 = source.box1.top - source.box1.bottom;
+    const w2 = source.box2.right - source.box2.left;
+    const h2 = source.box2.top - source.box2.bottom;
+
+    const stackW = Math.max(w1, w2);
+    const stackH = h1 + h2 + VECTOR_STACK_GAP_PT;
+    const fitScale = Math.min(cellWpt / stackW, cellHpt / stackH);
+
+    const drawW1 = w1 * fitScale, drawH1 = h1 * fitScale;
+    const drawW2 = w2 * fitScale, drawH2 = h2 * fitScale;
+    const blockW = stackW * fitScale;
+    const blockH = stackH * fitScale;
+    const blockX = xPt + (cellWpt - blockW) / 2;
+    const blockTopY = yPt + (cellHpt + blockH) / 2;
+
+    const y1 = blockTopY - drawH1;
+    const x1 = blockX + (blockW - drawW1) / 2;
+    finalPage.drawPage(embeddedPage1, { x: x1, y: y1, width: drawW1, height: drawH1 });
+
+    const y2 = y1 - VECTOR_STACK_GAP_PT * fitScale - drawH2;
+    const x2 = blockX + (blockW - drawW2) / 2;
+    finalPage.drawPage(embeddedPage2, { x: x2, y: y2, width: drawW2, height: drawH2 });
+  },
+
+  /** Konversi ArrayBuffer/Uint8Array PDF hasil pdf-lib ke string base64. */
+  _arrayBufferToBase64(buffer) {
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    let binary = "";
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
   },
 
   _formatTanggalPanjang(isoDate) {

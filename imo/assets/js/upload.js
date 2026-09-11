@@ -6,24 +6,30 @@
  * hasilnya sebagai base64 supaya siap dipakai oleh pdf.js / preview.js /
  * api.js (foto ditempel langsung di dalam PDF, tidak diunggah terpisah).
  *
- * Kolom "Foto Serah Terima" khusus juga menerima berkas PDF 2 halaman
- * (mis. hasil scan berita acara). PDF tersebut otomatis dikonversi di
- * dalam browser (pdf.js) menjadi satu lembar JPG A4 beresolusi 450 DPI —
- * logika render/crop/susun-ke-A4 sama persis dengan menu "PDF to A4",
- * dipadatkan di sini (lihat PdfToJpgConverter) supaya hasilnya konsisten
- * dan prosesnya cepat karena deteksi tepi konten memakai kanvas kecil.
+ * Kolom "Foto Serah Terima" (serta "Awal Dinas"/"Akhir Dinas") khusus juga
+ * menerima berkas PDF 2 halaman (mis. hasil scan berita acara). Saat ini
+ * DUA hal disimpan untuk berkas PDF tersebut:
+ *   1. `pdfBytesBase64` — bytes ASLI PDF (2 halaman), apa adanya, tanpa
+ *      rekompresi/rasterisasi sama sekali. Inilah yang benar-benar dipakai
+ *      pdf.js saat membangun PDF harian: ditempel LANGSUNG sebagai objek
+ *      vektor (lewat pdf-lib) ke sel tabel yang sesuai, sehingga teks/garis
+ *      di dalamnya tetap tajam sempurna di zoom berapa pun — tidak ada
+ *      kompresi JPEG yang bisa merusak ketajaman tepian teks.
+ *   2. `dataUrl`/`base64` (JPG) — HANYA thumbnail tampilan (dropzone +
+ *      tabel Preview langkah 3), dibuat sekali lewat PdfToJpgConverter
+ *      (logika render/crop/susun-ke-A4 sama seperti menu "PDF to A4").
+ *      Thumbnail ini TIDAK PERNAH ikut menentukan hasil akhir PDF harian.
+ * Kolom "Dokumentasi Kegiatan" tetap hanya menerima gambar (tidak berubah).
  * -----------------------------------------------------------------------
  */
 
-// DPI target konversi PDF -> JPG untuk kolom Foto Serah Terima.
-// Dipertahankan TINGGI (450) demi ketajaman sumber, karena DPI di sini
-// TIDAK LAGI menentukan ukuran akhir file PDF harian — pdf.js sekarang
-// selalu mengompres ulang setiap foto (baik hasil konversi PDF ini
-// maupun foto langsung) memakai budget ukuran adaptif per-hari (lihat
-// PDF_HARIAN_TARGET_BYTES di pdf.js) saat PDF harian dibuat. Jadi 450
-// DPI di sini hanya memastikan sumbernya setajam mungkin SEBELUM
-// di-downscale ke ukuran sel tabel; tidak membebani ukuran PDF akhir.
-const PDF_SERAH_TERIMA_DPI = 450;
+// DPI render thumbnail JPG (dropzone + Preview langkah 3) untuk PDF yang
+// diunggah ke kolom Awal/Akhir Dinas / Serah Terima. DITURUNKAN dari 450
+// ke 200 — DPI di sini SEKARANG MURNI untuk tampilan layar (bukan lagi
+// sumber yang dipakai di PDF harian, lihat bytes asli `pdfBytesBase64` di
+// atas), jadi tidak perlu setinggi dulu; 200 DPI sudah cukup tajam di
+// layar dan membuat proses konversi thumbnail lebih ringan/cepat.
+const PDF_THUMBNAIL_DPI = 200;
 
 if (typeof pdfjsLib !== "undefined") {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
@@ -275,10 +281,14 @@ const UploadField = {
 
   /**
    * Alur khusus saat file yang diunggah ke kolom "Foto Serah Terima"
-   * berupa PDF: validasi ukuran & jumlah halaman, tampilkan status
-   * "mengonversi" di dropzone, lalu proses lewat PdfToJpgConverter.
-   * Hasil JPG-nya disimpan ke state persis seperti foto biasa, sehingga
-   * pdf.js / preview.js / api.js tidak perlu tahu asalnya dari PDF.
+   * (atau Awal/Akhir Dinas) berupa PDF: validasi ukuran & jumlah halaman,
+   * tampilkan status "memproses" di dropzone, lalu SEKALIGUS (a) simpan
+   * bytes PDF asli apa adanya (dipakai pdf.js untuk ditempel sebagai
+   * vektor) dan (b) buat thumbnail JPG lewat PdfToJpgConverter (dipakai
+   * HANYA untuk tampilan dropzone + Preview langkah 3, lihat komentar di
+   * atas file ini). pdf.js/preview.js tidak perlu tahu detail ini — tinggal
+   * baca dataUrl (tampilan) atau pdfBytesBase64 (dipakai untuk PDF harian)
+   * dari state.
    */
   async _handlePdfFile(file, stateKey, thumbWrap, dz) {
     if (typeof pdfjsLib === "undefined") {
@@ -294,37 +304,63 @@ const UploadField = {
     dz.classList.add("is-loading");
     dz.innerHTML = `
       <div class="dropzone__spinner"></div>
-      <div class="dropzone__text">Mengonversi PDF ke JPG (${PDF_SERAH_TERIMA_DPI} DPI)…</div>
+      <div class="dropzone__text">Memproses PDF…</div>
       <div class="dropzone__hint">Mohon tunggu sebentar</div>`;
 
     try {
-      const jpgBlob = await PdfToJpgConverter.convert(file, PDF_SERAH_TERIMA_DPI);
+      // (a) bytes asli PDF — validasi jumlah halaman dilakukan di sini
+      // (sebelum konversi thumbnail) supaya PDF yang salah jumlah halaman
+      // langsung ditolak tanpa perlu merender apapun dulu.
+      const pdfBytesBase64 = await this._readAsBase64(file);
+      await this._assertTwoPages(file);
+
+      // (b) thumbnail tampilan saja (tidak pernah dipakai sebagai sumber
+      // PDF harian) — lihat PDF_THUMBNAIL_DPI di atas file ini.
+      const jpgBlob = await PdfToJpgConverter.convert(file, PDF_THUMBNAIL_DPI);
       const dataUrl = await this._readAsDataURL(jpgBlob);
-      const fileName = file.name.replace(/\.pdf$/i, "") + `-${PDF_SERAH_TERIMA_DPI}dpi.jpg`;
+      const fileName = file.name.replace(/\.pdf$/i, "") + ".pdf";
 
       this._setPhotoState(stateKey, thumbWrap, dz, {
         dataUrl,
         base64: dataUrl.split(",")[1],
         mimeType: "image/jpeg",
         fileName,
+        pdfBytesBase64,
+        isVector: true,
       });
 
-      Toast.show(`PDF berhasil dikonversi ke JPG ${PDF_SERAH_TERIMA_DPI} DPI.`, "success");
+      Toast.show("PDF berhasil diunggah (tetap tajam, tidak dikonversi jadi gambar).", "success");
     } catch (err) {
       console.error(err);
-      Toast.show(err && err.message ? err.message : "Gagal mengonversi PDF.", "error");
+      Toast.show(err && err.message ? err.message : "Gagal memproses PDF.", "error");
     } finally {
       // Selesai (berhasil ataupun gagal): kembalikan tampilan dropzone ke
       // semula. Thumbnail hasil konversi (bila berhasil) tampil terpisah
       // di thumbWrap lewat _setPhotoState, jadi dropzone-nya sendiri tidak
-      // perlu terus menampilkan status "mengonversi".
+      // perlu terus menampilkan status "memproses".
       dz.classList.remove("is-loading");
       dz.innerHTML = originalHtml;
     }
   },
 
-  _setPhotoState(stateKey, thumbWrap, dz, { dataUrl, base64, mimeType, fileName }) {
-    this.state[stateKey] = { dataUrl, base64, mimeType, fileName };
+  /** Validasi cepat: PDF yang diunggah harus tepat 2 halaman. */
+  async _assertTwoPages(file) {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+    if (pdf.numPages !== 2) {
+      throw new Error(`PDF ini punya ${pdf.numPages} halaman. Kolom ini butuh PDF tepat 2 halaman.`);
+    }
+  },
+
+  _setPhotoState(stateKey, thumbWrap, dz, { dataUrl, base64, mimeType, fileName, pdfBytesBase64, isVector }) {
+    this.state[stateKey] = {
+      dataUrl,
+      base64,
+      mimeType,
+      fileName,
+      pdfBytesBase64: pdfBytesBase64 || null,
+      isVector: !!isVector,
+    };
 
     dz.classList.remove("is-invalid");
     thumbWrap.innerHTML = `
@@ -347,6 +383,12 @@ const UploadField = {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
+  },
+
+  /** Base64 murni (tanpa prefix "data:...;base64,") dari isi file apa adanya. */
+  async _readAsBase64(file) {
+    const dataUrl = await this._readAsDataURL(file);
+    return dataUrl.split(",")[1];
   },
 
   reset() {
