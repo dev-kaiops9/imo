@@ -193,6 +193,58 @@
           </div>
         </div>
 
+        <!-- ===== 3 Card Widget Dashboard (tepat di bawah Banner Selamat Datang) =====
+             Widget 1: Terakhir Input IMO Per Hari
+             Widget 2: IMO Per Bulan Terakhir
+             Widget 3: Ringkasan Aktivitas
+             Berjajar horizontal di desktop, 1-2 kolom di mobile/tablet
+             (lihat kelas grid di bawah). Data diisi oleh loadDashboardWidgets()
+             (dipanggil dari applyLoggedInUI()/handleLogout()), tidak pernah
+             menghambat render Dashboard itu sendiri karena async & punya
+             fallback error tersendiri per-widget. -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 mb-6">
+
+          <!-- Widget 1: Terakhir Input IMO Per Hari -->
+          <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col min-h-[172px]">
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="w-9 h-9 rounded-2xl bg-indigo-50 text-[#5B58CA] flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-calendar-check text-sm"></i>
+              </div>
+              <h3 class="text-sm font-bold text-slate-800 leading-snug">Terakhir Input IMO Per Hari</h3>
+            </div>
+            <div id="widgetImoPerHariContent" class="flex-1 flex flex-col justify-center">
+              <p class="text-xs text-slate-400">Memuat…</p>
+            </div>
+          </div>
+
+          <!-- Widget 2: IMO Per Bulan Terakhir -->
+          <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col min-h-[172px]">
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="w-9 h-9 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-folder-open text-sm"></i>
+              </div>
+              <h3 class="text-sm font-bold text-slate-800 leading-snug">IMO Per Bulan Terakhir</h3>
+            </div>
+            <div id="widgetImoPerBulanContent" class="flex-1 flex flex-col justify-center gap-1.5">
+              <p class="text-xs text-slate-400">Memuat…</p>
+            </div>
+          </div>
+
+          <!-- Widget 3: Ringkasan Aktivitas -->
+          <div class="bg-white rounded-3xl border border-slate-100 shadow-sm p-5 flex flex-col min-h-[172px]">
+            <div class="flex items-center gap-2.5 mb-3">
+              <div class="w-9 h-9 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-chart-simple text-sm"></i>
+              </div>
+              <h3 class="text-sm font-bold text-slate-800 leading-snug">Ringkasan Aktivitas</h3>
+            </div>
+            <div id="widgetRingkasanAktivitasContent" class="flex-1 flex flex-col justify-center gap-2.5">
+              <p class="text-xs text-slate-400">Memuat…</p>
+            </div>
+          </div>
+
+        </div>
+
         <!-- Course Cards Container -->
         <div id="courseListContainer" class="space-y-6">
           <!-- Rendered dynamically via JavaScript -->
@@ -1479,6 +1531,168 @@
       }
     }
 
+    // ---------------------------------------------------------------------
+    // 3 Card Widget Dashboard: "Terakhir Input IMO Per Hari", "IMO Per Bulan
+    // Terakhir", "Ringkasan Aktivitas" — tepat di bawah Banner Selamat
+    // Datang. Sumber data:
+    //   - Widget 1 & bagian "IMO Per Hari" di Widget 3: action
+    //     "cekPdfTersimpan" (SAMA persis dengan yang dipakai widget sidebar
+    //     "PDF Tersimpan" — tidak ada action baru untuk ini).
+    //   - Widget 2 & bagian "IMO Per Bulan" di Widget 3: action BARU
+    //     "cekImoBulananTerakhir" (lihat Code.gs) yang membaca sheet
+    //     ImoBulanan, dedup by Bulan+Tahun (+StasiunTempatWakilan) memakai
+    //     Timestamp terbaru, dan mengembalikan maks. 3 hasil terbaru.
+    // Widget 1 memfilter hasil ke BULAN & TAHUN BERJALAN (dinamis, memakai
+    // Date() saat ini, tidak pernah hardcode) — Widget 3 sengaja memakai
+    // data TERBARU APA PUN bulannya (aktivitas terakhir secara umum).
+    // Setiap widget dirender independen: kalau salah satu action gagal,
+    // HANYA widget itu yang menampilkan pesan error, dua widget lainnya
+    // (dan seluruh Dashboard) tetap tampil normal.
+    // ---------------------------------------------------------------------
+    let dashboardWidgetsLoadSeq = 0;
+
+    /** Ubah string "dd-mm-yyyy" (format dari formatTanggal_ di Code.gs)
+     *  jadi { day, month(0-based), year } angka, atau null kalau gagal
+     *  di-parse. */
+    function parseTanggalDMY_(str) {
+      const parts = String(str || '').split('-');
+      if (parts.length !== 3) return null;
+      const day = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const year = parseInt(parts[2], 10);
+      if (isNaN(day) || isNaN(month) || isNaN(year)) return null;
+      return { day: day, month: month, year: year };
+    }
+
+    /** "10-09-2026" -> "10 September 2026" (memakai array monthNames yang
+     *  sudah ada, dipakai juga oleh widget Kalender). */
+    function formatTanggalPanjang_(str) {
+      const p = parseTanggalDMY_(str);
+      if (!p || !monthNames[p.month]) return str;
+      return `${p.day} ${monthNames[p.month]} ${p.year}`;
+    }
+
+    function renderWidgetImoPerHari_(list) {
+      const el = document.getElementById('widgetImoPerHariContent');
+      if (list === 'error') {
+        el.innerHTML = `<p class="text-xs text-rose-400">Data belum dapat dimuat.</p>`;
+        return;
+      }
+      const now = new Date();
+      const bulanNow = now.getMonth();
+      const tahunNow = now.getFullYear();
+
+      // Prioritaskan aktivitas BULAN BERJALAN — jangan tampilkan data
+      // terakhir secara global kalau itu berada di bulan sebelumnya.
+      const match = (list || []).find((item) => {
+        const p = parseTanggalDMY_(item.tanggal);
+        return p && p.month === bulanNow && p.year === tahunNow;
+      });
+
+      if (match) {
+        el.innerHTML = `
+          <p class="text-xs text-slate-500 leading-snug">Anda Terakhir Kali Input IMO Per Hari:</p>
+          <p class="text-base font-bold text-slate-800 mt-1 leading-snug">${formatTanggalPanjang_(match.tanggal)}</p>
+        `;
+      } else {
+        el.innerHTML = `
+          <p class="text-xs text-slate-500 leading-relaxed">Anda belum melakukan input IMO Per Hari pada bulan <strong class="text-slate-700">${monthNames[bulanNow]} ${tahunNow}</strong>.</p>
+        `;
+      }
+    }
+
+    function renderWidgetImoPerBulan_(list) {
+      const el = document.getElementById('widgetImoPerBulanContent');
+      if (list === 'error') {
+        el.innerHTML = `<p class="text-xs text-rose-400">Data belum dapat dimuat.</p>`;
+        return;
+      }
+      if (!list || !list.length) {
+        el.innerHTML = `<p class="text-xs text-slate-400">Belum ada data IMO Per Bulan.</p>`;
+        return;
+      }
+      // Item sudah diurutkan backend berdasarkan file/data TERBARU DIBUAT
+      // (Timestamp), bukan urutan Bulan/Tahun — tampilkan apa adanya.
+      el.innerHTML = list.map((item) => `
+        <a href="${item.fileUrl ? escapeAttr_(item.fileUrl) : '#'}" target="_blank" rel="noopener noreferrer"
+           class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-50 hover:bg-indigo-50 text-slate-700 hover:text-[#5B58CA] transition group">
+          <span class="text-xs font-semibold truncate">${item.bulan} ${item.tahun}</span>
+          <i class="fa-solid fa-chevron-right text-[10px] text-slate-300 group-hover:text-[#5B58CA] shrink-0"></i>
+        </a>
+      `).join('');
+    }
+
+    function renderWidgetRingkasanAktivitas_(perHariList, perBulanList) {
+      const el = document.getElementById('widgetRingkasanAktivitasContent');
+      const rows = [];
+
+      if (perHariList === 'error') {
+        rows.push({ label: 'IMO Per Hari', value: 'Data belum dapat dimuat.', error: true });
+      } else {
+        rows.push({
+          label: 'IMO Per Hari',
+          value: (perHariList && perHariList.length)
+            ? `Terakhir input: ${formatTanggalPanjang_(perHariList[0].tanggal)}`
+            : 'Belum ada aktivitas.',
+        });
+      }
+
+      if (perBulanList === 'error') {
+        rows.push({ label: 'IMO Per Bulan', value: 'Data belum dapat dimuat.', error: true });
+      } else {
+        rows.push({
+          label: 'IMO Per Bulan',
+          value: (perBulanList && perBulanList.length)
+            ? `Terakhir dibuat: ${perBulanList[0].bulan} ${perBulanList[0].tahun}`
+            : 'Belum ada aktivitas.',
+        });
+      }
+
+      el.innerHTML = rows.map((r) => `
+        <div class="flex items-start gap-2">
+          <i class="fa-solid ${r.error ? 'fa-circle-exclamation text-rose-400' : 'fa-circle-check text-emerald-500'} text-xs mt-0.5 shrink-0"></i>
+          <div class="min-w-0">
+            <p class="text-xs font-bold text-slate-700 leading-snug">${r.label}</p>
+            <p class="text-[11px] text-slate-500 truncate">${r.value}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function showDashboardWidgetsLoggedOutState_() {
+      const hint = `<p class="text-xs text-slate-400">Silakan login untuk melihat data ini.</p>`;
+      document.getElementById('widgetImoPerHariContent').innerHTML = hint;
+      document.getElementById('widgetImoPerBulanContent').innerHTML = hint;
+      document.getElementById('widgetRingkasanAktivitasContent').innerHTML = hint;
+    }
+
+    async function loadDashboardWidgets(user) {
+      if (!user || !user.nipp) { showDashboardWidgetsLoggedOutState_(); return; }
+
+      const seq = ++dashboardWidgetsLoadSeq;
+      const loadingHint = `<p class="text-xs text-slate-400">Memuat…</p>`;
+      document.getElementById('widgetImoPerHariContent').innerHTML = loadingHint;
+      document.getElementById('widgetImoPerBulanContent').innerHTML = loadingHint;
+      document.getElementById('widgetRingkasanAktivitasContent').innerHTML = loadingHint;
+
+      // Kedua action dipanggil independen (Promise.allSettled) — kalau
+      // salah satu gagal, yang lain tetap dipakai untuk render widget yang
+      // masih bisa ditampilkan; TIDAK saling menjatuhkan.
+      const [perHariRes, perBulanRes] = await Promise.allSettled([
+        callBackend({ action: 'cekPdfTersimpan', nipp: user.nipp }),
+        callBackend({ action: 'cekImoBulananTerakhir', nipp: user.nipp }),
+      ]);
+
+      if (seq !== dashboardWidgetsLoadSeq) return; // ada permintaan lebih baru — buang hasil basi ini.
+
+      const perHariList = perHariRes.status === 'fulfilled' ? ((perHariRes.value && perHariRes.value.list) || []) : 'error';
+      const perBulanList = perBulanRes.status === 'fulfilled' ? ((perBulanRes.value && perBulanRes.value.list) || []) : 'error';
+
+      renderWidgetImoPerHari_(perHariList);
+      renderWidgetImoPerBulan_(perBulanList);
+      renderWidgetRingkasanAktivitas_(perHariList, perBulanList);
+    }
+
     // Tampilkan hanya salah satu: widget Dashboard (Kalender & Akun) atau
     // widget menu Tool (PDF Tersimpan), tergantung menu yang sedang aktif.
     function updateRightWidgetsVisibility(tabId) {
@@ -1645,6 +1859,7 @@
       loadSavedPdfWidget(user);
       applyProfileWidgetUI(user);
       updateDashboardWelcome(user);
+      loadDashboardWidgets(user);
 
       // Menu "Profil" di sidebar hanya muncul setelah login.
       const navProfil = document.getElementById('nav-profil');
@@ -3061,6 +3276,7 @@
       // Sembunyikan juga widget Informasi Akun di bawah kalender.
       applyProfileWidgetUI(null);
       updateDashboardWelcome(null);
+      showDashboardWidgetsLoggedOutState_();
 
       // BARU — bersihkan cache info akun (Email) milik kartu "Pengaturan
       // Akun" supaya tidak tertinggal/salah ditampilkan untuk user lain
@@ -3458,6 +3674,10 @@
 
       // Pulihkan sesi login (jika ada) supaya user yang sudah login tetap
       // terlihat login di semua menu, termasuk setelah refresh halaman.
+      // Default-kan dulu 3 widget Dashboard ke state "belum login" — akan
+      // ditimpa oleh loadDashboardWidgets() (dipanggil dari applyLoggedInUI)
+      // kalau ternyata ada sesi tersimpan di bawah ini.
+      showDashboardWidgetsLoggedOutState_();
       try {
         const savedUser = JSON.parse(sessionStorage.getItem(LOGIN_STORAGE_KEY));
         if (savedUser && savedUser.nama) {
