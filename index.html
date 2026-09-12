@@ -678,6 +678,9 @@
         <button type="submit" id="btnLoginPassword" class="w-full py-3 bg-[#5B58CA] hover:bg-[#4a47b5] text-white font-semibold rounded-2xl text-sm shadow-md shadow-indigo-200 transition duration-200 mt-4">
           LOGIN
         </button>
+        <button type="button" id="btnDaftarLangsung" onclick="openDaftarStageDirect()" class="w-full py-3 border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold rounded-2xl text-sm transition duration-200">
+          DAFTAR
+        </button>
       </form>
 
       <!-- ---- NIPP DITEMUKAN TAPI BELUM PUNYA PASSWORD ----
@@ -1759,6 +1762,41 @@
         }
       } finally {
         setStageBusy('btnLoginPassword', false, 'LOGIN');
+      }
+    }
+
+    // ---- Tombol "DAFTAR" (di bawah tombol LOGIN) — jalan pintas supaya
+    // user tidak perlu gagal login dulu untuk sampai ke form pendaftaran.
+    // Ambil NIPP dari kolom yang sedang diisi, cek dulu ke backend (action
+    // "cekNipp") supaya kalau ternyata NIPP itu SUDAH terdaftar, user
+    // diarahkan untuk Login (BUKAN dibawa ke form pendaftaran yang nanti
+    // ujung-ujungnya ditolak backend juga). ----
+    async function openDaftarStageDirect() {
+      const nipp = document.getElementById('loginNippInput').value.trim();
+      if (!nipp) { showLoginError('Isi NIPP terlebih dahulu untuk mendaftar.'); return; }
+
+      setStageBusy('btnDaftarLangsung', true, 'DAFTAR');
+      try {
+        const result = await callBackend({ action: 'cekNipp', nipp: nipp });
+        if (result.found) {
+          showLoginError('NIPP sudah terdaftar. Silakan Login menggunakan Password Anda.');
+          return;
+        }
+        pendingNipp = nipp;
+        document.getElementById('loginNippReadonly').value = nipp;
+        document.getElementById('loginNameInput').value = '';
+        setJabatanValue('loginJabatanSelect', 'loginJabatanLainnyaField', 'loginJabatanLainnyaInput', '');
+        document.getElementById('loginStasiunInput').value = '';
+        document.getElementById('loginStasiunPreview').classList.add('hidden');
+        document.getElementById('loginStasiunSuggest').classList.add('hidden');
+        document.getElementById('daftarPasswordInput').value = '';
+        document.getElementById('daftarKonfirmasiPasswordInput').value = '';
+        document.getElementById('daftarPasswordMatchHint').classList.add('hidden');
+        showLoginStage('daftar');
+      } catch (err) {
+        showLoginError('Gagal memeriksa NIPP: ' + err.message);
+      } finally {
+        setStageBusy('btnDaftarLangsung', false, 'DAFTAR');
       }
     }
 
