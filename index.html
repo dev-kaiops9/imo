@@ -3306,7 +3306,16 @@
     // Polling berkala supaya widget "Telah Digunakan" ter-update real-time
     // setiap kali counter bertambah di backend (mis. dipakai dari tab/perangkat
     // lain), tanpa perlu reload halaman.
-    function startUsageCounterPolling(intervalMs = 10000) {
+    //
+    // BARU — interval diperlambat dari 10 detik menjadi 30 detik untuk
+    // menghemat kuota Apps Script (total waktu eksekusi/hari) kalau website
+    // dipakai banyak orang sekaligus — lihat juga cache di getCounter() pada
+    // Code.gs, yang menangani sisi lain dari masalah yang sama (banyak user
+    // polling bersamaan). Widget tetap terasa "real-time" karena aksi milik
+    // user sendiri (login, dsb) tetap langsung memanggil loadUsageCounter()
+    // seketika itu juga (lihat pemanggilan lain fungsi ini) — interval 30
+    // detik ini HANYA untuk menangkap penambahan dari user/perangkat LAIN.
+    function startUsageCounterPolling(intervalMs = 30000) {
       if (usageCounterPollTimer) clearInterval(usageCounterPollTimer);
       usageCounterPollTimer = setInterval(() => {
         // Jangan polling saat tab browser sedang tidak aktif, hemat request.
