@@ -35,18 +35,41 @@ const Toast = {
 };
 
 const Api = {
-  async _post(payload) {
-    const res = await fetch(CONFIG.APPS_SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payload),
-    });
+  // PERBAIKAN BUG — sama seperti callBackend() di imo/index.html: Apps
+  // Script sesekali membalas HALAMAN HTML error (bukan JSON) saat sedang
+  // sibuk/timeout, yang tadinya bikin res.json() melempar error parser
+  // mentah ("...DOCTYPE...") ke user. Sekarang ditangani dengan pesan
+  // Indonesia yang jelas + auto-retry sekali untuk kegagalan sesaat.
+  async _post(payload, _isRetry) {
+    let res;
+    try {
+      res = await fetch(CONFIG.APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload),
+      });
+    } catch (networkErr) {
+      if (!_isRetry) {
+        await new Promise((r) => setTimeout(r, 1200));
+        return this._post(payload, true);
+      }
+      throw new Error("Tidak bisa terhubung ke server. Periksa koneksi internet Anda lalu coba lagi.");
+    }
 
     if (!res.ok) {
       throw new Error(`Server merespons status ${res.status}`);
     }
 
-    const json = await res.json();
+    let json;
+    try {
+      json = await res.json();
+    } catch (parseErr) {
+      if (!_isRetry) {
+        await new Promise((r) => setTimeout(r, 1200));
+        return this._post(payload, true);
+      }
+      throw new Error("Server sedang sibuk atau tidak merespons dengan benar. Silakan coba lagi dalam beberapa saat.");
+    }
     if (json.ok === false) {
       throw new Error(json.message || "Terjadi kesalahan pada server.");
     }

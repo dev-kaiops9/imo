@@ -1129,13 +1129,52 @@
 
     // Helper pemanggilan backend Code.gs. Melempar Error jika backend
     // membalas { ok:false }, supaya pesan errornya bisa ditampilkan ke user.
-    async function callBackend(body) {
-      const res = await fetch(APPS_SCRIPT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
+    //
+    // PERBAIKAN BUG — sebelumnya `await res.json()` dipanggil langsung
+    // tanpa proteksi. Google Apps Script SESEKALI (biasanya karena kuota
+    // eksekusi bersamaan terlampaui, atau timeout saat banyak user
+    // memakai bersamaan) membalas dengan HALAMAN HTML error
+    // ("<!DOCTYPE html>...") alih-alih JSON dari doPost() kita — res.json()
+    // lalu melempar error parser browser mentah ("Unexpected token '<' ...")
+    // yang tampil ke user sebagai pesan aneh "...DOCTYPE..." tanpa
+    // penjelasan, PADAHAL ini murni gangguan sesaat di sisi Apps Script,
+    // bukan kesalahan data/login user. Sekarang: (1) response non-JSON
+    // dikenali & diberi pesan Indonesia yang jelas, (2) untuk KHUSUS
+    // kegagalan sesaat semacam ini (bukan error logika seperti "Password
+    // salah"), otomatis dicoba ulang SEKALI setelah jeda singkat — karena
+    // gangguan seperti ini pada praktiknya hampir selalu hilang sendiri
+    // begitu dicoba lagi.
+    async function callBackend(body, _isRetry) {
+      let res;
+      try {
+        res = await fetch(APPS_SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(body),
+        });
+      } catch (networkErr) {
+        // Gagal total (mis. tidak ada koneksi internet) -> coba ulang
+        // sekali, baru menyerah dengan pesan yang jelas.
+        if (!_isRetry) {
+          await new Promise((r) => setTimeout(r, 1200));
+          return callBackend(body, true);
+        }
+        throw new Error("Tidak bisa terhubung ke server. Periksa koneksi internet Anda lalu coba lagi.");
+      }
+
+      let json;
+      try {
+        json = await res.json();
+      } catch (parseErr) {
+        // Respons BUKAN JSON (mis. halaman HTML error dari Apps Script) —
+        // ini yang tadinya tampil sebagai "...DOCTYPE..." mentah ke user.
+        if (!_isRetry) {
+          await new Promise((r) => setTimeout(r, 1200));
+          return callBackend(body, true);
+        }
+        throw new Error("Server sedang sibuk atau tidak merespons dengan benar. Silakan coba lagi dalam beberapa saat.");
+      }
+
       if (!json.ok) throw new Error(json.message || "Terjadi kesalahan pada server.");
       return json.data;
     }
