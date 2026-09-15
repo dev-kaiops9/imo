@@ -1009,6 +1009,15 @@ const PdfBulanan = {
 
     const { PDFDocument, StandardFonts, rgb } = PDFLib;
     const out = await PDFDocument.create();
+
+    // Fontkit WAJIB didaftarkan sebelum embedFont() dipakai dengan file
+    // font sendiri (.ttf). Tanpa ini pdf-lib cuma bisa memakai 14 font
+    // standar PDF (Helvetica dkk). Dipakai Cover untuk Lato Black &
+    // Roboto Bold — lihat _embedCoverFonts().
+    if (window.fontkit && typeof out.registerFontkit === "function") {
+      out.registerFontkit(window.fontkit);
+    }
+
     const fontBold = await out.embedFont(StandardFonts.HelveticaBold);
     const fontRegular = await out.embedFont(StandardFonts.Helvetica);
 
@@ -1016,7 +1025,7 @@ const PdfBulanan = {
 
     // ---- Halaman 1: Cover ----
     const cover = out.addPage(A4_LANDSCAPE);
-    await this._drawCoverPage(out, cover, { fontBold, fontRegular, bulanNama, tahun, user, stasiunWakilan });
+    await this._drawCoverPage(out, cover, { fontBold, bulanNama, tahun, user, stasiunWakilan });
     report(5);
 
     // ---- Halaman 2: Foto SmartCard (landscape) ----
@@ -1111,34 +1120,41 @@ const PdfBulanan = {
   },
 
   /**
-   * Menggambar Halaman 1 (Cover) — LANGSUNG PAKAI GAMBAR DESAIN cover yang
-   * diberikan (assets/img/cover-background.jpg) sebagai background 1
-   * halaman penuh (logo Danantara, logo KAI, foto kereta, kartu abu-abu,
-   * garis aksen, & label "Nama/NIPP/Jabatan/Unit Kerja/DAOP" SEMUA sudah
-   * jadi bagian dari gambar ini, apa adanya).
+   * Menggambar Halaman 1 (Cover) — LANGSUNG PAKAI GAMBAR DESAIN cover
+   * (assets/img/cover-background.jpg) sebagai background 1 halaman penuh.
+   * Semua elemen statis (foto kereta, logo Danantara & KAI, pita putih di
+   * bawah, label "NAMA/NIPP/JABATAN/UNIT KERJA/DAOP" beserta tanda titik
+   * dua, dan nilai DAOP "9 JEMBER") SUDAH jadi bagian dari gambar ini —
+   * tidak digambar ulang oleh kode.
    *
    * Yang di-generate ulang secara dinamis (ditimpa di atas background,
-   * pakai warna kartu yang sama supaya menyatu) hanya BAGIAN YANG BERUBAH
-   * per pegawai/bulan:
-   *   - 3 baris judul ("Laporan Kegiatan" / "Pengoperasian" / "Bulan {Bulan} {Tahun}")
-   *   - nilai di kolom kanan tiap baris identitas (Nama/NIPP/Jabatan/Unit Kerja/DAOP)
+   * pakai putih murni yang sama dengan pita cover supaya menyatu) HANYA
+   * bagian yang berubah per pegawai/bulan:
+   *   - 2 baris judul, rata KANAN:
+   *       "LAPORAN KEGIATAN PENGOPERASIAN"
+   *       "BULAN {Bulan} {Tahun}"
+   *     -> font Lato Black, ukuran 111 px (ruang desain)
+   *   - 4 nilai identitas di kolom kanan (NAMA, NIPP, JABATAN, UNIT KERJA)
+   *     -> font Roboto Bold, ukuran 67 px (ruang desain)
+   *   - Baris DAOP TIDAK disentuh (nilainya sudah tercetak di gambar).
    *
-   * Koordinat di bawah (dalam px, lalu dikonversi ke pt lewat COVER_SCALE)
-   * diukur langsung dari file assets/img/cover-background.jpg
-   * (3508 x 2480 px = A4 landscape @300dpi). Kalau gambar background ini
-   * diganti dengan desain baru yang layout-nya beda, angka-angka ini perlu
-   * diukur ulang.
+   * Catatan soal SATUAN: seluruh koordinat & ukuran font di bawah dinyatakan
+   * dalam PIXEL ruang desain, yaitu piksel file cover-background.jpg
+   * (3508 x 2480 px = A4 landscape @300dpi) diukur dari KIRI-ATAS. Helper
+   * X()/Y()/H()/S() yang mengonversinya ke titik (pt) PDF. Jadi angka "111"
+   * dan "67" di bawah persis sama dengan ukuran font di file desain aslinya.
+   * Kalau gambar background diganti dengan desain baru yang layout-nya beda,
+   * angka-angka ini perlu diukur ulang.
    */
-  async _drawCoverPage(pdfDoc, page, { fontBold, fontRegular, bulanNama, tahun, user, stasiunWakilan }) {
+  async _drawCoverPage(pdfDoc, page, { fontBold, bulanNama, tahun, user, stasiunWakilan }) {
     const { rgb } = PDFLib;
     const { width: pw, height: ph } = page.getSize();
 
-    const INK = rgb(0.07, 0.08, 0.11);
-    const INK_SOFT = rgb(0.18, 0.19, 0.22);
-    // Warna "kartu" abu-abu sangat muda di background — dipakai untuk
-    // menimpa teks contoh sebelum menulis nilai yang sebenarnya, supaya
-    // tidak ada bekas kotak putih yang kelihatan beda dari sekitarnya.
-    const CARD_BG = rgb(0.988, 0.988, 0.988);
+    const INK = rgb(0, 0, 0);
+    // Pita bawah cover adalah putih MURNI (255,255,255) — dipakai untuk
+    // menimpa area teks sebelum menulis nilai sebenarnya, supaya tidak ada
+    // bekas kotak yang warnanya beda dari sekitarnya.
+    const BAND_BG = rgb(1, 1, 1);
 
     // ---- Gambar background (1 halaman penuh) ----
     const bgBytes = await this._fetchArrayBuffer("assets/img/cover-background.jpg");
@@ -1152,56 +1168,65 @@ const PdfBulanan = {
     const X = (px) => px / scale;
     const Y = (pxFromTop) => ph - pxFromTop / scale;
     const H = (pxHeight) => pxHeight / scale;
+    /** ukuran (font/jarak) dalam px ruang desain -> pt. */
+    const S = (px) => px / scale;
 
-    // ==================== JUDUL (3 baris) ====================
-    // Kotak judul di dalam kartu (px, hasil ukur langsung di gambar).
-    const titleBox = { x0: 63, x1: 1320, yTop: 715, yBottom: 1210 };
+    // ---- Font cover (Lato Black & Roboto Bold) ----
+    // Kalau gagal dimuat, _embedCoverFonts() otomatis jatuh ke Helvetica-Bold
+    // supaya cover tetap jadi (bentuk huruf beda, tapi tidak gagal total).
+    const { titleFont, valueFont } = await this._embedCoverFonts(pdfDoc, fontBold);
+
+    // ==================== JUDUL (2 baris, RATA KANAN) ====================
+    const TITLE_SIZE_PX = 111;              // Lato Black 111 (sesuai desain)
+    const TITLE_RIGHT_PX = 3431;            // tepi kanan tempat kedua baris dirapatkan
+    const TITLE_LEFT_LIMIT_PX = 1180;       // batas kiri aman (tidak menabrak apa pun)
+    const TITLE_BASELINES_PX = [1752, 1886]; // baseline baris 1 & baris 2
+
+    // Timpa seluruh blok judul lama dengan putih, lalu tulis ulang KEDUA
+    // baris dengan font yang sama — supaya baris statis & baris dinamis
+    // dijamin konsisten bentuk/ukurannya.
     page.drawRectangle({
-      x: X(titleBox.x0),
-      y: Y(titleBox.yBottom),
-      width: X(titleBox.x1) - X(titleBox.x0),
-      height: H(titleBox.yBottom - titleBox.yTop),
-      color: CARD_BG,
+      x: X(TITLE_LEFT_LIMIT_PX),
+      y: Y(1935),
+      width: X(3470) - X(TITLE_LEFT_LIMIT_PX),
+      height: H(1935 - 1625),
+      color: BAND_BG,
     });
 
-    const titleLines = ["Laporan Kegiatan", "Pengoperasian", `Bulan ${bulanNama} ${tahun}`];
-    const titleMaxWidth = X(titleBox.x1) - X(titleBox.x0);
-    let titleSize = 32; // besar & tegas, TIDAK di-auto-shrink kecuali kepanjangan
-    const titleFloor = 22;
+    const titleLines = [
+      "LAPORAN KEGIATAN PENGOPERASIAN",
+      `BULAN ${String(bulanNama).toUpperCase()} ${tahun}`,
+    ];
+
+    // Ukuran judul TIDAK di-auto-shrink kecuali benar-benar kepanjangan
+    // (semua nama bulan Indonesia sudah pasti muat di ukuran 111).
+    const titleMaxWidth = X(TITLE_RIGHT_PX) - X(TITLE_LEFT_LIMIT_PX);
+    let titleSize = S(TITLE_SIZE_PX);
+    const titleFloor = S(80);
     titleLines.forEach((line) => {
-      while (titleSize > titleFloor && fontBold.widthOfTextAtSize(line, titleSize) > titleMaxWidth) {
+      while (titleSize > titleFloor && titleFont.widthOfTextAtSize(line, titleSize) > titleMaxWidth) {
         titleSize -= 0.5;
       }
     });
-    const titleLineH = titleSize * 1.24;
-    // Baris pertama diposisikan sejajar dengan baris pertama judul asli di gambar.
-    let titleBaseline = Y(872); // px 872 = batas bawah baris "Laporan Kegiatan" di gambar
-    titleLines.forEach((line) => {
-      page.drawText(line, { x: X(titleBox.x0), y: titleBaseline, size: titleSize, font: fontBold, color: INK });
-      titleBaseline -= titleLineH;
-    });
 
-    // ==================== LABEL "NAMA" (perbaikan huruf kapital) ====================
-    // Di gambar background, label baris pertama masih tertulis "Nama" (Title
-    // Case), sedangkan label lain (NIPP/JABATAN/UNIT KERJA/DAOP) sudah UPPERCASE.
-    // Area label ini ditimpa warna kartu lalu ditulis ulang jadi "NAMA" pakai
-    // font bold, supaya konsisten dengan label baris lainnya.
-    const namaLabelBox = { x0: 110, x1: 310, yTop: 1294, yBottom: 1372 };
-    page.drawRectangle({
-      x: X(namaLabelBox.x0),
-      y: Y(namaLabelBox.yBottom),
-      width: X(namaLabelBox.x1) - X(namaLabelBox.x0),
-      height: H(namaLabelBox.yBottom - namaLabelBox.yTop),
-      color: CARD_BG,
+    titleLines.forEach((line, i) => {
+      const w = titleFont.widthOfTextAtSize(line, titleSize);
+      page.drawText(line, {
+        x: X(TITLE_RIGHT_PX) - w, // rata kanan
+        y: Y(TITLE_BASELINES_PX[i]),
+        size: titleSize,
+        font: titleFont,
+        color: INK,
+      });
     });
-    page.drawText("NAMA", { x: X(123), y: Y(1350), size: 14.5, font: fontBold, color: INK });
 
     // ==================== BARIS IDENTITAS ====================
-    // Untuk tiap baris: hanya kolom NILAI (kanan) yang ditimpa & ditulis
-    // ulang — label ("NIPP", "JABATAN", dst.) & tanda titik dua sudah ada di
-    // gambar dan tidak disentuh (label "Nama" ditimpa terpisah di atas).
-    const valueX = 567; // px — posisi mulai teks nilai (persis setelah titik dua)
-    const valueRightEdge = 1320; // px — tepi kanan kartu
+    // Hanya kolom NILAI (setelah tanda titik dua) yang ditulis. Label &
+    // ":" sudah ada di gambar dan TIDAK disentuh. Baris DAOP juga tidak
+    // disentuh karena nilainya ("9 JEMBER") sudah tercetak di desain.
+    const VALUE_SIZE_PX = 67;      // Roboto Bold 67 (sesuai desain)
+    const VALUE_X_PX = 563;        // titik mulai teks nilai (persis setelah ":")
+    const VALUE_RIGHT_PX = 2600;   // batas kanan aman untuk nilai
 
     // UNIT KERJA = "UPT Stasiun {Kelas} {Nama}" — Kelas diambil dari sheet
     // MasterStasiun (kolom Kelas: "Kelas 1"/"Kelas 2"/"Kelas 3"/"Besar A"/
@@ -1211,8 +1236,8 @@ const PdfBulanan = {
     // (bukan fallback diam-diam) supaya ketahuan datanya belum lengkap —
     // caller (build IMO bulanan) sudah punya try/catch yang menampilkan
     // pesan ini lewat Toast.
-    // BARU — mode "Stasiun Tempat Wakilan": UNIT KERJA di cover memakai
-    // stasiun yang dipilih di dropdown Stasiun Tempat Wakilan (parameter
+    // Mode "Stasiun Tempat Wakilan": UNIT KERJA di cover memakai stasiun
+    // yang dipilih di dropdown Stasiun Tempat Wakilan (parameter
     // stasiunWakilan), BUKAN stasiun kedudukan asli user (user.stasiun).
     // Mode Kedudukan (stasiunWakilan kosong) perilakunya sama seperti
     // sebelumnya — tetap pakai user.stasiun.
@@ -1229,44 +1254,85 @@ const PdfBulanan = {
     const stasiunValue = `UPT Stasiun ${kelas} ${stasiunInfo.nama}`;
 
     const rows = [
-      { label: "NAMA", value: user.nama || "-", yTop: 1294, yBottom: 1372, baseline: 1350 },
-      { label: "NIPP", value: user.nipp || "-", yTop: 1395, yBottom: 1472, baseline: 1450 },
-      { label: "JABATAN", value: user.jabatan || "-", yTop: 1497, yBottom: 1574, baseline: 1552 },
-      { label: "UNIT KERJA", value: stasiunValue, yTop: 1597, yBottom: 1675, baseline: 1653 },
-      { label: "DAOP", value: "9 Jember", yTop: 1698, yBottom: 1776, baseline: 1754 },
+      { label: "NAMA", value: user.nama || "-", baseline: 2056 },
+      { label: "NIPP", value: user.nipp || "-", baseline: 2136 },
+      { label: "JABATAN", value: user.jabatan || "-", baseline: 2216 },
+      { label: "UNIT KERJA", value: stasiunValue, baseline: 2297 },
+      // DAOP sengaja TIDAK ada di sini — sudah tercetak di gambar desain.
     ];
 
-    const fieldSize = 16;
-    const fieldMinSize = 12;
-    const valueMaxWidth = X(valueRightEdge) - X(valueX);
+    const valueMaxWidth = X(VALUE_RIGHT_PX) - X(VALUE_X_PX);
+    const valueSizeDefault = S(VALUE_SIZE_PX);
+    const valueSizeFloor = S(48);
 
     rows.forEach((row) => {
-      // Timpa nilai contoh dengan warna kartu (label & ":" di kirinya tidak disentuh).
+      // Jaga-jaga: timpa area nilai dengan putih dulu. Tingginya sengaja
+      // lebih kecil dari jarak antar-baris (±80 px) supaya tidak pernah
+      // memotong baris di atas/bawahnya.
       page.drawRectangle({
-        x: X(valueX),
-        y: Y(row.yBottom),
-        width: X(valueRightEdge) - X(valueX),
-        height: H(row.yBottom - row.yTop),
-        color: CARD_BG,
+        x: X(VALUE_X_PX),
+        y: Y(row.baseline + 14),
+        width: X(VALUE_RIGHT_PX) - X(VALUE_X_PX),
+        height: H(70),
+        color: BAND_BG,
       });
 
       const value = String(row.value);
-      let valueSize = fieldSize;
-      while (valueSize > fieldMinSize && fontRegular.widthOfTextAtSize(value, valueSize) > valueMaxWidth) {
+
+      // Nilai ditulis dalam SATU baris (tinggi pita & jarak antar-baris
+      // tidak memungkinkan 2 baris). Kalau kepanjangan: dikecilkan dulu
+      // sampai batas bawah, baru dipotong + "…" sebagai jalan terakhir.
+      let valueSize = valueSizeDefault;
+      while (valueSize > valueSizeFloor && valueFont.widthOfTextAtSize(value, valueSize) > valueMaxWidth) {
         valueSize -= 0.5;
       }
+      const [line] = this._wrapTextToLines(valueFont, value, valueSize, valueMaxWidth, 1);
 
-      let valueLines = [value];
-      if (fontRegular.widthOfTextAtSize(value, valueSize) > valueMaxWidth) {
-        valueLines = this._wrapTextToLines(fontRegular, value, valueSize, valueMaxWidth, 2);
-      }
-
-      const valueLineH = valueSize * 1.15;
-      const baseY = Y(row.baseline);
-      valueLines.forEach((line, i) => {
-        page.drawText(line, { x: X(valueX), y: baseY + (valueLines.length - 1 - i) * valueLineH, size: valueSize, font: fontRegular, color: INK_SOFT });
+      page.drawText(line, {
+        x: X(VALUE_X_PX),
+        y: Y(row.baseline),
+        size: valueSize,
+        font: valueFont,
+        color: INK,
       });
     });
+  },
+
+  /**
+   * Memuat & menanamkan font cover (Lato Black untuk judul, Roboto Bold
+   * untuk nilai identitas) dari assets/fonts/.
+   *
+   * Kedua file .ttf di repo sudah di-SUBSET (Lato: huruf kapital + angka
+   * saja karena judul selalu uppercase; Roboto: Latin dasar + Latin-1)
+   * sehingga ukurannya kecil (±7 KB & ±17 KB) — metrik hurufnya identik
+   * dengan font aslinya, jadi posisi teks tetap persis seperti desain.
+   *
+   * `subset: true` membuat pdf-lib menanamkan HANYA glyph yang benar-benar
+   * dipakai, jadi tambahan ukuran pada PDF hasil hampir tidak terasa.
+   *
+   * Kalau fontkit tidak tersedia atau file font gagal diambil, fungsi ini
+   * JATUH KE Helvetica-Bold (font standar PDF) supaya pembuatan cover tidak
+   * gagal total — bentuk hurufnya beda, tapi PDF tetap jadi. Kasus ini
+   * diberi peringatan lewat Toast supaya ketahuan.
+   */
+  async _embedCoverFonts(pdfDoc, fallbackFont) {
+    if (!window.fontkit || typeof pdfDoc.registerFontkit !== "function") {
+      Toast.show("Font cover (Lato/Roboto) tidak dapat dimuat — cover memakai font cadangan.", "warn");
+      return { titleFont: fallbackFont, valueFont: fallbackFont };
+    }
+    try {
+      const [latoBytes, robotoBytes] = await Promise.all([
+        this._fetchArrayBuffer("assets/fonts/Lato-Black.ttf"),
+        this._fetchArrayBuffer("assets/fonts/Roboto-Bold.ttf"),
+      ]);
+      const titleFont = await pdfDoc.embedFont(latoBytes, { subset: true });
+      const valueFont = await pdfDoc.embedFont(robotoBytes, { subset: true });
+      return { titleFont, valueFont };
+    } catch (err) {
+      console.warn("Gagal memuat font cover:", err.message);
+      Toast.show("Font cover (Lato/Roboto) gagal dimuat — cover memakai font cadangan.", "warn");
+      return { titleFont: fallbackFont, valueFont: fallbackFont };
+    }
   },
 
   /**

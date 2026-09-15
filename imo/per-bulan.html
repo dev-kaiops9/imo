@@ -339,6 +339,13 @@
      tersimpan menjadi satu file PDF akhir. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 
+<!-- Fontkit — WAJIB ada supaya pdf-lib bisa menanamkan file font sendiri
+     (.ttf). Dipakai Cover IMO untuk Lato Black (judul) & Roboto Bold
+     (nilai NAMA/NIPP/JABATAN/UNIT KERJA). Sengaja di-HOST SENDIRI di repo
+     (bukan CDN) supaya tidak menambah ketergantungan eksternal baru;
+     file ini mendaftarkan global `window.fontkit`. -->
+<script src="assets/js/fontkit.umd.min.js"></script>
+
 <!-- ==================== APP SCRIPTS ==================== -->
 <script src="assets/js/config.js"></script>
 <script src="assets/js/bulanan.js"></script>
